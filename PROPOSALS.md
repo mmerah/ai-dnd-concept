@@ -22,6 +22,12 @@ Each proposal is either **RECOMMEND** (do it) or **DECIDE** (pick an option).
 | **P4** | **Option (b)** — `qa/` is in active use and stays. (a) was withdrawn: see the correction in P4 |
 | **P5** | **Accepted** |
 | **P6** | **Option (b)** — half collapse only, no schema change |
+| **P7** | **Accepted** — full version, all three methods |
+| **P8** | **Accepted** |
+| **P9** | **Accepted**, with 9a taking option (b) — keep the exhaustiveness check |
+| **P10** | **Option (c)** — the full prune, **sequenced after P2** (see P10) |
+
+All ten are closed. The work plan is at the end of this file.
 
 ---
 
@@ -60,7 +66,7 @@ A `@tool` decorator carrying the declaration, and MRO-walk collection replacing 
 `master_tools()` overrides. In `core/tools.py`:
 
 ```python
-S = TypeVar("S", contravariant=True)          # contravariance matters — see "the one catch"
+S = TypeVar("S", contravariant=True)  # contravariance matters — see "the one catch"
 A = TypeVar("A", bound=BaseModel)
 
 
@@ -68,7 +74,9 @@ class Marked(Generic[S, A]):
     """Returned by `tool(...)`: carries the declaration and stays a descriptor."""
 
     def __init__(
-        self, description: str, args: type[A],
+        self,
+        description: str,
+        args: type[A],
         resolve: Callable[[S, A, Random], Sequence[Fact]],
     ) -> None:
         self.description, self.args, self.resolve = description, args, resolve
@@ -86,6 +94,7 @@ def tool(
 ) -> Callable[[Callable[[S, A, Random], Sequence[Fact]]], Marked[S, A]]:
     def mark(resolve: Callable[[S, A, Random], Sequence[Fact]]) -> Marked[S, A]:
         return Marked(description, args, resolve)
+
     return mark
 
 
@@ -98,7 +107,9 @@ def collected[G: Game[Any]](engine: object) -> tuple[MasterTool[G], ...]:
                 found[key] = value
     return tuple(
         master_tool(
-            mark.name, mark.description, mark.args,
+            mark.name,
+            mark.description,
+            mark.args,
             lambda draft, a, rng, _m=mark: _m.resolve(engine, a, rng),
         )
         for mark in found.values()
@@ -368,9 +379,15 @@ plus three more.
 
 ```python
 @property
-def tag(self) -> str:      return self.subject().tag
+def tag(self) -> str:
+    return self.subject().tag
+
+
 @property
-def headline(self) -> str: return self.subject().headline
+def headline(self) -> str:
+    return self.subject().headline
+
+
 def subject(self) -> Subject:
     return Subject(id=self.id, label=self.name, detail=self.brief)
 ```
@@ -453,7 +470,8 @@ Verified: `schema_of` already pops `title`, so **the published JSON schema is id
 
 ## P7 — Delete the MCP forwarding chain
 
-**RECOMMEND.** Found independently by two agents.
+**ACCEPTED** — the full version: `Runtime.published_tools`, `Runtime.call` and
+`Turn.published_tools` all go. Found independently by two agents.
 
 ### What exists
 
@@ -497,7 +515,7 @@ Keep the `Tools` Protocol either way — `builtin.py` needs it and `qa/agents.py
 
 ## P8 — Merge the two save-validation paths
 
-**RECOMMEND.** A DRY defect with a performance tail.
+**ACCEPTED.** A DRY defect with a performance tail.
 
 ### What exists
 
@@ -537,9 +555,9 @@ report as "it's listed but won't open."
 
 ## P9 — Batch of small cuts (one commit)
 
-**RECOMMEND** all but the first. ~90 lines, ~6 concepts, half a day, near-zero risk each.
+**ACCEPTED**, with 9a taking option (b). ~85 lines, ~6 concepts, half a day, near-zero risk each.
 
-### 9a. `for_name` → `getattr` — **DECIDE**
+### 9a. `for_name` → `getattr` — **DECIDED: option (b)**
 
 `config.py:89-96` and `:109-114` are two `match` statements (8 and 6 lines) whose whole job is
 `getattr(self, name)`, where `name` is a `Literal` already matching the field names. All four audits
@@ -554,7 +572,9 @@ found this.
   keeps the check.
 - **(c)** Decline. Legitimate given your strict-typing stance.
 
-**Recommendation: (b).** You bought the exhaustiveness check deliberately; don't sell it for 14 lines.
+**Chosen: (b).** Keep `for_name` and its compile-time exhaustiveness check. Delete the
+`get_args(Role.__value__)` reflection dance in `_keys_present` (`config.py:151-152`) and iterate
+`RoleSettings.model_fields` instead. ~6 lines, and the checker still catches a fourth `Role`.
 
 ### 9b. Collapse the render trio — **RECOMMEND**
 
@@ -625,7 +645,12 @@ makes that mistake later.
 
 ## P10 — Prune the test suite
 
-**DECIDE.** Tests are 119% of source. Some of that is triple payment for one guarantee.
+**DECIDED: option (c), the full prune — but sequenced after P2.** Tests are 119% of source; some of
+that is triple payment for one guarantee.
+
+**Sequencing is not optional here.** P2 rewrites the hidden-name leak scan that several of these
+tests cover. Prune first and you would be rewriting safety logic with a thinner net under it. Land P2,
+get it green, then prune.
 
 ### What exists
 
@@ -665,8 +690,7 @@ tested at `:157`, `:256` and `:544`. Word-boundary matching in `named_unmet` tes
 invariant) and the two negative assertions that a secret appears in the master prompt and **not** in
 the narrator prompt. Those are boundary tests, not prose tests.
 
-**Recommendation: (a) now, (c) only after P2 lands** — P2 changes the leak-scan code those tests
-cover, and you want them at full strength while you do it.
+**Chosen: (c)**, scheduled after P2 for the reason above.
 
 ---
 
@@ -702,17 +726,58 @@ decision rather than an accident.
 
 ---
 
-# Suggested order
+# Accepted work plan
 
-| Order | Proposal | Lines | Hours | Risk |
+All ten proposals are closed. Nine are to be done; P4 is a one-line config change.
+
+## Order, and why it is this order
+
+| # | Work | Lines | Hours | Risk |
 |---|---|---|---|---|
-| 1 | P9 batch (b, 9b–9g) | ~90 | 4 | very low |
-| 2 | P7 MCP chain | ~25 | 1.5 | low |
-| 3 | P8 save paths | ~30 | 2 | low |
-| 4 | P5 Subject/DecisionOption | ~30 | 2.5 | low |
-| 5 | P6 (b) arg models | ~20 | 1 | none |
-| 6 | P2 leak scan | ~15 net | 2.5 | medium |
-| 7 | P1 world_tool | ~150 | 4 | medium-low |
-| 8 | P3 / P4 / P10 | your call | — | — |
+| 1 | **P9** batch — 9a(b), 9b render trio, 9c null objects, 9d dissolve `Roles`, 9e micro-dataclasses + `Pool` rename, 9f move `dictation.py`, 9g rename `check_json_keys` | ~85 | 4 | very low |
+| 2 | **P4** — drop `"qa"` from `basedpyright.include` | 1 | 5 min | low |
+| 3 | **P6(b)** — delete `Actor` ≡ `UseMedKit` and the four `base.py` arg models | ~20 | 1 | none |
+| 4 | **P7** — delete `Runtime.published_tools`, `Runtime.call`, `Turn.published_tools` | ~25 | 1.5 | low-med |
+| 5 | **P8** — one `resumed(...)`, used by both the launcher and the game page | ~30 | 2 | low |
+| 6 | **P5** — merge `Subject`/`DecisionOption`; `Thing.tag` stops building a model | ~30 | 2.5 | low |
+| 7 | **P3(a)** — de-genericise `rooms/`; family stays for Maze Rats | ~70 | 5 | low |
+| 8 | **P2** — extract `leaked_names` into `engines/base.py` | ~15 net | 2.5 | **medium** |
+| 9 | **P1** — `@tool` decorator + MRO collection; 7 `master_tools()` overrides go | ~105 | 4 | med-low |
+| 10 | **P10(c)** — full test prune | ~350–400 test | 3 | low |
 
-Items 1–5 are **~195 lines and 5 hours with no decision required.**
+**Total: ~380 source lines and ~375 test lines, about 26 hours.**
+
+## Three sequencing constraints
+
+1. **P10 must follow P2.** P2 rewrites the hidden-name leak scan that several pruned tests cover.
+   Pruning first means rewriting safety logic with a thinner net under it.
+2. **P2 should follow P3(a).** P3 touches `rooms/worldsmith.py`, one of the two files P2 merges.
+   Doing P3 first means P2 merges against settled code.
+3. **P1 goes late and alone.** It is the largest diff and touches every engine. Convert `seam.py`
+   first, run `basedpyright` and the full suite, then roll through the six others.
+
+Items 1–6 are **~190 lines in 11 hours with no decision left open and no cross-dependency** — they
+can be done in any order, or in parallel.
+
+## Guard rails
+
+- **9g is a rename, never a deletion.** `parse_json` silently accepts duplicate JSON keys
+  (`{"a":1,"a":2}` → `a=2`), so the separate `decode()` pass is the only thing rejecting a doubled
+  id. Deleting it is a silent correctness regression.
+- **P1 changes one behaviour:** under MRO-walk collection, overriding an inherited tool would
+  silently win rather than raise a duplicate-name error. Keep the pyright variance error as the guard
+  against that, or allow overrides deliberately — not by accident.
+- **P2 is the one item that can regress silently.** Get `tests/engines/test_integrity_boundaries.py`
+  and `test_scene_bar.py` green before and after. If the two implementations turn out to differ in a
+  way that cannot be reconciled, **do not merge** — document the difference instead.
+- **P8 must keep** `_save_option`'s `None` return for a save that vanishes between `slugs()` and
+  `read` (`launch.py:127-130`). That is a race guard.
+- **P4 has a trade:** `qa/` stops being type-checked, so a signature change in `src/` that breaks the
+  harness surfaces when you next run it rather than at type-check time.
+
+## Still open, deliberately
+
+`NOISE_KEYS` (`core/tools.py:14`) strips `pattern` and `maxLength` from every published schema, so the
+model is never shown the `Slug` grammar it must obey. Possibly deliberate token economy; possibly
+costing malformed ids and re-prompts. **A prompt-quality experiment to measure, not a refactor to
+perform.**
