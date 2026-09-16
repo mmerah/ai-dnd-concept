@@ -172,8 +172,8 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
             return self.build_scenario(meta, packs, draft, source, premise)
 
         model = MapDraft[self.member]
-        prompt = self.render_opening(
-            source, meta.scope, intent=MAP_ASK, guidance=self.guidance(None), answer=model
+        prompt = self.render_worldsmith(
+            source, meta.scope, self.opening_sections, MAP_ASK, self.guidance(None), model
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
@@ -192,25 +192,21 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
         return {**super().worldsmith_requests(), EXTEND: Request(MAP_UNWRITTEN, self.extend)}
 
     def master_tools(self) -> tuple[MasterTool[G], ...]:
+        world_of = self.world_of
         return (
             *super().master_tools(),
             master_tool("move_item", MOVE_ITEM, MoveItem, self.move_item),
-            master_tool("unlock_way", UNLOCK_WAY, UnlockWay, self.unlock_way),
-            master_tool("move", MOVE, Move, self.move),
-            master_tool("meanwhile", MEANWHILE, Meanwhile, self.meanwhile),
+            master_tool(
+                "unlock_way", UNLOCK_WAY, UnlockWay, lambda d, a, _: world_of(d).unlock_way(a.to_id)
+            ),
+            master_tool("move", MOVE, Move, lambda d, a, _: world_of(d).move(a.to_id, a.with_ids)),
+            master_tool(
+                "meanwhile", MEANWHILE, Meanwhile, lambda d, a, _: world_of(d).meanwhile(a)
+            ),
         )
 
     def move_item(self, draft: G, args: MoveItem, _rng: Random) -> list[Fact]:
         return self.world_of(draft).move_item(args.item_id, args.to)
-
-    def unlock_way(self, draft: G, args: UnlockWay, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).unlock_way(args.to_id)
-
-    def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).move(args.to_id, args.with_ids)
-
-    def meanwhile(self, draft: G, args: Meanwhile, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).meanwhile(args)
 
     def tick(self, draft: G, *, counted: bool) -> None:
         world = self.world_of(draft)

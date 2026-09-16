@@ -144,7 +144,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         chosen = self.packs.require(selection)
         return f"{AUTHORING}\n\n{self.packs.content(chosen, _revised)}"
 
-    def glossary(self, state: Loner3eGame) -> Sections:
+    def master_sections(self, state: Loner3eGame) -> Sections:
         packs = self.packs.chosen(state.packs)
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         entries = tuple(
@@ -159,7 +159,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
                 )
             )
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
-        return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
+        glossary = (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
+        return (*super().master_sections(state), *glossary)
 
     def twist_table(self) -> Rows:
         """Always the SRD's own table: no other pack publishes one."""

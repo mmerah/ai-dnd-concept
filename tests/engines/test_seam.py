@@ -2,13 +2,11 @@ import json
 from pathlib import Path
 
 import pytest
-from support.fifth import FifthEngine, FifthGame, engine_at, installed, scenario
+from support.fifth import FifthEngine, FifthGame, engine_at, installed
 from support.table import ENGINE_IDS, game
 
 from aidm.core.entities import EngineId, Refusal
-from aidm.core.io import ENCODING, read_cached_text
-from aidm.core.play import SpokenLine
-from aidm.core.views import NarratorView
+from aidm.core.io import ENCODING
 
 
 def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
@@ -64,10 +62,6 @@ def test_a_fifth_scene_engine_begins_a_playable_game(
     scene_engine: FifthEngine, begun_scene: FifthGame
 ) -> None:
     assert scene_engine.supplement_options() == ()
-    assert scene_engine.instructions.startswith("Roll high.")
-    assert scene_engine.instructions.endswith(
-        read_cached_text(scene_engine.family_dir / "rules.md")
-    )
     assert scene_engine.narrator_view(begun_scene).title == "The Taproom"
     assert scene_engine.master_sections(begun_scene) == (("SCENE", "The Taproom"),)
     assert [row.label for row in scene_engine.player_view(begun_scene).panels[-2].rows] == [
@@ -82,45 +76,6 @@ def test_a_game_with_no_chapter_open_is_refused(
 
     with pytest.raises(Refusal, match="no chapter open"):
         scene_engine.validate(begun_scene)
-
-
-def test_a_scene_engine_offers_the_familys_tools_without_naming_them(
-    scene_engine: FifthEngine,
-) -> None:
-    assert list(scene_engine.tools) == [
-        "reveal",
-        "kill",
-        "join_party",
-        "leave_party",
-        "enter",
-        "leave",
-        "next_scene",
-    ]
-
-
-class _CountingFifthEngine(FifthEngine):
-    narrator_view_calls = 0
-
-    def __init__(self, directory: Path) -> None:
-        self.directory = directory
-        super().__init__()
-
-    def narrator_view(self, state: FifthGame) -> NarratorView:
-        self.narrator_view_calls += 1
-        return super().narrator_view(state)
-
-
-def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
-    _ = installed(tmp_path)  # writes rules.md and packs/srd.json onto tmp_path
-    engine = _CountingFifthEngine(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-taproom", scenario(), character)
-    before = engine.narrator_view_calls
-
-    closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), words="I wait.")
-
-    assert engine.narrator_view_calls == before
-    assert closed.exchanges()[-1].words == "I wait."
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)

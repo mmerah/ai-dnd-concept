@@ -1,5 +1,3 @@
-from random import Random
-
 import pytest
 from support.sixth import CELLAR, GATE, LANTERN, WARDEN, WELL, YARD, SixthEngine, SixthGame
 from support.table import (
@@ -19,7 +17,6 @@ from aidm.core.facts import Fact, cards
 from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.engine import ELSEWHERE
-from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import (
     MOVED_CARD,
     MOVES_OFFSCREEN,
@@ -40,23 +37,13 @@ def test_a_sixth_room_engine_begins_a_playable_game(
         panel for panel in room_engine.player_view(begun_room).panels if panel.title == "Ways out"
     )
     assert [row.label for row in ways_out.rows] == ["Yard"]
-    room_engine.move(begun_room, Move(to_id=YARD), Random(0))
+    begun_room.payload.move(YARD, ())
     assert begun_room.payload.visits == [GATE, YARD]
 
 
-def test_the_familys_tools_are_offered_in_order(
+def test_a_member_joins_and_leaves_the_party(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    assert list(room_engine.tools) == [
-        "reveal",
-        "kill",
-        "join_party",
-        "leave_party",
-        "move_item",
-        "unlock_way",
-        "move",
-        "meanwhile",
-    ]
     draft = begun_room.draft()
 
     _ = change(room_engine, draft, "join_party", entity_id=WARDEN)
@@ -152,13 +139,11 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(
     assert "already dead" in message
 
 
-def test_move_does_not_clear_an_authored_lock_on_the_way_back(
-    room_engine: SixthEngine, begun_room: SixthGame
-) -> None:
+def test_move_does_not_clear_an_authored_lock_on_the_way_back(begun_room: SixthGame) -> None:
     world = begun_room.payload
     world.ways[YARD].append(Way(to=GATE, locked=True))
 
-    room_engine.move(begun_room, Move(to_id=YARD), Random(0))
+    world.move(YARD, ())
 
     back = world.way(YARD, GATE)
     assert back is not None
@@ -188,10 +173,10 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     assert scenario.payload.model_dump() == before
 
 
-def _walked(room_engine: SixthEngine, begun_room: SixthGame) -> SixthGame:
+def _walked(begun_room: SixthGame) -> SixthGame:
     """At CELLAR, having walked GATE and YARD: every power has something legal."""
-    room_engine.move(begun_room, Move(to_id=YARD), Random(0))
-    room_engine.move(begun_room, Move(to_id=CELLAR), Random(0))
+    begun_room.payload.move(YARD, ())
+    begun_room.payload.move(CELLAR, ())
     return begun_room.draft()
 
 
@@ -214,7 +199,7 @@ def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
 def test_meanwhile_moves_all_three_things_in_one_call(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
 
     _ = _all_three(room_engine, draft)
 
@@ -230,7 +215,7 @@ def test_meanwhile_moves_all_three_things_in_one_call(
 def test_meanwhile_never_reaches_the_narrator(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
 
     facts = _all_three(room_engine, draft)
 
@@ -246,7 +231,7 @@ def test_meanwhile_never_reaches_the_narrator(
 
 
 def test_meanwhile_refusals(room_engine: SixthEngine, begun_room: SixthGame) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
     world = draft.payload
 
     assert NOTHING_OFFSCREEN in refused(
@@ -318,7 +303,7 @@ def test_meanwhile_refusals(room_engine: SixthEngine, begun_room: SixthGame) -> 
 def test_the_armed_flag_is_spent_only_on_a_counted_tick(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
     draft.payload.meanwhile_due = True
 
     room_engine.tick(draft, counted=True)
@@ -346,17 +331,17 @@ def test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count(
     assert world.turns_played == 3
     assert not world.meanwhile_due
 
-    room_engine.move(draft, Move(to_id=YARD), Random(0))
-    room_engine.move(draft, Move(to_id=CELLAR), Random(0))
+    world.move(YARD, ())
+    world.move(CELLAR, ())
     room_engine.tick(draft, counted=True)
 
     assert world.turns_played == 4
 
 
 def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_hands(
-    room_engine: SixthEngine, begun_room: SixthGame
+    begun_room: SixthGame,
 ) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
     world = draft.payload
     world.npcs[WARDEN].place = CELLAR
     world.items[LANTERN].on = WARDEN
@@ -368,9 +353,9 @@ def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_
 
 
 def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_place(
-    room_engine: SixthEngine, begun_room: SixthGame
+    begun_room: SixthGame,
 ) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
     world = draft.payload
     world.items[LANTERN].on = WELL
     world.npcs[WARDEN].place = WELL
@@ -387,7 +372,7 @@ def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_pl
 def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    draft = _walked(room_engine, begun_room)
+    draft = _walked(begun_room)
     assert ELSEWHERE not in dict(room_engine.master_sections(draft))
 
     draft.payload.meanwhile_due = True

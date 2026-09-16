@@ -253,19 +253,12 @@ def test_a_sheeted_draft_cast_member_is_refused() -> None:
         check_scene(draft, world)
 
 
-def test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party() -> None:
+def test_the_bar_refuses_a_scene_that_lists_a_party_member() -> None:
     world = twentyfourxx_world().payload
     world.party = [KESTREL]
     with pytest.raises(Refusal, match=re.escape("they are put there by code: ['kestrel']")):
         draft = SceneDraft[Crewmate].model_validate(
             dict(TWENTYFOURXX_BASE) | {"present": ("kestrel", "sable")}
-        )
-        check_scene(draft, world)
-    with pytest.raises(
-        Refusal, match=re.escape("they are put there by code: ['kestrel', 'player']")
-    ):
-        draft = SceneDraft[Crewmate].model_validate(
-            dict(TWENTYFOURXX_BASE) | {"present": ("player", "kestrel")}
         )
         check_scene(draft, world)
 
@@ -309,48 +302,6 @@ def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> No
                 "cast": {"stalker": stalker},
             }
         )
-
-
-@pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_hidden_one_word_name_in_situation_is_refused(case: SceneCase) -> None:
-    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
-        case.bar(
-            {
-                "situation": f"{case.base['situation']} A bell tolls somewhere close.",
-                "present": (case.met,),
-                "hidden": ("bell-prop",),
-                "cast": {"bell-prop": bell},
-            }
-        )
-
-
-@pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_hidden_one_word_name_matches_case_insensitively(case: SceneCase) -> None:
-    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
-        case.bar(
-            {
-                "situation": f"{case.base['situation']} a bell tolls somewhere close.",
-                "present": (case.met,),
-                "hidden": ("bell-prop",),
-                "cast": {"bell-prop": bell},
-            }
-        )
-
-
-@pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_one_word_name_inside_another_word_is_not_refused(case: SceneCase) -> None:
-    """Word boundaries stop `Bell` matching inside `doorbell`, unlike a bell on its own."""
-    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
-    case.bar(
-        {
-            "situation": f"{case.base['situation']} A doorbell rings somewhere close.",
-            "present": (case.met,),
-            "hidden": ("bell-prop",),
-            "cast": {"bell-prop": bell},
-        }
-    )
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

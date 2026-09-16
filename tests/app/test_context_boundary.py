@@ -60,18 +60,13 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     assert UNREVEALED in str(master)
 
 
-def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
+def test_the_master_is_shown_the_whole_cast_met_or_not() -> None:
     state = _state()
 
     master = _master_prompt(state, "I look around.")
 
-    assert "Kael[player]" in master
     assert "a ledger[ledger]" in master
     assert "The Secret[hidden-actor]" in master
-    # Hidden here: the map the player has not found yet.
-    assert "the vault map[vault-map]" in master
-    assert "concept: A Wary Relic-Hunter" in master
-    assert "luck: 6/6" in master
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:

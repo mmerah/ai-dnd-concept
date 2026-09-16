@@ -124,6 +124,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         )
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
+        world_of = self.world_of
         return (
             *super().master_tools(),
             master_tool(
@@ -133,7 +134,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             master_tool("drop_item", DROP_ITEM, DropItem, self.drop_item),
             master_tool("repair_item", REPAIR_ITEM, RepairItem, self.repair_item),
             master_tool("spend", SPEND, Spend, self.spend),
-            master_tool("take_lead", TAKE_LEAD, TakeLead, self.take_lead),
+            master_tool(
+                "take_lead", TAKE_LEAD, TakeLead, lambda d, a, _: world_of(d).take_lead(a.entity_id)
+            ),
             master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
             master_tool("defend", DEFEND, Defend, self.defend),
             master_tool("roll", ROLL, Roll, self.roll),
@@ -319,9 +322,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         world.check_unnamed(args.why)
         return world.require_actor(args.actor_id).spend(args.amount, args.why)
-
-    def take_lead(self, draft: TwentyfourxxGame, args: TakeLead, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).take_lead(args.entity_id)
 
     def ship_upgrade(self, draft: TwentyfourxxGame, args: ShipUpgrade, _rng: Random) -> list[Fact]:
         return self.world_of(draft).upgrade_ship(args.function_id)

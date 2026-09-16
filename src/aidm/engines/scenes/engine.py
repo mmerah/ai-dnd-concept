@@ -142,13 +142,9 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *section_if("THE ARC (the player has not found this)", world.arc),
-            *self.glossary(state),
         )
 
     def sheet_sections(self, _state: G) -> Sections:
-        return ()
-
-    def glossary(self, _state: G) -> Sections:
         return ()
 
     def family_sections(self, draft: G) -> Sections:
@@ -196,18 +192,13 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         )
 
     def master_tools(self) -> tuple[MasterTool[G], ...]:
+        world_of = self.world_of
         return (
             *super().master_tools(),
-            master_tool("enter", ENTER, Enter, self.enter),
-            master_tool("leave", LEAVE, Leave, self.leave),
+            master_tool("enter", ENTER, Enter, lambda d, a, _: world_of(d).enter(a.entity_id)),
+            master_tool("leave", LEAVE, Leave, lambda d, a, _: world_of(d).leave(a.entity_id)),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
         )
-
-    def enter(self, draft: G, args: Enter, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).enter(args.entity_id)
-
-    def leave(self, draft: G, args: Leave, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).leave(args.entity_id)
 
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
         if args.pursuit:
@@ -289,8 +280,8 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
         guidance = self.guidance(selection)
         model = SceneDraft[self.member]
-        prompt = self.render_opening(
-            source, meta.scope, intent=OPENING, guidance=guidance, answer=model
+        prompt = self.render_worldsmith(
+            source, meta.scope, self.opening_sections, OPENING, guidance, model
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 

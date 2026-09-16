@@ -114,3 +114,103 @@ written one. All three were raised by the reviewers.
   harness bug, not a refusal anyone reads.
 - **`Illustrator.open` and `Reader.open` are now one-caller constructor wrappers.** Inlining them
   moves ten lines of field-reading into `Runtime._open`, already the longest method in the file.
+
+## Phase 2: the engines, the leak scan and the test prune
+
+Landed the five steps that touch an engine's tool table, the worldsmith renderers and the
+hidden-name scan, then pruned the wiring tests and the triple-covered rules.
+
+### Counts
+
+| | before | after | plan target |
+|---|---|---|---|
+| `src` | 10,200 | **10,182** | about 10,198, at most 10,208 |
+| `tests` | 12,260 | **12,145** | about 12,122, at most 12,150 |
+| `qa` | 2,104 | **2,104** | unchanged |
+
+`tests` lands inside the plan's cap even though phase 1 started it 30 lines above the plan's
+assumption; `src` is 16 under target. Neither number is padded and the arithmetic is exact:
+`src` is 10,200 minus step 1 (−3), step 2 (−11) and the five cuts the reviews added (−8), plus
+step 3 (+2) and the `world_of` rename (+2). `tests` is 12,260 minus the prune (−113, five more than
+the plan's −108 because part A's rewrites orphaned four imports) minus the two signatures the
+review's `world_of` cleanup collapsed (−2).
+
+### Decided off-plan
+
+1. **The scan's self-exclusion rule changed from map key to `id`, as `PLAN.md` step 3 requires be
+   recorded.** `scenes/worldsmith.py` used to exclude an entity from its own watcher set by **map
+   key** (`other != entity_id`); `leaked_names` excludes by **`other.id`**, which is what the rooms
+   original did. The two agree for every well-formed draft. They can disagree only about a misfiled
+   cast entry — one whose key is not its `id` — which reaches the scan because `scene_unmet` appends
+   "cast entries under their own id" **without returning early**. Such a draft is refused either way,
+   so the change cannot leak a spoiler; excluding by `id` is the correct rule and the one kept.
+2. **`rest` was an eighth pure forwarder and the plan's inventory missed it.** `PLAN.md` step 2
+   names seven methods to dissolve and six to leave alone with a measured reason.
+   `TunnelGoonsEngine.rest` is in neither list, resolves no id and rolls no dice, and as
+   `master_tool("rest", REST, NoArgs, lambda d, _a, _: world_of(d).rest())` the registration is 83
+   columns — well inside the 110 the plan measured as the cut-off. Dissolved with the other seven.
+3. **`Engine.master_tools`'s `shared` local, its annotation and the `hires` branch all went.**
+   Step 2 had to annotate `shared: tuple[MasterTool[G], ...]` so the checker could solve `G` for an
+   untyped lambda. Returning the tuple directly lets the method's own return annotation do that
+   work, and the `hire` tool appends as `*((...,) if self.hires else ())` on the registration line.
+   The annotation step 2 added is gone, and the method is two lines shorter than the plan's shape.
+4. **`Engine.opening_sections` was orphaned by step 1 and is deleted.** `render_opening` was the
+   seam's only reader; both families declare the attribute themselves and now pass it positionally
+   at their own call sites, so the seam was declaring a contract it neither used nor enforced.
+5. **The bound getter is `world_of`, not `world`.** The plan writes `world = self.world_of`, but
+   `self.world` already means the world *type* in the same classes (`scenes/engine.py:82`,
+   `rooms/engine.py:56`) and `world` means a world *instance* in twenty other methods. One
+   identifier for a type, an instance and a function is the naming `CLAUDE.md` forbids. Cost: +2
+   lines, because `meanwhile`'s registration crosses 100 columns and ruff wraps it.
+6. **Step 2 opened a coverage hole and it is closed.** Moving every `move` test below the tool layer
+   left nothing checking that the new lambda forwards `a.with_ids`: writing `world_of(d).move(a.to_id,
+   ())` type-checks and keeps the whole suite green. `tests/tunnelgoons/test_tools.py` now drives one
+   `with_ids` case through `change(ENGINE, draft, "move", ...)`; breaking the lambda on purpose was
+   confirmed to fail it.
+7. **`SceneEngine.glossary` is gone; `Loner3eEngine` overrides `master_sections` instead.** It was
+   a hook returning `()` with one implementer, which `CLAUDE.md`'s "do not add an abstraction until
+   two things need it" forbids. The glossary section was last in the family's tuple, so appending it
+   after `super().master_sections(state)` keeps the prompt's section order — the loner3e `master.txt`
+   golden is unchanged, which is the proof. The maintainer settled this against the reasons recorded
+   below, which are kept for the record: `master_sections` no longer shows the whole section order in
+   one place, and `sheet_sections` beside it is the identical hook shape with two implementers, so
+   the family's two section hooks now differ in kind. Net −3.
+8. **Three tests were renamed for what is left of them**, two by the plan's own rule and one beyond
+   it. `test_the_familys_tools_are_offered_in_order` became
+   `test_a_member_joins_and_leaves_the_party`;
+   `test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play` became
+   `test_the_master_is_shown_the_whole_cast_met_or_not` — not "hidden canon", because `a ledger` is
+   injected with `known=True` and only `The Secret` is hidden;
+   `test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party` became
+   `..._lists_a_party_member`, since the player half went with the block the prune deleted.
+
+### Refuted, with the reason
+
+- **`TwentyfourxxEngine.hire_check` stays.** It is not a forwarder: it resolves
+  `self.packs.chosen(draft.packs)` once, outside the closure it returns. Inlining the lambda moves
+  that work inside the check, which the worldsmith runs again on its one retry.
+- **`RoomEngine.starting_items` and `TwentyfourxxEngine.world_of` stay**, on the reviewers' own
+  measurements: the first has no net cut (tunnelgoons would duplicate `new_game`'s body instead),
+  and the second needs a world type parameter on `SceneEngine` — more generics, not fewer, which is
+  `PLAN.md`'s "Not built" P3(a).
+- **The `_ =` discard prefixes stay.** 267 of them across `tests/`; `reportUnusedCallResult` is off
+  and no ruff rule asks for them, so they are a repo-wide convention to settle on its own, not this
+  phase's to unwind.
+- **Six forwarders stay, as the plan measured.** `kill` because `twentyfourxx/engine.py` overrides it
+  to run `_succession`, and a seam lambda would drop that in silence; `join_party` (111 columns),
+  `leave_party` (115), `move_item` (111), `ship_upgrade` and `use_med_kit` because past 110 columns
+  ruff breaks a registration one argument per line, so the lambda costs more than the method.
+
+### Known and accepted
+
+- **`tests/core/fixtures/` did not move**, which is what every step in this phase was shaped to
+  guarantee: same tool names in the same order with the same schemas, and the four `worldsmith.txt`,
+  `master.txt`, `narrator.txt` and `turn/*.json` goldens byte-identical to the phase 1 commit.
+- **`take_lead`'s lambda is reached by no test through the tool table**, and neither was the method
+  it replaced. `tests/twentyfourxx/test_world.py` tests `world.take_lead` and
+  `schemas/twentyfourxx/master_tools.json` pins the registration; this is a pre-existing gap the
+  phase neither widened nor closed.
+- **The QA harness plays all four shipped scenarios with 0 issues** (`qa/run_all.sh loner goons
+  breathless 24xx`), which is the only check that drives the rewritten tool table end to end,
+  including 24XX succession. `qa/` references none of the deleted symbols and `uv run basedpyright
+  qa` is clean — the phase 1 standing consequence, checked by hand as it requires.
