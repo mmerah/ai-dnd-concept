@@ -499,6 +499,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         if not world.job:
             raise Refusal("no job is open to finish")
+        world.check_unnamed(*(raise_.skill for raise_ in raises))
         expected = sorted((world.player.id, *(member.id for member in world.sheeted_members())))
         given = sorted(world.require_actor(raise_.actor_id).id for raise_ in raises)
         if given != expected:

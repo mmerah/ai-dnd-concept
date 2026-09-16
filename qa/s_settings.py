@@ -23,21 +23,7 @@ def body(s: Session) -> None:
     s.shot(page, "settings")
     tabs = [clean(t).lower() for t in page.locator(".q-tab").all_inner_texts()]
     s.note(f"tabs: {tabs}")
-    s.check(
-        tabs
-        == [
-            "providers",
-            "roles",
-            "media",
-            "speech",
-            "interjections",
-            "meanwhile",
-            "source max chars",
-            "server host",
-            "server port",
-        ],
-        f"unexpected tabs: {tabs}",
-    )
+    s.check(tabs == ["providers", "roles", "media", "speech"], f"unexpected tabs: {tabs}")
     page.get_by_role("button", name="Save").click()
     page.wait_for_timeout(600)
     s.check("Nothing changed." in notifications(page), f"no-op save: {notifications(page)}")
@@ -86,8 +72,6 @@ def body(s: Session) -> None:
     page.wait_for_timeout(1000)
 
     # A real change: interjections off. .env holds the key; the switch still shows it clicked.
-    page.get_by_role("tab", name="interjections").click()
-    page.wait_for_timeout(400)
     switch(page, "interjections").click()
     page.get_by_role("button", name="Save").click()
     page.wait_for_timeout(800)
@@ -96,8 +80,6 @@ def body(s: Session) -> None:
     s.check(
         "INTERJECTIONS='false'" in env or "INTERJECTIONS=false" in env, f".env after save: {env!r}"
     )
-    page.get_by_role("tab", name="interjections").click()
-    page.wait_for_timeout(400)
     s.check(
         switch(page, "interjections").get_attribute("aria-checked") == "false",
         "the switch does not show the saved value after the reload",
@@ -147,8 +129,6 @@ def body(s: Session) -> None:
     submit(game, "I linger.\n!slow narrator\n!none")
     game.wait_for_timeout(2500)
     s.shot(game, "game-busy")
-    page.get_by_role("tab", name="interjections").click()
-    page.wait_for_timeout(400)
     switch(page, "interjections").click()
     page.get_by_role("button", name="Save").click()
     page.wait_for_timeout(800)
@@ -158,8 +138,6 @@ def body(s: Session) -> None:
     page.wait_for_timeout(1000)
 
     # A save applies elsewhere while a game is open: the game keeps playing, untouched.
-    page.get_by_role("tab", name="interjections").click()
-    page.wait_for_timeout(400)
     switch(page, "interjections").click()
     page.get_by_role("button", name="Save").click()
     page.wait_for_timeout(1500)

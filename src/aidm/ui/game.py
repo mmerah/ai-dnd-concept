@@ -1,4 +1,5 @@
 import logging
+import string
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
@@ -53,6 +54,10 @@ DICTATION_FAILURES = {
     "no-speech": "Nothing was heard.",
 }
 TURN_FAILED = "Something went wrong. The turn did not land — check the server log."
+BLANK = string.whitespace + (
+    "\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"
+    "\u200b\u200c\u200d\u2060\ufeff"
+)
 
 SCENE_TAB = "scene"
 JOURNAL_TAB = "journal"
@@ -453,7 +458,7 @@ class GamePage:
     def _clear_spent_draft(self) -> None:
         history = self.history
         newest_prompt = history[-1].words if history else ""
-        if draft_spent((self.box.value or "").strip(), newest_prompt):
+        if draft_spent((self.box.value or "").strip(BLANK), newest_prompt):
             self._clear_box()
 
     def _clear_box(self) -> None:
@@ -482,7 +487,7 @@ class GamePage:
         await self.play(Answer(option_id=option_id))
 
     async def submit(self) -> None:
-        typed = (self.box.value or "").strip()
+        typed = (self.box.value or "").strip(BLANK)
         LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
         if not typed:
             return
@@ -495,7 +500,7 @@ class GamePage:
         if action is None:
             warn("The way on has changed.")
             return
-        typed = (self.box.value or "").strip()
+        typed = (self.box.value or "").strip(BLANK)
         if not typed:
             return
         self.own_move = True

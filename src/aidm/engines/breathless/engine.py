@@ -184,8 +184,8 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
 
     def roll(self, draft: BreathlessGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
-        actor = world.require_actor(args.actor_id)
         world.check_unnamed(args.what)
+        actor = world.require_actor(args.actor_id)
         pool = self._pool(world, actor, args)
         if args.stunt:
             actor.require_sheet().spend_stunt(actor.name)

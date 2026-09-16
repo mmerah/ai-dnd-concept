@@ -54,6 +54,15 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
     )
 
 
+def test_a_what_naming_an_unmet_npc_is_refused(draft: TunnelGoonsGame) -> None:
+    with pytest.raises(Refusal, match="names what the player has not met"):
+        _ = ENGINE.roll(
+            draft,
+            Roll(what="Listen for Robo Mantis", ability="skulker", difficulty=8),
+            Random(0),
+        )
+
+
 def test_erudite_rolls_are_not_penalized_for_over_inventory(draft: TunnelGoonsGame) -> None:
     world = draft.payload
     world.player.require_sheet().abilities["erudite"] = 2
@@ -210,7 +219,7 @@ def test_level_up_with_no_args_does_not_offer_a_character_already_levelled(
     assert draft.pending is None
 
 
-def test_level_up_with_no_args_and_an_actor_id_opens_the_players_decision(
+def test_level_up_with_no_args_and_an_actor_id_opens_that_actors_decision(
     draft: TunnelGoonsGame,
 ) -> None:
     world = draft.payload
@@ -221,7 +230,7 @@ def test_level_up_with_no_args_and_an_actor_id_opens_the_players_decision(
 
     assert facts == []
     assert draft.pending is not None
-    assert draft.pending.options[0].args["actor_id"] == PLAYER_ID
+    assert draft.pending.options[0].args["actor_id"] == MIRA
 
 
 def test_a_direct_level_up_for_the_second_of_three_members_does_not_requeue_a_levelled_one(

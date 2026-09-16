@@ -235,6 +235,12 @@ class World[P: Person, M: Person](Mutable):
     def kill(self, entity_id: Slug) -> list[Fact]: ...
     @abstractmethod
     def leave_party(self, entity_id: Slug) -> list[Fact]: ...
+    @abstractmethod
+    def unmet(self) -> Iterable[Thing]: ...
+
+    def check_unnamed(self, *texts: str) -> None:
+        if leaked := sorted(set(named_unmet("\n".join(texts), self.unmet()))):
+            raise Refusal(f"this names what the player has not met: {leaked}. Say it another way.")
 
     def count_turn(self, tempo: int) -> None:
         """One turn against the clock; at the tempo it starts over and arms the flag."""

@@ -678,6 +678,12 @@ def test_change_hindrances_refuses_naming_an_unmet_entity_but_allows_a_revealed_
     assert player.require_sheet().hindrances == ["Marked by Kestrel"]
 
 
+def test_finish_job_refuses_a_skill_naming_an_unmet_entity(draft: TwentyfourxxGame) -> None:
+    draft.payload.job = "Escort the crate to dock nine"
+    with pytest.raises(Refusal, match="not met"):
+        _ = ENGINE.job(draft, Job(verb="finish", raises=(Raise(skill="Outrun Sable"),)), Random(0))
+
+
 def test_finish_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits() -> None:
     draft = small_world().draft()
     player = draft.payload.player

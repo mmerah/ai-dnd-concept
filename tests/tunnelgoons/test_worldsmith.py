@@ -138,6 +138,22 @@ def test_check_extension_refuses_an_item_planted_on_the_player() -> None:
         check_extension(extension, world)
 
 
+def test_check_extension_refuses_a_place_naming_an_unknown_thing_elsewhere() -> None:
+    extension = _region()
+    extension.items["far-item-2"] = Prop(
+        id="far-item-2", name="Far Item Two", brief="b", known=False, on=FAR_VAULT
+    )
+    extension.places[FAR_HALL].description = "Far Item Two lies beyond."
+    with pytest.raises(Refusal, match="do not name"):
+        check_extension(extension, _tunnelgoons_game().payload)
+
+
+def test_check_extension_accepts_an_unknown_place_naming_itself() -> None:
+    extension = _region()
+    extension.places[FAR_HALL].description = "Far Hall is a ruin."
+    check_extension(extension, _tunnelgoons_game().payload)
+
+
 def _hiding_gremlin(place_id: str, *, known: bool, brief: str, description: str) -> MapDraft[Npc]:
     gremlin = Npc(
         id="gremlin",
@@ -157,7 +173,7 @@ def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None
     draft = _hiding_gremlin(
         ONLY, known=True, brief="b", description="A Gremlin hides in the shadows."
     )
-    with pytest.raises(Refusal, match="do not name what is hidden there"):
+    with pytest.raises(Refusal, match="do not name"):
         check_map(draft)
 
 
@@ -166,7 +182,7 @@ def test_an_extension_hiding_a_dweller_named_in_brief_is_refused() -> None:
     extension = _hiding_gremlin(
         HIDDEN, known=False, brief="A Gremlin waits in the dark.", description="d"
     )
-    with pytest.raises(Refusal, match="do not name what is hidden there"):
+    with pytest.raises(Refusal, match="do not name"):
         check_extension(extension, world)
 
 
@@ -192,7 +208,7 @@ def test_check_map_refuses_a_known_dwellers_brief_naming_a_hidden_dweller() -> N
         npcs={gremlin.id: gremlin, sentry.id: sentry},
         start=ONLY,
     )
-    with pytest.raises(Refusal, match="do not name what is hidden there"):
+    with pytest.raises(Refusal, match="do not name"):
         check_map(draft)
 
 
@@ -219,7 +235,7 @@ def test_check_map_refuses_a_hidden_dwellers_own_brief_naming_another_hidden_dwe
         npcs={gremlin.id: gremlin, sentry.id: sentry},
         start=ONLY,
     )
-    with pytest.raises(Refusal, match="do not name what is hidden there"):
+    with pytest.raises(Refusal, match="do not name"):
         check_map(draft)
 
 
@@ -241,7 +257,7 @@ def test_check_map_refuses_an_item_on_the_player_naming_a_hidden_dweller() -> No
         items={charm.id: charm},
         start=ONLY,
     )
-    with pytest.raises(Refusal, match="do not name what is hidden there"):
+    with pytest.raises(Refusal, match="do not name"):
         check_map(draft)
 
 

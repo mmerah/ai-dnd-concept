@@ -57,14 +57,14 @@ def _overlap_unmet[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> list[st
 
 def _named_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
     leaked: set[str] = set()
+    hidden = list(draft.unmet())
     for place_id, place in draft.places.items():
         things = [
             *draft.things_at(place_id),
             *(draft.carried(PLAYER_ID) if place_id == draft.start else ()),
         ]
-        hidden = [thing for thing in things if not thing.known]
         read = "\n".join((place.name, place.brief, place.description))
         leaked.update(leaked_names(read, things, hidden))
     if named := sorted(leaked):
-        return [f"places that do not name what is hidden there: {named}"]
+        return [f"places that do not name what the player has not met: {named}"]
     return []

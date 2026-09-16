@@ -76,6 +76,9 @@ class Dungeon[N: Dweller](Mutable):
                     raise ValueError(f"a way from {from_id!r} cannot lead back to itself")
         return self
 
+    def unmet(self) -> Iterable[Thing]:
+        return (thing for thing in (*self.npcs.values(), *self.items.values()) if not thing.known)
+
     def entity(self, entity_id: Slug) -> Person | Prop | Place | None:
         return self.places.get(entity_id) or self.npcs.get(entity_id) or self.items.get(entity_id)
 

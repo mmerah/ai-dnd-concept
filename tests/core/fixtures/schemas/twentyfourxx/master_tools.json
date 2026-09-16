@@ -387,7 +387,7 @@
         },
         "deadly": {
           "default": false,
-          "description": "Whether `risk` is death. A disaster then kills the actor instead of leaving `risk` on them as a hindrance; a setback then injures them instead of `hindrance` landing.",
+          "description": "Whether `risk` is death. A disaster then kills the actor instead of leaving `risk` on them as a hindrance; a setback then maims them.",
           "type": "boolean"
         },
         "defend_with": {
@@ -431,7 +431,7 @@
             },
             "deadly": {
               "default": false,
-              "description": "Whether `risk` is death. A disaster then kills the helper instead of leaving `risk` on them as a hindrance; a setback then injures them instead of `hindrance` landing.",
+              "description": "Whether `risk` is death. A disaster then kills the helper instead of leaving `risk` on them as a hindrance; a setback then maims them.",
               "type": "boolean"
             },
             "defend_with": {

@@ -192,6 +192,15 @@ def test_the_bar_refuses_present_hidden_overlap(case: SceneCase) -> None:
         case.bar({"present": (case.unmet,), "hidden": (case.unmet,)})
 
 
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_situation_naming_an_unmet_cast_member_not_in_this_scene_is_refused(
+    case: SceneCase,
+) -> None:
+    name = case.game().payload.cast[case.unmet].name
+    with pytest.raises(Refusal, match="does not name"):
+        case.bar({"situation": f"{case.base['situation']} {name} is spoken of."})
+
+
 def test_a_fresh_cast_member_may_be_authored_with_a_smaller_full_pool() -> None:
     bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
     minor = {"id": "minor", "name": "Minor", "brief": "", "luck": {"current": 2, "maximum": 2}}
@@ -224,7 +233,7 @@ def test_a_present_entitys_row_values_naming_what_is_hidden_is_refused() -> None
     bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
     newbie = {"id": "newbie", "name": "Newbie", "brief": "", "nemesis": "the Bell"}
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
+    with pytest.raises(Refusal, match="does not name"):
         bar(
             {
                 "present": ("newbie",),
@@ -280,8 +289,17 @@ def test_a_party_members_own_brief_naming_what_is_hidden_is_refused() -> None:
             },
         }
     )
-    with pytest.raises(Refusal, match="does not name what is hidden"):
+    with pytest.raises(Refusal, match="does not name"):
         check_scene(draft, world)
+
+
+def test_a_party_members_stored_brief_naming_an_absent_unmet_neighbour_is_accepted() -> None:
+    """An old brief naming someone unmet outside this scene must not wedge every later one."""
+    world = breathless_world().payload
+    world.cast[BREATHLESS_MIRA].brief = "She is watching for Dax."
+    world.join_party(BREATHLESS_MIRA)
+    draft = SceneDraft[Survivor].model_validate(dict(BREATHLESS_BASE))
+    check_scene(draft, world)
 
 
 def test_the_opening_refuses_a_present_name_that_exists_nowhere() -> None:
@@ -293,7 +311,7 @@ def test_the_opening_refuses_a_present_name_that_exists_nowhere() -> None:
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> None:
     stalker = {"id": "stalker", "name": "Old Man Riley", "brief": ""}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
+    with pytest.raises(Refusal, match="does not name"):
         case.bar(
             {
                 "situation": f"{case.base['situation']} Old Man Riley waits by the door.",
@@ -308,7 +326,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> No
 @pytest.mark.parametrize("field", ("title", "focus"))
 def test_a_hidden_name_in_title_or_focus_is_refused(case: SceneCase, field: str) -> None:
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
+    with pytest.raises(Refusal, match="does not name"):
         case.bar(
             {
                 field: f"{case.base[field]} A bell tolls somewhere close.",
@@ -323,7 +341,7 @@ def test_a_hidden_name_in_title_or_focus_is_refused(case: SceneCase, field: str)
 def test_a_hidden_name_in_a_present_entitys_brief_is_refused(case: SceneCase) -> None:
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
     watchman = {"id": "watchman", "name": "Watchman", "brief": "He is posted to guard the Bell."}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
+    with pytest.raises(Refusal, match="does not name"):
         case.bar(
             {
                 "present": (case.met, "watchman"),
@@ -340,7 +358,7 @@ def test_a_hidden_entitys_own_brief_naming_another_hidden_entity_is_refused(
     """The leak a later `reveal` would make must be caught while both are still hidden."""
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
     watchman = {"id": "watchman", "name": "Watchman", "brief": "He is posted to guard the Bell."}
-    with pytest.raises(Refusal, match="does not name what is hidden"):
+    with pytest.raises(Refusal, match="does not name"):
         case.bar(
             {"hidden": ("watchman", "bell-prop"), "cast": {"bell-prop": bell, "watchman": watchman}}
         )

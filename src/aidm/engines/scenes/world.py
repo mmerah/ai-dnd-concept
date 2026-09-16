@@ -13,7 +13,7 @@ from aidm.core.entities import (
 from aidm.core.facts import Fact
 from aidm.core.prompt import lines_of, sentence
 from aidm.core.views import Panel, PanelRow
-from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing, named_unmet
+from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
 from aidm.engines.scenes.tools import SceneDraft
 
 WAY_OFFERED = Fact(
@@ -130,11 +130,9 @@ class SceneWorld[C: Person](World[C, C]):
             raise Refusal("the player is not a party member")
         return self.require_living_here(entity_id)
 
-    def check_unnamed(self, *texts: str) -> None:
+    def unmet(self) -> Iterable[C]:
         """The whole cast, not this scene's hidden list: a sheet row outlives its scene."""
-        unmet = [entry for entry in self.cast.values() if not entry.known]
-        if leaked := sorted(set(named_unmet("\n".join(texts), unmet))):
-            raise Refusal(f"this names what the player has not met: {leaked}. Say it another way.")
+        return (entry for entry in self.cast.values() if not entry.known)
 
     def others(self) -> Iterator[C]:
         return (self.cast[entity_id] for entity_id in self.present() if entity_id not in self.party)

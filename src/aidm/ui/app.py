@@ -7,7 +7,7 @@ from nicegui.events import ValueChangeEventArguments
 from aidm.app.launch import LauncherCatalog, LaunchTarget, SaveOption
 from aidm.app.mcp import MOUNT_PATH, MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
-from aidm.config import read_settings
+from aidm.config import SERVER_HOST, read_settings
 from aidm.core.entities import Refusal, Slug, content_id
 from aidm.ui import theme
 from aidm.ui.create import character_page, scenario_page
@@ -111,12 +111,15 @@ def home_page(runtime: Runtime) -> None:
 def start() -> None:
     # Without a handler the root logger drops every INFO record, spawns included.
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    settings = read_settings()
+    try:
+        settings = read_settings()
+    except Refusal as broken:
+        raise SystemExit(f"settings: {broken}") from None
     _register_pages(Runtime(settings))
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
-        host=settings.server_host,
+        host=SERVER_HOST,
         port=settings.server_port,
         reload=False,
         show=False,

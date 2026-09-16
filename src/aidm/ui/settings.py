@@ -23,6 +23,7 @@ class SettingsForm:
 
     def build(self) -> None:
         groups = _shown(self.settings)
+        tabbed = [group for group in groups if isinstance(group[2], BaseModel)]
         # In the header, where a panel taller than the last one cannot move it.
         with page_header("Settings"):
             ui.space()
@@ -34,11 +35,14 @@ class SettingsForm:
                 "Each box is one key in .env. Saving writes it; the keys apply the next time "
                 "the server starts.",
             )
+            for name, field, value in groups:
+                if not isinstance(value, BaseModel):
+                    self.render(value, field, (name,))
             with ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs:
-                for name, _, _ in groups:
+                for name, _, _ in tabbed:
                     ui.tab(name, label=_label((name,)))
-            with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full game-card"):
-                for name, field, value in groups:
+            with ui.tab_panels(tabs, value=tabbed[0][0]).classes("w-full game-card"):
+                for name, field, value in tabbed:
                     with ui.tab_panel(name):
                         self.render(value, field, (name,))
 
