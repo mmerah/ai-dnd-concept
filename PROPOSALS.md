@@ -19,6 +19,9 @@ Each proposal is either **RECOMMEND** (do it) or **DECIDE** (pick an option).
 | **P1** | **Accepted** — as the decorator variant (prototyped, 0 type-checker ignores; see below) |
 | **P2** | **Accepted** |
 | **P3** | **Option (a)** — de-genericise only. Maze Rats (`IDEAS.md#18`) is still on, so `rooms/` stays a family |
+| **P4** | **Option (b)** — `qa/` is in active use and stays. (a) was withdrawn: see the correction in P4 |
+| **P5** | **Accepted** |
+| **P6** | **Option (b)** — half collapse only, no schema change |
 
 ---
 
@@ -278,47 +281,69 @@ what Maze Rats will be.
 
 ---
 
-## P4 — `qa/`: 2,104 lines, 20% of the repo's Python
+## P4 — `qa/`: drop it from the type-check gate
 
-**DECIDE.** Nobody but you can answer this one.
+**DECIDED: option (b).** The harness is in active use, so it stays. **Option (a) was withdrawn after
+two of its supporting claims failed verification** — recorded below so nobody revives it.
 
-### What exists
+### Correction: the claimed stub drift does not exist
 
-`qa/` is a parallel harness that no test runs:
+One audit reported that `tests/support/table.py`'s stub does `del tools` while `qa/agents.py`
+honours the parameter, making them two stubs of one Protocol that already disagree. **That is false.**
+Both discard it:
 
-- `qa/agents.py` (273 lines) is a **second** `ScriptedSpawner`, duplicating
-  `tests/support/table.py:111-144`, with its own `!roll`/`!crash`/`!refuse`/`!fail`/`!bad`/`!slow`
-  script language, its own per-engine default-roll table, and its own fault injection.
-- `qa/server.py` (99) boots the real app with those agents.
-- `qa/drive.py` (187) is a Playwright driver pinned to
-  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` — unrunnable on a machine without that path.
-- Eleven `s_*.py` scenario scripts: 1,395 lines.
+```
+tests/support/table.py:124   del tools
+qa/agents.py:69              del session, tools
+```
 
-It is in `basedpyright.include` and in the default `uv` groups, so it gates `uv run basedpyright`.
+There is nothing to align. This was the main argument for deduplicating, and it was wrong.
 
-**Live drift already exists:** `tests/support/table.py`'s stub does `del tools`; `qa/agents.py`
-honours the parameter. Two stubs of one Protocol that already disagree about the surface they stub.
+### Correction: the two spawners are not duplicates
 
-### Options
+They share a signature, not an implementation:
 
-- **(a) Keep, deduplicate.** Make `qa/agents.py` a subclass/config of `tests/support/table.py`'s
-  `ScriptedSpawner` rather than a rewrite. **~120 lines, removes the drift risk.**
-  `pythonpath = ["tests"]` already permits the import.
-- **(b) Keep as-is, drop from `basedpyright.include`.** One line; stops 2,104 lines of screenshot
-  scripts gating the type check.
-- **(c) Delete `qa/` entirely** (−2,104 lines, −`playwright`), porting the parts that earn their keep
-  — the double-send/reload-storm cases in `s_burst.py` and the eight-turn soak in `s_endure.py` —
-  into async tests under `tests/ui/`. Biggest single line reduction in the repo, and the one most
-  likely to throw away something you use.
+| | `tests` `ScriptedSpawner` (34 lines) | `qa` `ScriptedAgents` (273 lines) |
+|---|---|---|
+| Answers | pops a pre-seeded per-role queue | *generates* them by parsing the prompt (`_narrator`, `_worldsmith`, `_scene`) |
+| Master | echoes the prompt back | plays real tool calls (`_master`, `_call`) |
+| Extras | records prompts for the goldens | delay, fault injection, `/qa/log` |
 
-**Regardless of which you pick: align the two stubs' signatures (~20 min).** They cannot be allowed
-to keep disagreeing.
+The genuinely shared surface is `run(role, prompt, session, tools) -> RunResult` plus a log append —
+**about 10 lines.**
+
+### Why (a) is a net loss
+
+`qa/` cannot import `tests/` as things stand. `pythonpath = ["tests"]` is a **pytest** ini option, and
+`qa/` runs standalone (`uv run python qa/server.py`, `uv run --group qa python qa/s_*.py`), never under
+pytest. Verified:
+
+```
+$ uv run python -c "import support.table"
+ModuleNotFoundError: No module named 'support'
+```
+
+So (a) would trade ~10 duplicated lines for a cross-directory import plus a path hack or a new shared
+package. Not worth it.
+
+### What (b) is
+
+`qa/` is in `[tool.basedpyright] include = ["src", "tests", "qa"]`, so 2,104 lines of Playwright
+screenshot scripts gate every `uv run basedpyright`. Drop `"qa"` from that list.
+
+**One line. Feature impact: none** — the scripts still run exactly as they do now via `qa/run_all.sh`.
+
+**The trade, stated honestly:** `qa/` stops being type-checked, so a signature change in `src/` that
+breaks `qa/agents.py` would surface when you next run the harness rather than at type-check time.
+Given `qa/` stubs `Spawner` and `Tools`, that is a real if small regression risk. If you would rather
+keep the safety net, **leave `qa/` alone entirely** — it is 2,104 lines that work, and no proposal
+here improves them.
 
 ---
 
 ## P5 — `Subject` and `DecisionOption` are one idea under two names
 
-**RECOMMEND.**
+**ACCEPTED.**
 
 ### What exists
 
@@ -385,7 +410,9 @@ per-call adapter is wrong.
 
 ## P6 — Twelve single-field tool-arg models
 
-**DECIDE.** The mechanical risk is nil; the prompt-quality risk is real.
+**DECIDED: option (b), half collapse.** Delete the exact duplicate (`Actor` ≡ `UseMedKit`) and the
+four in `base.py`. ~20 lines, zero schema change, zero prompt risk. Option (a) stays available as a
+deliberate prompt experiment for a day it can be measured — not as a blind refactor.
 
 ### What exists
 
@@ -420,8 +447,7 @@ Verified: `schema_of` already pops `title`, so **the published JSON schema is id
   the resolver's `args` parameter loses its static type, colliding with the `Do not use Any` rule.
   **Not recommended.**
 
-**Recommendation: (b).** Take the free 20 lines; leave (a) as a deliberate prompt experiment for a
-day when you can measure it, not a refactor.
+**Chosen: (b).**
 
 ---
 
