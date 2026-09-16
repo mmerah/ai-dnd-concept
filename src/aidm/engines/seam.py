@@ -26,20 +26,22 @@ from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOptio
 from aidm.core.prompt import Sections, sections
 from aidm.core.tools import MasterTool, master_tool, schema_text
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
-from aidm.engines.base import (
+from aidm.engines.base import PLAYER_ID, Person, World
+from aidm.engines.tools import (
+    HIRE,
+    HIRE_TOOL,
+    HIRE_UNWRITTEN,
     JOIN_PARTY,
     KILL,
     LEAVE_PARTY,
-    PLAYER_ID,
     REVEAL,
+    SIGNED_ON,
+    Hire,
     JoinParty,
     Kill,
     LeaveParty,
-    Person,
     Reveal,
-    World,
 )
-from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, SIGNED_ON, Hire
 
 SOURCELESS = "(none — write from what is below)"
 

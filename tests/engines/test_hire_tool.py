@@ -22,8 +22,8 @@ from support.twentyfourxx import small_world as twentyfourxx_world
 from aidm.core.entities import Refusal, Slug
 from aidm.core.model import AnyGame, Generation
 from aidm.engines.breathless.world import BreathlessGame
-from aidm.engines.hiring import HIRE, SIGNED_ON
 from aidm.engines.seam import AnyEngine
+from aidm.engines.tools import HIRE, SIGNED_ON
 from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 

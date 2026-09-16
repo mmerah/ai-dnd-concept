@@ -12,7 +12,7 @@ from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
-from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, banded, oracle_roll
+from aidm.engines.base import PLAYER_ID, banded, oracle_roll
 from aidm.engines.breathless.tools import (
     ASK_WORLD,
     CATCH_BREATH,
@@ -46,6 +46,7 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
+from aidm.engines.tools import DROP_ITEM, DropItem
 
 AUTHORED = {"locations", "complications", "missions"}
 TROUBLE_NOTE = "The scavenge turns up trouble right here; nothing is found."
@@ -77,7 +78,19 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     async def write_sheet(
         self, draft: BreathlessGame, member: Survivor, terms: str, worldsmith: WorldsmithAnswer, /
     ) -> str:
-        prompt = self.hire_prompt(draft, member, terms)
+        packs = self.packs.chosen(draft.packs)
+        prompt = self.render_request(
+            draft,
+            guidance=AUTHORING,
+            intent=HIRING.format(
+                name=member.name,
+                brief=member.brief,
+                terms=terms,
+                jobs=", ".join(job for pack in packs for job in pack.jobs),
+                weapons=", ".join(weapon for pack in packs for weapon in pack.weapons),
+            ),
+            answer=SheetDraft,
+        )
         answer = await worldsmith(prompt, SheetDraft, lambda _answer: None)
         return member.sign_on(answer.pronouns, answer.job, answer.skills, answer.item)
 
@@ -164,21 +177,6 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
 
     def use_med_kit(self, draft: BreathlessGame, args: Actor, _rng: Random) -> list[Fact]:
         return self.world_of(draft).require_actor(args.actor_id).use_med_kit()
-
-    def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
-        packs = self.packs.chosen(draft.packs)
-        return self.render_request(
-            draft,
-            guidance=AUTHORING,
-            intent=HIRING.format(
-                name=member.name,
-                brief=member.brief,
-                terms=terms,
-                jobs=", ".join(job for pack in packs for job in pack.jobs),
-                weapons=", ".join(weapon for pack in packs for weapon in pack.weapons),
-            ),
-            answer=SheetDraft,
-        )
 
     def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_actor(args.actor_id)

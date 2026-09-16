@@ -5,8 +5,8 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.play import DecisionOption
-from aidm.engines.hiring import HIRED, UNWRITTEN_CAST
 from aidm.engines.scenes.packs import ScenePack
+from aidm.engines.tools import HIRED, UNWRITTEN_CAST
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
 AUTHORING = (

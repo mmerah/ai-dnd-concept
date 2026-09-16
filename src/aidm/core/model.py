@@ -105,6 +105,7 @@ class Game[P: BaseModel](Mutable):
     engine: EngineId
     packs: PackSelection | None = None
     pending: PendingDecision | None = None
+    # In flight only, never saved; `restore` refuses a save that carries one.
     generation: Generation | None = Field(default=None, exclude=True)
     notes: list[str] = Field(default_factory=list)
     log: list[Chapter] = Field(default_factory=list)

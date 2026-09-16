@@ -7,7 +7,7 @@ from pydantic import Field
 from aidm.core.entities import Frozen, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.views import Rows
+from aidm.core.views import Rows, filled
 from aidm.engines.base import Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
@@ -89,17 +89,13 @@ class CrewSheet(ItemSheet[Gear]):
 
     def rows(self) -> Rows:
         skills = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
-        return tuple(
-            (label, value)
-            for label, value in (
-                ("Specialty", self.specialty),
-                ("Origin", self.origin),
-                ("Traits", ", ".join(self.traits)),
-                ("Skills", skills),
-                ("Credits", f"₡{self.credits}"),
-                ("Hindrances", ", ".join(self.hindrances)),
-            )
-            if value
+        return filled(
+            ("Specialty", self.specialty),
+            ("Origin", self.origin),
+            ("Traits", ", ".join(self.traits)),
+            ("Skills", skills),
+            ("Credits", f"₡{self.credits}"),
+            ("Hindrances", ", ".join(self.hindrances)),
         )
 
 

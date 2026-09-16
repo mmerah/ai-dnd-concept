@@ -19,16 +19,9 @@ from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
-from aidm.engines.base import (
-    DROP_ITEM,
-    PLAYER_ID,
-    AskWorld,
-    DropItem,
-    Kill,
-    banded,
-    oracle_roll,
-)
+from aidm.engines.base import PLAYER_ID, banded, oracle_roll
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
+from aidm.engines.tools import DROP_ITEM, AskWorld, DropItem, Kill
 from aidm.engines.twentyfourxx.tools import (
     ASK_WORLD,
     CHANGE_HINDRANCES,
@@ -114,8 +107,15 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     async def write_sheet(
         self, draft: TwentyfourxxGame, member: Crewmate, terms: str, worldsmith: WorldsmithAnswer, /
     ) -> str:
-        prompt = self.hire_prompt(draft, member, terms)
         packs = self.packs.chosen(draft.packs)
+        lines = [pack.specialty_lines() for pack in packs]
+        lines.append(f"Skills: {', '.join(option.label for option in self.packs.srd().skills)}")
+        prompt = self.render_request(
+            draft,
+            guidance="\n".join(lines),
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
+            answer=SheetDraft,
+        )
         answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet.check(packs))
         return member.sign_on(
             answer.specialty,
@@ -368,16 +368,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def over(self, state: TwentyfourxxGame) -> str | None:
         """A dead lead with a hired member alive is a succession, not an ending."""
         return None if self.world_of(state).sheeted_members() else super().over(state)
-
-    def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
-        lines = [pack.specialty_lines() for pack in self.packs.chosen(draft.packs)]
-        lines.append(f"Skills: {', '.join(option.label for option in self.packs.srd().skills)}")
-        return self.render_request(
-            draft,
-            guidance="\n".join(lines),
-            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
-            answer=SheetDraft,
-        )
 
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)

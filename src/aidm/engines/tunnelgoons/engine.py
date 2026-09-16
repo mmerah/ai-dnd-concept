@@ -81,7 +81,12 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
     async def write_sheet(
         self, draft: TunnelGoonsGame, member: Npc, terms: str, worldsmith: WorldsmithAnswer, /
     ) -> str:
-        prompt = self.hire_prompt(draft, member, terms)
+        prompt = self.render_request(
+            draft,
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
+            guidance=HIRE_GUIDANCE,
+            answer=AbilitiesDraft,
+        )
         answer = await worldsmith(prompt, AbilitiesDraft, lambda _answer: None)
         return member.sign_on(answer.abilities)
 
@@ -135,14 +140,6 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
 
     def starting_items(self, player: Goon, taken: Iterable[str]) -> tuple[Prop, ...]:
         return player.unpack_kit(taken)
-
-    def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
-        return self.render_request(
-            draft,
-            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
-            guidance=HIRE_GUIDANCE,
-            answer=AbilitiesDraft,
-        )
 
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)

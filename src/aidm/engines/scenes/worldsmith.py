@@ -28,11 +28,11 @@ TURNING = (
 
 def check_scene[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None = None) -> None:
     """The drafts may not import the world, and the authoring call has no world."""
-    if unmet := scene_unmet(draft, world):
+    if unmet := _scene_unmet(draft, world):
         raise Refusal("the scene needs " + "; ".join(unmet))
 
 
-def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) -> list[str]:
+def _scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) -> list[str]:
     """Every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[Slug, C] = {} if world is None else world.cast
     everyone: Mapping[Slug, Thing] = (

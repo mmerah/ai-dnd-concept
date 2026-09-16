@@ -3,8 +3,8 @@ from typing import Self
 from pydantic import Field, field_validator, model_validator
 
 from aidm.core.entities import Frozen, Slug, slug
-from aidm.engines.base import ACTOR, AskWorld, Attempt
 from aidm.engines.breathless.world import Die, Skill
+from aidm.engines.tools import ACTOR, AskWorld, Attempt
 
 CHANGE_STRESS = "The actor's stress goes up or down."
 USE_MED_KIT = "The actor spends their med kit."

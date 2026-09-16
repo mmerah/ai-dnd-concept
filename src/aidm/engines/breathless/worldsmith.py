@@ -5,8 +5,8 @@ from pydantic import Field, model_validator
 from aidm.core.entities import Frozen
 from aidm.core.play import DecisionOption
 from aidm.engines.breathless.world import SKILLS, Die, Skill, check_spread
-from aidm.engines.hiring import HIRED, UNWRITTEN_CAST
 from aidm.engines.scenes.packs import ScenePack
+from aidm.engines.tools import HIRED, UNWRITTEN_CAST
 
 AUTHORING = (
     "BREATHLESS AUTHORING\n"

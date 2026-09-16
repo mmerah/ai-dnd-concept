@@ -8,7 +8,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Gauge, Sheet, Sheeted
+from aidm.engines.base import PLAYER_ID, Gauge, Sheet, Sheeted, joined
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 
 type Ability = Literal["brute", "skulker", "erudite"]
@@ -88,8 +88,7 @@ class Npc(Adventurer, Dweller):
         return (("Health", f"{self.hp} (its Difficulty Score)"),)
 
     def required(self) -> str:
-        parts = (super().required(), "health above zero" if self.hp.current == 0 else "")
-        return ", ".join(part for part in parts if part)
+        return joined(super().required(), "health above zero" if self.hp.current == 0 else "")
 
 
 class Goon(Adventurer):

@@ -7,7 +7,7 @@ from aidm.core.entities import Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
-from aidm.core.views import Rows
+from aidm.core.views import Rows, filled
 from aidm.engines.base import Gauge, Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
@@ -63,18 +63,14 @@ class SurvivorSheet(ItemSheet[Supply]):
             + ("" if self.worn[skill] == self.skills[skill] else f" (rated d{self.skills[skill]})")
             for skill in SKILLS
         )
-        return tuple(
-            (label, value)
-            for label, value in (
-                ("Pronouns", self.pronouns),
-                ("Job", self.job),
-                ("Skills", skills),
-                ("Loot die", f"d{self.loot}"),
-                ("Stress", str(self.stress) + (", vulnerable" if self.vulnerable else "")),
-                ("Stunt", "spent" if self.stunted else ""),
-                ("Med kit", "yes" if self.med_kit else ""),
-            )
-            if value
+        return filled(
+            ("Pronouns", self.pronouns),
+            ("Job", self.job),
+            ("Skills", skills),
+            ("Loot die", f"d{self.loot}"),
+            ("Stress", str(self.stress) + (", vulnerable" if self.vulnerable else "")),
+            ("Stunt", "spent" if self.stunted else ""),
+            ("Med kit", "yes" if self.med_kit else ""),
         )
 
     def loot_options(self, item: str, granted: Die) -> tuple[PendingOption, ...]:
