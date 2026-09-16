@@ -31,8 +31,6 @@ Tests run offline. They are deterministic.
 - State models are mutable. Value models are frozen.
 - An engine tool method resolves ids and rolls dice; a world or entity method changes fields and
   writes the facts.
-- A tool binding is a lambda when it fits on one line, else a method.
-- A positional-only `/` on an abstract method lets an override rename a parameter it ignores.
 - Names shown to a role, the player or the launcher are `id`, `label`, `detail`. Things saved to
   disk keep `name` and `brief`.
 - Do not use `Any`. Use exact types. The one exception: a class or function generic on the game
