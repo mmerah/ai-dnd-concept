@@ -76,9 +76,6 @@ class Dungeon[N: Dweller](Mutable):
                     raise ValueError(f"a way from {from_id!r} cannot lead back to itself")
         return self
 
-    def unmet(self) -> Iterable[Thing]:
-        return (thing for thing in (*self.npcs.values(), *self.items.values()) if not thing.known)
-
     def entity(self, entity_id: Slug) -> Person | Prop | Place | None:
         return self.places.get(entity_id) or self.npcs.get(entity_id) or self.items.get(entity_id)
 
@@ -139,6 +136,10 @@ class RegionDraft[N: Dweller](MapDraft[N]):
 
 class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
     visits: list[Slug] = Field(min_length=1)
+
+    def unmet(self) -> Iterable[N]:
+        """Npcs only: item names are common nouns the master must be free to say."""
+        return (npc for npc in self.npcs.values() if not npc.known)
 
     @model_validator(mode="after")
     def _playable(self) -> Self:
