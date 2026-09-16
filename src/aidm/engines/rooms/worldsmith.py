@@ -57,7 +57,7 @@ def _overlap_unmet[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> list[st
 
 def _named_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
     leaked: set[str] = set()
-    hidden = list(draft.unmet())
+    hidden = [thing for thing in (*draft.npcs.values(), *draft.items.values()) if not thing.known]
     for place_id, place in draft.places.items():
         things = [
             *draft.things_at(place_id),
