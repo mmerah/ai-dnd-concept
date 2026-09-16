@@ -12,11 +12,19 @@ your call in P4).
 
 Each proposal is either **RECOMMEND** (do it) or **DECIDE** (pick an option).
 
+## Decisions taken
+
+| | Outcome |
+|---|---|
+| **P1** | **Accepted** — as the decorator variant (prototyped, 0 type-checker ignores; see below) |
+| **P2** | **Accepted** |
+| **P3** | **Option (a)** — de-genericise only. Maze Rats (`IDEAS.md#18`) is still on, so `rooms/` stays a family |
+
 ---
 
-## P1 — Bind master tools straight to world methods
+## P1 — Declare master tools beside the method that resolves them
 
-**RECOMMEND.** Largest single cut available.
+**ACCEPTED.** Largest single cut available.
 
 ### What exists
 
@@ -37,30 +45,109 @@ breathless        use_med_kit
 
 A further ~8 are two-liners that call `world.check_unnamed(...)` and then forward.
 
+Separately, the seven `master_tools()` overrides that register them total **69 lines**:
+
+```
+seam.py 11 · twentyfourxx 17 · breathless 11 · loner3e 8 · rooms 8 · scenes 7 · tunnelgoons 7
+```
+
 ### What it becomes
 
-One helper beside `master_tool`, in `engines/seam.py` (it needs `world_of`):
+A `@tool` decorator carrying the declaration, and MRO-walk collection replacing the seven
+`master_tools()` overrides. In `core/tools.py`:
 
 ```python
-def world_tool[G, W, A](
-    name: str, description: str, args: type[A],
-    resolve: Callable[[W, A, Random], Sequence[Fact]],
-) -> MasterTool[G]
+S = TypeVar("S", contravariant=True)          # contravariance matters — see "the one catch"
+A = TypeVar("A", bound=BaseModel)
+
+
+class Marked(Generic[S, A]):
+    """Returned by `tool(...)`: carries the declaration and stays a descriptor."""
+
+    def __init__(
+        self, description: str, args: type[A],
+        resolve: Callable[[S, A, Random], Sequence[Fact]],
+    ) -> None:
+        self.description, self.args, self.resolve = description, args, resolve
+        self.name = resolve.__name__
+
+    def __set_name__(self, owner: type[object], name: str) -> None:
+        self.name = name
+
+    def __get__(self, instance: S | None, owner: type[object]) -> Self:
+        return self
+
+
+def tool(
+    description: str, args: type[A]
+) -> Callable[[Callable[[S, A, Random], Sequence[Fact]]], Marked[S, A]]:
+    def mark(resolve: Callable[[S, A, Random], Sequence[Fact]]) -> Marked[S, A]:
+        return Marked(description, args, resolve)
+    return mark
+
+
+def collected[G: Game[Any]](engine: object) -> tuple[MasterTool[G], ...]:
+    """Walk the MRO so a family's tools and an engine's own both land."""
+    found: dict[str, Marked[Any, Any]] = {}
+    for klass in reversed(type(engine).__mro__):
+        for key, value in vars(klass).items():
+            if isinstance(value, Marked):
+                found[key] = value
+    return tuple(
+        master_tool(
+            mark.name, mark.description, mark.args,
+            lambda draft, a, rng, _m=mark: _m.resolve(engine, a, rng),
+        )
+        for mark in found.values()
+    )
 ```
 
-wrapping `lambda draft, a, rng: resolve(self.world_of(draft), a, rng)`. Registration becomes:
+Declaration sites lose both the registration line and, where the body was a forwarder, nearly
+everything else:
 
 ```python
-world_tool("move", MOVE, Move, lambda w, a, _: w.move(a.to_id, a.with_ids)),
+@tool(MOVE, Move)
+def move(self, args: Move, _rng: Random) -> Sequence[Fact]:
+    return self.world_of(...).move(args.to_id, args.with_ids)
 ```
 
-The 13 forwarder methods disappear.
+`Engine.__init__` calls `collected(self)` instead of `self.master_tools()`. All seven
+`master_tools()` overrides go.
 
-### Why it is over-engineered
+### Prototype results — measured, not assumed
 
-A layer that only forwards. The `CLAUDE.md` rule that created it — *"an engine tool method resolves
-ids and rolls dice"* — does real work for `roll`, `job`, `defend`, which genuinely resolve ids and
-roll. For 13 of 33 tools there is nothing to resolve.
+This was built against the real generic signatures and type-checked before being recommended.
+
+| Check | Result |
+|---|---|
+| `basedpyright` strict, scaffolding | **0 errors** |
+| `basedpyright` strict, realistic use site | **0 errors** |
+| Runtime, 3-level inheritance (`seam` → family → engine) | all three tools collected correctly |
+| **Ignores required for legal code** | **none** |
+
+The earlier concern that this would become a type-checker fight was wrong. The descriptor form
+(`__set_name__` / `__get__`) avoids mutating a function object, which is what would otherwise have
+tripped `reportFunctionMemberAccess`.
+
+### The one catch
+
+Overriding an *inherited* tool raises a pyright variance error. Contravariance on `S` narrows it to
+that single case; everything legal type-checks clean.
+
+This is close to free, because the design already forbids overrides: `seam.py:88-90` raises on
+duplicate tool names, and all repeated names (`roll` ×4, `drop_item` ×2, `ask_world` ×2) are
+registered by **sibling** engines, never parent → child.
+
+**One real behaviour change to note:** under MRO-walk collection an override would *silently win*
+(dict overwrite) rather than raise a duplicate-name error. Either keep the pyright error as a free
+guard against that, or decide overrides are allowed and silence it deliberately. Do not let it
+happen by accident.
+
+### Why it is over-engineered today
+
+A layer that only forwards, plus a registration list restating what the method already says. The
+`CLAUDE.md` rule that created the handlers — *"an engine tool method resolves ids and rolls dice"* —
+does real work for `roll`, `job`, `defend`. For 13 of 33 tools there is nothing to resolve.
 
 ### Feature impact
 
@@ -69,21 +156,18 @@ builtin completion loop both read `engine.tools` unchanged.
 
 ### Size and risk
 
-~120–150 lines, 0 files. 3–5 hours. Risk **medium-low** — `tests/app/test_master_tools.py` (535
-lines) and `tests/twentyfourxx/test_tools.py` (958) drive tools through `Turn.call`, so they should
-be untouched.
+**~105 lines** (69 registration + ~35 forwarder bodies), 0 files. 4 hours. Risk **medium-low** —
+`tests/app/test_master_tools.py` (535 lines) and `tests/twentyfourxx/test_tools.py` (958) drive tools
+through `Turn.call`, so they should be untouched.
 
-**Do not** attempt the decorator variant (`@tool(DESC, Args)` on the handler, deriving the name from
-`__name__`, deleting all 7 `master_tools()` overrides) as the first step. It is a bigger win
-(~200 lines) but decorated generic methods under `basedpyright` strict with `Engine[P, M, G]` is
-where this turns into a type-checker fight. Try it on `seam.py` alone afterwards; abandon the moment
-a `# pyright: ignore` appears.
+**Sequence:** convert `seam.py` alone → run `basedpyright` and the full suite → then roll through the
+six others. The prototype says it will be clean; verify rather than trust it.
 
 ---
 
 ## P2 — Extract the duplicated hidden-name leak scan
 
-**RECOMMEND.** Smallest high-value item. This one is safety logic.
+**ACCEPTED.** Smallest high-value item. This one is safety logic.
 
 ### What exists
 
@@ -145,7 +229,8 @@ way you cannot reconcile, **do not merge** — document the difference instead.
 
 ## P3 — The `rooms` family: 870 lines, one production implementer
 
-**DECIDE.** Two agents independently flagged this and both said to ask you first.
+**DECIDED: option (a), de-genericise only.** Maze Rats (`IDEAS.md#18`) is still on, so the family
+stays and (b) is off the table.
 
 ### What exists
 
@@ -182,8 +267,14 @@ engines all bind `Engine[C, C, G]`.
   collapse. **~100 net lines, 1–2 days.** Must be reverted if Maze Rats happens.
 - **(c) Leave it.** Correct if Maze Rats is imminent.
 
-**Recommendation: (a) now, revisit (b) only if you cancel idea 18.** The question that decides this
-is yours: *is Maze Rats still on?*
+**Chosen: (a).** Maze Rats is confirmed still on, so the family must survive. Do not merge `rooms/`
+into `tunnelgoons/` — that work would have to be reverted when the second room crawler lands.
+
+Scope of (a), concretely: drop the type parameters from `Dungeon[N]`, `MapDraft[N]`, `RegionDraft[N]`,
+`RoomWorld[P, N]` and `RoomEngine[P, N, G]`; have `tunnelgoons/world.py` subclass concretely; delete
+the 2-line narrowing override in `tunnelgoons/engine.py`. `tests/support/sixth.py` stays as-is and
+keeps proving the family is implementable by something other than TunnelGoons — which is exactly
+what Maze Rats will be.
 
 ---
 
