@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Literal, Self, get_args
+from typing import Annotated, Literal, Self
 
 import httpx
 from dotenv import set_key, unset_key
@@ -148,9 +148,8 @@ class Settings(BaseSettings):
             for what, feature in (("media", self.media), ("speech", self.speech))
             if feature.enabled
         ]
-        # `Role.__value__`, not `Role`: `get_args` on a PEP 695 alias returns `()` in silence.
-        role_names: tuple[Role, ...] = get_args(Role.__value__)
-        for role in role_names:
+        roles: tuple[Role, ...] = ("master", "narrator", "worldsmith")
+        for role in roles:
             config = self.roles.for_name(role)
             if config.provider in ("openrouter", "local"):
                 posting.append((role, config.provider))

@@ -24,18 +24,10 @@ class PanelRow(Frozen):
     icon_id: Slug | None = None
 
 
-class Subject(Frozen):
-    id: Slug
-    label: str
-    detail: str
-
-    @property
-    def tag(self) -> str:
-        return f"{self.label}[{self.id}]"
-
+class Subject(DecisionOption):
     @property
     def headline(self) -> str:
-        return self.tag + (f" — {self.detail}" if self.detail else "")
+        return f"{self.label}[{self.id}]" + (f" — {self.detail}" if self.detail else "")
 
     def row(self) -> PanelRow:
         return PanelRow(label=self.label, detail=self.detail, icon_id=self.id)

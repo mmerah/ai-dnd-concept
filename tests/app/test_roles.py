@@ -5,7 +5,7 @@ from random import Random
 import pytest
 from support.game import initialized, with_entity
 
-from aidm.app.roles import Roles, render_interjection, render_narrator
+from aidm.app.roles import master, render_interjection, render_narrator
 from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
 from aidm.core.entities import Refusal
@@ -109,7 +109,7 @@ async def test_a_master_that_lands_nothing_is_asked_once_not_retried() -> None:
     spawner = _AlwaysRefuses()
 
     with pytest.raises(Refusal, match="boom"):
-        await Roles(spawner).master(turn)
+        await master(spawner, turn)
 
     assert spawner.calls == 1
 
@@ -124,7 +124,7 @@ async def test_a_master_that_already_landed_facts_is_not_retried_and_does_not_ra
     spawner = _AlwaysRefuses()
 
     with caplog.at_level(logging.WARNING, logger="aidm.app.roles"):
-        await Roles(spawner).master(turn)
+        await master(spawner, turn)
 
     assert spawner.calls == 1
     assert "applying 1 facts" in caplog.text

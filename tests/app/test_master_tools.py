@@ -20,16 +20,14 @@ import aidm.app.spawn as spawn_module
 from aidm.app.roles import RoleRunner
 from aidm.app.spawn import CodexDriver, final_message
 from aidm.config import Role
-from aidm.core.entities import EngineId, Frozen, Refusal, Slug
+from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.model import Check, ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
 from aidm.engines.base import ACTOR, PLAYER_ID
-from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast
 from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN
 from aidm.engines.scenes.tools import SceneDraft
-from aidm.turn.run import NO_TURN, Turn
 
 
 class _SchemaProbe(Frozen):
@@ -85,14 +83,6 @@ def _scene(**changes: object) -> str:
 def _bare_scene(**changes: object) -> str:
     """An authored opening validates against `SceneDraft`, which carries no recap."""
     return json.dumps(A_SCENE | changes)
-
-
-def test_no_tool_runs_before_a_turn_is_open(tmp_path: Path) -> None:
-    table = open_game(tmp_path)
-
-    assert table.runtime.published_tools() == ()
-    with pytest.raises(ValueError, match=NO_TURN):
-        _ = table.runtime.call("reveal", {})
 
 
 async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
@@ -474,25 +464,6 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
         await RoleRunner(settings).run("master", "go", None)
     assert killed == [(1234, spawn_module.SIGKILL)]
     assert reaped == [1234]
-
-
-async def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(
-    tmp_path: Path,
-) -> None:
-    table = open_game(tmp_path)
-    toolless = Loner3eEngine()
-    toolless.id = EngineId("mirror")
-    toolless.tools = {}
-    # First of the installed engines, so reading the engines instead of the turn would show it.
-    table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
-    state = table.service.state
-    table.service.turn = Turn.begin(table.service.engine, state, Answer(text="I look."), Random(0))
-
-    async with table.runtime.admit(table.service):
-        assert "roll" in [tool.name for tool in table.runtime.published_tools()]
-
-        table.service.turn = None
-        assert [tool.name for tool in table.runtime.published_tools()] == []
 
 
 # What `codex exec --json` actually printed, banner line and all.

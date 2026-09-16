@@ -136,8 +136,7 @@ def _save_option(
     target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
     if slug != target.slug:
         raise Refusal("filed under another name")
-    if drifted := state.scenario.drift(metas[state.scenario_id]):
-        raise Refusal(f"scenario differs from disk in: {', '.join(drifted)}")
+    state.scenario.check_drift(metas[state.scenario_id])
     return SaveOption(
         target=target,
         scenario_label=state.scenario.title,

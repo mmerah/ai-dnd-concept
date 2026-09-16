@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import Field
@@ -128,12 +127,6 @@ class Loner3eCast(Person):
         return facts
 
 
-@dataclass(frozen=True, slots=True)
-class Struck:
-    facts: list[Fact]
-    loser: str = ""
-
-
 class Loner3eWorld(SceneWorld[Loner3eCast]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=TIES_PER_TWIST))
@@ -152,18 +145,20 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
             "attack, try something else, or break away — what do you do?"
         )
 
-    def strike(self, actor: Loner3eCast, opponent: Loner3eCast, outcome: Outcome) -> Struck:
+    def strike(
+        self, actor: Loner3eCast, opponent: Loner3eCast, outcome: Outcome
+    ) -> tuple[list[Fact], str]:
         harm = outcome.harm
         hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
         why = f"{striker.name} gets the better of the exchange"
         facts = hit.change(hit.luck, -abs(harm), "Luck", why)
         if hit.luck.current != 0:
-            return Struck(facts=facts)
+            return facts, ""
         facts.extend(hit.lose())
         # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
         facts.extend(hit.refill("the conflict is over"))
         facts.extend(striker.refill("the conflict is over"))
-        return Struck(facts=facts, loser=hit.name)
+        return facts, hit.name
 
     def check_conflict(self, actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
         if opponent is None:

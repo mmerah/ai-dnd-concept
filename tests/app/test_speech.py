@@ -1,4 +1,5 @@
 import wave
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -112,19 +113,37 @@ async def test_read_leaves_no_file_when_generation_raises(
     assert reader.clip(exchange) is None
 
 
-def test_reader_open_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Path) -> None:
+async def test_speech_off_asks_for_no_clip_and_hides_what_an_earlier_run_cached(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def _refuse(
+        _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
+    ) -> bytes:
+        raise AssertionError("speech was requested while it is off")
+
+    monkeypatch.setattr("aidm.app.speech.post_bearer", _refuse)
+    exchange = _exchange()
+    off = replace(_reader(tmp_path), config=SpeechConfig())
+
+    # Nothing is cached yet, so an ungated `read` would post for the audio.
+    await off.read(exchange)
+    off.saves.mkdir(parents=True)
+    (off.saves / f"{clip_key(off.config.model, requests_of(exchange, NARRATOR, POOL))}.wav").touch()
+
+    assert off.clip(exchange) is None
+
+
+def test_reader_open_takes_the_scenarios_voice_and_is_disabled_when_off(tmp_path: Path) -> None:
     store = FileStore(tmp_path)
     on = offline_settings(tmp_path).model_copy(update={"speech": SpeechConfig(enabled=True)})
     reader = Reader.open(on, store, TARGET.slug, voice="Puck")
-    assert reader is not None
     assert reader.voice == "Puck"
 
     reader = Reader.open(on, store, TARGET.slug, voice=on.speech.voice)
-    assert reader is not None
     assert reader.voice == on.speech.voice
 
     off = offline_settings(tmp_path)
-    assert Reader.open(off, store, TARGET.slug, voice=on.speech.voice) is None
+    assert Reader.open(off, store, TARGET.slug, voice=on.speech.voice).config.enabled is False
 
 
 async def test_speak_reads_and_caches_the_newest_committed_exchange(

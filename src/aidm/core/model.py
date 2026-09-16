@@ -33,12 +33,11 @@ class ScenarioMeta(Frozen):
     def with_premise(self, fallback: str) -> Self:
         return self.model_copy(update={"premise": self.premise or fallback})
 
-    def drift(self, other: Self) -> tuple[str, ...]:
-        return tuple(
-            field
-            for field in ScenarioMeta.model_fields
-            if getattr(self, field) != getattr(other, field)
-        )
+    def check_drift(self, other: Self) -> None:
+        """One rule, so the launcher and the game page never disagree about a stale save."""
+        fields = ScenarioMeta.model_fields
+        if drifted := [name for name in fields if getattr(self, name) != getattr(other, name)]:
+            raise Refusal(f"save scenario differs from the one on disk in: {', '.join(drifted)}")
 
 
 class EngineHeader(Loose):

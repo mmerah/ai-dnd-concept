@@ -26,7 +26,6 @@ from aidm.engines.breathless.tools import (
     LootCheck,
     Roll,
     TakeLoot,
-    UseMedKit,
 )
 from aidm.engines.breathless.world import (
     LADDER,
@@ -54,7 +53,7 @@ NOTHING_NOTE = "The scavenge finds nothing, and trouble is coming."
 
 
 @dataclass(frozen=True, slots=True)
-class Pool:
+class SkillPool:
     die: Die
     label: str
     helper: tuple[Survivor, Die] | None
@@ -87,7 +86,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
             *super().master_tools(),
             master_tool("drop_item", DROP_ITEM, DropItem, self.drop_item),
             master_tool("change_stress", CHANGE_STRESS, ChangeStress, self.change_stress),
-            master_tool("use_med_kit", USE_MED_KIT, UseMedKit, self.use_med_kit),
+            master_tool("use_med_kit", USE_MED_KIT, Actor, self.use_med_kit),
             master_tool("roll", ROLL, Roll, self.roll),
             master_tool("catch_breath", CATCH_BREATH, Actor, self.catch_breath),
             master_tool("loot_check", LOOT_CHECK, LootCheck, self.loot_check),
@@ -163,7 +162,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         world.check_unnamed(args.why)
         return world.require_actor(args.actor_id).change_stress(args.amount, args.why)
 
-    def use_med_kit(self, draft: BreathlessGame, args: UseMedKit, _rng: Random) -> list[Fact]:
+    def use_med_kit(self, draft: BreathlessGame, args: Actor, _rng: Random) -> list[Fact]:
         return self.world_of(draft).require_actor(args.actor_id).use_med_kit()
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
@@ -270,7 +269,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     def ask_world(self, _draft: BreathlessGame, args: AskWorldDie, rng: Random) -> list[Fact]:
         return oracle_roll(args.question, args.die, ("fail", "success-but", "success"), rng)
 
-    def _pool(self, world: BreathlessWorld, actor: Survivor, args: Roll) -> Pool:
+    def _pool(self, world: BreathlessWorld, actor: Survivor, args: Roll) -> SkillPool:
         sheet = actor.require_sheet()
         if args.skill is not None:
             helper: tuple[Survivor, Die] | None = None
@@ -279,11 +278,11 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
                 if partner is actor:
                     raise Refusal(f"{actor.name} cannot help their own roll")
                 helper = (partner, partner.require_sheet().worn[args.skill])
-            return Pool(die=sheet.worn[args.skill], label=args.skill, helper=helper)
+            return SkillPool(die=sheet.worn[args.skill], label=args.skill, helper=helper)
         if args.item_id is not None:
             item = sheet.require(args.item_id, actor.name)
-            return Pool(die=item.die, label=item.name, helper=None)
-        return Pool(die=STUNT_DIE, label="stunt", helper=None)
+            return SkillPool(die=item.die, label=item.name, helper=None)
+        return SkillPool(die=STUNT_DIE, label="stunt", helper=None)
 
 
 def _skill(name: str) -> Skill:

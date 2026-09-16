@@ -31,9 +31,7 @@ class Reader:
     claims: Claims = field(default_factory=Claims)
 
     @classmethod
-    def open(cls, settings: Settings, store: FileStore, slug: str, *, voice: str) -> Self | None:
-        if not settings.speech.enabled:
-            return None
+    def open(cls, settings: Settings, store: FileStore, slug: str, *, voice: str) -> Self:
         return cls(
             config=settings.speech,
             provider=settings.providers.for_name(settings.speech.provider),
@@ -42,11 +40,15 @@ class Reader:
         )
 
     def clip(self, exchange: Exchange) -> Path | None:
+        if not self.config.enabled:
+            return None
         _, _, path = self._planned(exchange)
         return path if path.is_file() else None
 
     async def read(self, exchange: Exchange) -> None:
         """A failed generation costs a log line and nothing else: speech is outside the game."""
+        if not self.config.enabled:
+            return
         requests, key, path = self._planned(exchange)
         if not requests or path.is_file():
             return
