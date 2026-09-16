@@ -166,6 +166,7 @@ class ScriptedAgents:
             return json.dumps(
                 {
                     "start": room,
+                    "recap": f"Recap of the region before {number}.",
                     "places": {
                         room: {
                             "id": room,

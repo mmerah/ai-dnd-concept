@@ -45,6 +45,14 @@ def test_sheet_check_accepts_medicine_granted_by_medic() -> None:
     draft.check((SRD,))
 
 
+def test_sheet_check_refuses_a_repeated_hindrance() -> None:
+    draft = SheetDraft(
+        specialty="Muscle", skills={"Shooting": 8}, items=(), hindrances=("Tired", "Tired")
+    )
+    with pytest.raises(Refusal, match="Tired"):
+        draft.check((SRD,))
+
+
 def test_the_pack_s_android_case_carries_the_kit() -> None:
     android = next(origin for origin in SRD.origins if origin.label == "Android")
     case = next(body for body in android.choice if body.label == "Case")

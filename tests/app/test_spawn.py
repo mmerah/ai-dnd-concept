@@ -184,6 +184,25 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
     assert "THE WHOLE BRIEF" not in asked[1][0]
 
 
+async def test_a_spawn_that_refuses_once_still_gets_its_one_retry() -> None:
+    attempts: list[str | None] = []
+
+    class _Spawner:
+        async def run(
+            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        ) -> RunResult:
+            del role, prompt, tools
+            attempts.append(session)
+            if len(attempts) == 1:
+                raise Refusal("the narrator exited 1")
+            return RunResult('{"lines": []}', "abc-123")
+
+    answer = await ask(_Spawner(), "narrator", "PROMPT", Narration, lambda _: None)
+
+    assert answer == Narration(lines=())
+    assert attempts == [None, None]
+
+
 async def test_answered_nothing_usable_does_not_quote_the_checks_message() -> None:
     class _Spawner:
         async def run(

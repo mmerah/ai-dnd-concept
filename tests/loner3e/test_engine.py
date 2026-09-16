@@ -104,6 +104,13 @@ def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> Non
         _ = ENGINE.roll(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
 
 
+def test_an_edge_naming_an_unmet_cast_member_is_refused() -> None:
+    _, state = initialized()
+    action = _seal(edge="the vault map marks the way")
+    with pytest.raises(Refusal, match="names what the player has not met"):
+        _ = ENGINE.roll(state.draft(), action, Random(0))
+
+
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
     _, state = initialized()
     action = Roll(

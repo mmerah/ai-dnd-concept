@@ -213,9 +213,9 @@ async def ask[T: BaseModel](
 ) -> T:
     asked, refused, session = prompt, "", None
     for _ in range(RETRIES + 1):
-        spoken = await spawner.run(role, asked, session)
-        session = spoken.session
         try:
+            spoken = await spawner.run(role, asked, session)
+            session = spoken.session
             answer = parse_unique(model, spoken.text)
             check(answer)
         except Refusal as invalid:

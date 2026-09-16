@@ -143,6 +143,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
 
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
+        world.check_unnamed(args.what)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
         items = world.carried_items(actor, args.items)
@@ -184,7 +185,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
-        actor = world.player if args.ability is None else world.require_actor(args.actor_id)
+        actor = world.require_actor(args.actor_id)
         if actor.require_sheet().level > 1:
             raise Refusal(f"{actor.name} has already levelled up")
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.

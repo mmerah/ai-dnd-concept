@@ -17,7 +17,12 @@ def body(s: Session) -> None:
     # Loot until something is found: an option-only decision.
     found = False
     for attempt in range(4):
-        submit(page, f'I scavenge for a flare ({attempt}).\n!loot_check item="Flare gun"')
+        submit(
+            page,
+            f"I catch my breath, then scavenge ({attempt}).\n"
+            "!catch_breath actor_id=player\n"
+            '!loot_check item="Flare gun"',
+        )
         page.wait_for_timeout(3500)
         if "the game is waiting on you" in clean(page.inner_text("body")):
             found = True

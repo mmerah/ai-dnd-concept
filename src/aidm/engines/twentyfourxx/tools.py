@@ -32,7 +32,7 @@ DEFEND_WITH = (
 )
 DEADLY = (
     "Whether `risk` is death. A disaster then kills the {who} instead of leaving `risk` on "
-    "them as a hindrance; a setback then injures them instead of `hindrance` landing."
+    "them as a hindrance; a setback then maims them."
 )
 HINDRANCE = (
     "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the "

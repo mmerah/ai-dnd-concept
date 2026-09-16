@@ -15,7 +15,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from aidm.core.entities import Frozen
+from aidm.core.entities import Frozen, parse
 
 type ProviderName = Literal["openrouter", "local"]
 type Role = Literal["master", "narrator", "worldsmith"]
@@ -24,6 +24,8 @@ type CliProvider = Literal["claude", "codex"]
 type RoleProvider = Literal["claude", "codex", "openrouter", "local"]
 type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
+# `0.0.0.0` would publish `/mcp` too, whose only guard is a Host header.
+SERVER_HOST = "127.0.0.1"
 
 
 class Configured(Frozen):
@@ -131,10 +133,8 @@ class Settings(BaseSettings):
     interjections: bool = True
     # The world moves offscreen every few turns; off stops the clock and disarms it.
     meanwhile: bool = True
-    # Clear of the 131072-byte argv cap.
-    source_max_bytes: int = Field(default=96_000, ge=1)
-    # Loopback by default: `0.0.0.0` publishes `/mcp` too, whose only guard is a Host header.
-    server_host: Literal["127.0.0.1", "0.0.0.0"] = "127.0.0.1"
+    # The in-play request prompt adds cast and history under the 131072-byte argv cap.
+    source_max_bytes: int = Field(default=48_000, ge=1)
     # Not `PORT`, set by too many shells.
     server_port: int = Field(default=8080, gt=0, lt=65536)
     saves_dir: Path = Path("saves")
@@ -160,7 +160,7 @@ class Settings(BaseSettings):
 
 
 def read_settings() -> Settings:
-    return Settings.model_validate({})
+    return parse(Settings, {})
 
 
 def env_key(path: tuple[str, ...]) -> str:

@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Refusal, Slug
+from aidm.core.entities import Frozen, Refusal, Slug, check_unique
 from aidm.core.play import DecisionOption
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.tools import HIRED, UNWRITTEN_CAST
@@ -96,11 +96,8 @@ class SheetDraft(Frozen):
     )
 
     def check(self, packs: Sequence[Pack]) -> None:
-        problems: list[str] = []
+        check_unique("items", self.items)
+        check_unique("hindrances", self.hindrances)
         specialties = {specialty.label for pack in packs for specialty in pack.specialties}
         if self.specialty not in specialties:
-            problems.append(f"{self.specialty!r} is not a specialty these packs list")
-        if len(set(self.items)) != len(self.items):
-            problems.append("an item repeats")
-        if problems:
-            raise Refusal("; ".join(problems))
+            raise Refusal(f"{self.specialty!r} is not a specialty these packs list")

@@ -21,7 +21,7 @@ from art import PlaceholderIllustrator
 
 from aidm.app import runtime as runtime_module
 from aidm.app.runtime import Runtime
-from aidm.config import MediaConfig, Settings
+from aidm.config import SERVER_HOST, MediaConfig, Settings
 from aidm.ui import theme
 from aidm.ui.app import _register_pages  # pyright: ignore[reportPrivateUsage]
 
@@ -82,7 +82,7 @@ def main() -> None:
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master (QA)",
-        host=settings.server_host,
+        host=SERVER_HOST,
         port=parsed.port,
         reload=False,
         show=False,

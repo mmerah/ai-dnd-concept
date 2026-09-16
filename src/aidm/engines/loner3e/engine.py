@@ -188,6 +188,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
+        world.check_unnamed(args.what, args.edge)
         actor = world.require_living_here(args.actor_id)
         opponent = None
         if args.opponent_id is not None:
