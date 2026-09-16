@@ -14,7 +14,7 @@ from aidm.core.creation import (
 )
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter, Check, PackSelection, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, PackSelection, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
@@ -115,7 +115,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         self, draft: TwentyfourxxGame, member: Crewmate, terms: str, worldsmith: WorldsmithAnswer, /
     ) -> str:
         prompt = self.hire_prompt(draft, member, terms)
-        answer = await worldsmith(prompt, SheetDraft, self.hire_check(draft))
+        packs = self.packs.chosen(draft.packs)
+        answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet.check(packs))
         return member.sign_on(
             answer.specialty,
             answer.skills,
@@ -377,10 +378,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             answer=SheetDraft,
         )
-
-    def hire_check(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
-        packs = self.packs.chosen(draft.packs)
-        return lambda sheet: sheet.check(packs)
 
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)

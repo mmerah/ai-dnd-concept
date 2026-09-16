@@ -124,16 +124,17 @@ hidden-name scan, then pruned the wiring tests and the triple-covered rules.
 
 | | before | after | plan target |
 |---|---|---|---|
-| `src` | 10,200 | **10,182** | about 10,198, at most 10,208 |
-| `tests` | 12,260 | **12,145** | about 12,122, at most 12,150 |
+| `src` | 10,200 | **10,179** | about 10,198, at most 10,208 |
+| `tests` | 12,260 | **12,143** | about 12,122, at most 12,150 |
 | `qa` | 2,104 | **2,104** | unchanged |
 
 `tests` lands inside the plan's cap even though phase 1 started it 30 lines above the plan's
-assumption; `src` is 16 under target. Neither number is padded and the arithmetic is exact:
-`src` is 10,200 minus step 1 (−3), step 2 (−11) and the five cuts the reviews added (−8), plus
-step 3 (+2) and the `world_of` rename (+2). `tests` is 12,260 minus the prune (−113, five more than
-the plan's −108 because part A's rewrites orphaned four imports) minus the two signatures the
-review's `world_of` cleanup collapsed (−2).
+assumption; `src` is 19 under target. Neither number is padded and the arithmetic is exact:
+`src` is 10,200 minus step 1 (−3), step 2 (−11) and the six cuts the reviews and the settlements
+added (−11), plus step 3 (+2) and the `world_of` rename (+2). `tests` is 12,260 minus the prune
+(−113, five more than the plan's −108 because part A's rewrites orphaned four imports), minus the
+two signatures the `world_of` cleanup collapsed (−2) and the two lines the harness's own
+no-turn-open rule cost (−2).
 
 ### Decided off-plan
 
@@ -184,33 +185,59 @@ review's `world_of` cleanup collapsed (−2).
    `test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party` became
    `..._lists_a_party_member`, since the player half went with the block the prune deleted.
 
-### Refuted, with the reason
+### Settled against the plan
 
-- **`TwentyfourxxEngine.hire_check` stays.** It is not a forwarder: it resolves
-  `self.packs.chosen(draft.packs)` once, outside the closure it returns. Inlining the lambda moves
-  that work inside the check, which the worldsmith runs again on its one retry.
-- **`RoomEngine.starting_items` and `TwentyfourxxEngine.world_of` stay**, on the reviewers' own
-  measurements: the first has no net cut (tunnelgoons would duplicate `new_game`'s body instead),
-  and the second needs a world type parameter on `SceneEngine` — more generics, not fewer, which is
-  `PLAN.md`'s "Not built" P3(a).
-- **The `_ =` discard prefixes stay.** 267 of them across `tests/`; `reportUnusedCallResult` is off
-  and no ruff rule asks for them, so they are a repo-wide convention to settle on its own, not this
-  phase's to unwind.
-- **Six forwarders stay, as the plan measured.** `kill` because `twentyfourxx/engine.py` overrides it
-  to run `_succession`, and a seam lambda would drop that in silence; `join_party` (111 columns),
-  `leave_party` (115), `move_item` (111), `ship_upgrade` and `use_med_kit` because past 110 columns
-  ruff breaks a registration one argument per line, so the lambda costs more than the method.
+Everything the reviews left open was decided rather than deferred, on the cleanest reading rather
+than the written one.
+
+1. **`TwentyfourxxEngine.hire_check` is gone.** It was a three-line method with one caller that
+   existed only to build a closure. What it was protecting — resolving `self.packs.chosen(draft.packs)`
+   **once**, outside the closure, so the worldsmith's one retry does not resolve it again — a local
+   at the call site protects just as well, in one line. `write_sheet` now reads
+   `packs = self.packs.chosen(draft.packs)` and passes `lambda sheet: sheet.check(packs)`. `Check`
+   leaves the `twentyfourxx` import with it. Net −3.
+2. **`tests/support/table.py` no longer carries its own rule for a tool call outside a turn.** It
+   asserted, with a comment calling that a harness bug. `Runtime.require_turn()` — the production
+   accessor phase 1 settled for exactly this rule — says it once and says it as a `Refusal`, so the
+   harness now exercises the rule the MCP path uses instead of paraphrasing it. Net −2.
+3. **`RoomEngine.starting_items` stays, and this is a distinction, not a measurement.** It looks like
+   the `glossary` hook that was cut, but it is not the same shape: `glossary` fed a value that was
+   *appended to* `master_sections`' result, so the one implementer could override that public method
+   and append it itself. `starting_items` is an *input* consumed in the middle of `new_game`, between
+   `check_map` and `world.opening`, and a mid-method input has no override point — removing the hook
+   makes `TunnelGoonsEngine` restate `new_game`'s whole body to change one argument. A hook with one
+   user is worth keeping exactly when the alternative is duplicating the caller.
+4. **`TwentyfourxxEngine.world_of` stays.** It repeats `SceneEngine.world_of` body for body and
+   exists only to narrow the return to `TwentyfourxxWorld`. Deleting it needs a world type parameter
+   on `SceneEngine` — more generics, not fewer — which is `PLAN.md`'s "Not built" P3(a), declined
+   there with its reasons and not reopened here.
+5. **Five forwarders stay methods, and the rule is now stated, not measured.** A tool row is a lambda
+   when the registration reads as one line or as three with its arguments hugged; it stays a method
+   when it would not, because ruff then breaks it one argument per line and a six-line entry hides
+   the table it belongs to. `join_party`, `leave_party`, `move_item`, `ship_upgrade` and
+   `use_med_kit` are on the wrong side of that; dissolving them costs about +2 lines each and makes
+   `master_tools()` harder to read, which is the opposite of the phase. `kill` is a separate case and
+   not a judgment at all: `twentyfourxx/engine.py` overrides it to run `_succession`, and a lambda
+   bound in the seam would drop that in silence.
+6. **The `_ =` discard prefixes stay.** 267 of them across `tests/`, with `reportUnusedCallResult`
+   off and no ruff rule asking for them. Unwinding a convention that size is its own commit against
+   its own decision, not a loose end of this one; nothing here depends on them.
 
 ### Known and accepted
 
 - **`tests/core/fixtures/` did not move**, which is what every step in this phase was shaped to
   guarantee: same tool names in the same order with the same schemas, and the four `worldsmith.txt`,
   `master.txt`, `narrator.txt` and `turn/*.json` goldens byte-identical to the phase 1 commit.
-- **`take_lead`'s lambda is reached by no test through the tool table**, and neither was the method
-  it replaced. `tests/twentyfourxx/test_world.py` tests `world.take_lead` and
-  `schemas/twentyfourxx/master_tools.json` pins the registration; this is a pre-existing gap the
-  phase neither widened nor closed.
+- **Every one of the eight new lambdas is exercised through the tool table**, checked by breaking
+  each and watching a test fail, not by reading. `take_lead` runs through `Engine.answer` in
+  `tests/twentyfourxx/test_tools.py::test_answering_the_succession_decision_makes_the_member_the_player`;
+  the rest through `change(...)`. An earlier draft of this entry recorded `take_lead` as an untested
+  gap; that was wrong.
 - **The QA harness plays all four shipped scenarios with 0 issues** (`qa/run_all.sh loner goons
   breathless 24xx`), which is the only check that drives the rewritten tool table end to end,
   including 24XX succession. `qa/` references none of the deleted symbols and `uv run basedpyright
   qa` is clean — the phase 1 standing consequence, checked by hand as it requires.
+- **The `tag` and `headline` f-strings still exist in both `core/views.py` and `engines/base.py`**,
+  as phase 1 recorded. Re-examined here and left: the shared thing is a thirty-character format over
+  two differently named field pairs (`label`/`detail` against `name`/`brief`), and a helper for it is
+  four lines to save two.
