@@ -2,8 +2,8 @@
 
 This plan lands the three cuts decided on 2026-09-16: the browser dictation button goes and a
 speech-to-text line joins `IDEAS.md`; the 3D dice tray goes and the dice chips on the fact cards,
-which already tumble, gain the sound; the Breathless engine goes, with its scenario, its character
-file, its notes, its fixtures and its qa scripts.
+which already tumble, gain the sound and the engine's dice colours; the Breathless engine goes,
+with its scenario, its character file, its notes, its fixtures and its qa scripts.
 
 Decided and not in this plan, so no phase re-opens them: scope prose, interjections, speech,
 illustration, the builtin completion loop, meanwhile, packs and supplements, the `qa/` harness and
@@ -11,7 +11,7 @@ the character axis all stay. The carry-forward of a grown character across scena
 not a phase.
 
 Measured before any step: `src` **10,181** Python lines, `tests` **12,222**, `qa` **2,088**, at
-`9d69793`. Every anchor below is as of that commit. The plan was reviewed adversarially once
+`9d69793`. Every anchor below is as of that commit. The plan was reviewed adversarially twice
 before phase 1; the targets below are the reviewed numbers.
 
 Not cut, with the reason:
@@ -24,13 +24,16 @@ Not cut, with the reason:
   `tests/turn/test_decisions.py:206` covers the base dispatcher.
 - **`engines/tools.py`** loses no line: `AskWorld`, `DropItem`, `Hire` and `ACTOR` keep users.
 - **`Look`** stays a model, not a `Mapping`: it is the validated boundary for `look.json`
-  (`seam.py:87`), and `Frozen` is `extra="forbid"`, which is what forces every `look.json` and
-  the two synthetic engines to change in the same phase as `DiceLook`.
+  (`seam.py:87`).
+- **`DiceLook`, `Look.dice` and the `dice` object in the four `look.json` files** stay: the chips
+  take the colours the tray had. Only the reader changes, from `dice_tray.js`'s props to three
+  CSS variables that `theme.set_look` writes beside the palette.
 - **`tests/core/fixtures/source/drowned-road.{md,pdf}`** stay. They are the PDF-ingestion fixtures
   for `tests/core/test_documents.py` and share only a name with the Breathless scenario.
 - **`characters/kael/icons/player.jpg`** stays; the icon is per character, not per engine.
-- **The 2D dice chips** (`_card`, `_dice_group`, `.game-die*` in `theme.css`) stay untouched.
-  They are the dice the player reads; phase 2 adds a sound to them and removes the second renderer.
+- **The 2D dice chips** (`_card`, `_dice_group`, `.game-die*` in `theme.css`) stay. They are the
+  dice the player reads; phase 2 adds a sound to them, paints them in the engine's `DiceLook`
+  colours and removes the second renderer.
 - **The sound button, `toggle_sound`, `sound_state` and the `localStorage` key** stay. The player
   who muted the tray stays muted, and `qa/s_loner.py:279-284` asserts the icon toggles.
 - **`Observed.facts`** stays: `whole_page` (`game.py:664-666`) reads it too.
@@ -123,14 +126,16 @@ Target: `src` about **10,143**, within 10,136 to 10,150 (`game.py` minus 30, `wi
 The chips on a fact card already show every die, tumble through `.game-die-live` for the live
 turn, and stop tumbling under `prefers-reduced-motion`. The 3D tray shows the same numbers a
 second time, relabelled to the value Python rolled, for a 692 KB vendored library, 28 sound files
-and a `DiceLook` every engine must ship. The tray goes. One click sound stays, played when dice
-land, muted by the same button and while a narration clip plays.
+and a canvas. The tray goes. Two things it carried move to the chips: one click sound, played when
+dice land, muted by the same button and while a narration clip plays; and the engine's own dice
+colours, which `DiceLook` keeps and the chips take through three CSS variables. Today the chips
+read only the palette, so without this move the per-engine dice would go with the tray.
 
-Target: `src` about **10,118**, within 10,110 to 10,126 (`dice.py` 35 to about 18, `views.py`
-minus 8, `game.py` minus 2, `app.py` unchanged). `tests` about **12,183**, within 12,176 to 12,190
-(two tests go from `tests/ui/test_dice.py`, one is rewritten, one is added). `qa` stays 2,088.
-Non-Python: `ui/lib/` (two files, 692 KB), `dice_tray.js` and 27 of the 28 sound files go. About
-half a day.
+Target: `src` about **10,128**, within 10,120 to 10,136 (`dice.py` 35 to about 18, `game.py`
+minus 2, `theme.py` plus 4, `views.py` and `app.py` unchanged). `tests` about **12,188**, within
+12,180 to 12,196 (one test goes from `tests/ui/test_dice.py`, two are rewritten, one is added).
+`qa` stays 2,088. Non-Python: `ui/lib/` (two files, 692 KB), `dice_tray.js` and 27 of the 28
+sound files go. About half a day.
 
 ### Steps
 
@@ -157,30 +162,37 @@ half a day.
    `self.run_method("play")` when `landed`. Delete `thrown`. `rolled_since(facts, seen)` returns
    `bool`: whether any told card fact after `seen` carries dice. Drop the `DiceEvent` and
    `DiceLook` imports.
-5. `src/aidm/core/views.py:119-129`: delete `DiceLook` (`:119-125`) and the `dice` field
-   (`:129`); `Look` keeps only `palette`.
-6. The four `look.json` files (`engines/{loner3e,tunnelgoons,breathless,twentyfourxx}/look.json`):
-   delete the `"dice"` object and the comma before it. Phase 3 deletes the Breathless one anyway;
-   edit it here so this phase's check is green on its own.
+5. `src/aidm/ui/theme.py:30-31`: `set_look` writes three more variables on `body` after the
+   palette, `game-die-body`, `game-die-ink` and `game-die-glow`, read off `look.dice`; none when
+   `look` is `None`, since no chip renders off the game page. About 4 lines. `DiceLook` and
+   `Look.dice` (`core/views.py:119-129`), the four `look.json` files, `tests/support/fifth.py`
+   and `tests/support/sixth.py` do not change.
+6. `src/aidm/ui/theme.css:252-264`: `.game-die` takes `background: var(--game-die-body)` and
+   `color: var(--game-die-ink)` in place of the raised surface; `.game-die-face` drops its `color`
+   and inherits the ink; `.game-die-kept` glows with `var(--game-die-glow)` in place of the
+   accent. `:271-274`: delete `.game-dice-overlay`; drop it from the reduced-motion transition
+   rule at `:333`.
 7. `src/aidm/ui/game.py`: `self.dice: DiceSound` (`:116`), `self.dice = DiceSound()` (`:196`),
    `self.dice.play(landed=self._dice_landed(now))` (`:444`). `_landed` (`:573-581`) becomes
    `_dice_landed(self, now: Observed) -> bool` with the same two reads, `or`-ed instead of
    concatenated; the `DiceEvent` import at `:17` goes if `Fact, cards` are its only remaining
    neighbours. `toggle_sound` and `sound_state` stay. Update the import at `:20`.
-8. `src/aidm/ui/theme.css:271-274`: delete `.game-dice-overlay`; drop it from the reduced-motion
-   transition rule at `:333`.
-9. Tests. `tests/ui/test_dice.py`: delete `test_every_rolled_value_is_one_die_in_event_order` and
-   `test_dice_look_keys_match_what_dice_tray_js_reads_off_look` and their imports; rewrite
-   `test_only_the_told_dice_landing_after_the_seen_facts_are_thrown` for the `bool` (`seen=1`
-   true, `seen=0` true, `seen=3` false). Add one test: `DiceSound().play(landed=False)` runs no
-   method and `play(landed=True)` runs `"play"`, through a spy on `run_method`, built inside
-   `Client(ui.page("/"))` under `_nicegui_loop()` the way `tests/ui/test_game.py:174-180` does
-   (`run_method` returns a `NullResponse` with no loop, so the spy is the only observable).
-   `tests/ui/test_game.py:35,164`: `DiceTray(...)` becomes `DiceSound()`. `tests/support/fifth.py:82`
-   and `tests/support/sixth.py:68`: the look string becomes `'{"palette": {}}'`.
-10. `README.md:78`: the 3D dice line goes. `IDEAS.md:14` (item 17) is rewritten as done
-    differently: the chips on the card tumble and click; the physics canvas was tried and removed.
-11. Full check, then `uv run aidm`, take a turn that rolls, hear one click, mute, roll, silence.
+8. Tests. `tests/ui/test_dice.py`: delete `test_every_rolled_value_is_one_die_in_event_order` and
+   the `thrown` import; rewrite `test_only_the_told_dice_landing_after_the_seen_facts_are_thrown`
+   for the `bool` (`seen=1` true, `seen=0` true, `seen=3` false); rewrite
+   `test_dice_look_keys_match_what_dice_tray_js_reads_off_look` as the same drift check against
+   the new reader: every `DiceLook` field name appears in `theme.css` (beside `aidm.ui.theme`) as
+   `var(--game-die-<field>)`, so a rename on either side fails here. Add one test:
+   `DiceSound().play(landed=False)` runs no method and `play(landed=True)` runs `"play"`, through
+   a spy on `run_method`, built inside `Client(ui.page("/"))` under `_nicegui_loop()` the way
+   `tests/ui/test_game.py:174-180` does (`run_method` returns a `NullResponse` with no loop, so
+   the spy is the only observable). `tests/ui/test_game.py:35,164`: `DiceTray(...)` becomes
+   `DiceSound()`.
+9. `README.md:78`: the 3D dice line goes. `IDEAS.md:14` (item 17) is rewritten as done
+   differently: the chips on the card tumble, click and wear the engine's colours; the physics
+   canvas was tried and removed.
+10. Full check, then `uv run aidm`, take a turn that rolls, hear one click, see the chips in the
+    engine's colours (open a second engine's scenario: they differ), mute, roll, silence.
     `PROGRESS.md` entry with both counts.
 
 ## Phase 3: Breathless leaves
@@ -190,9 +202,9 @@ game on a platform built for long saves, and the smallest of the three scene eng
 whole: package, scenario, character file, notes, fixtures, support module, qa scripts, licence
 line. Three engines remain and the seam does not change.
 
-Target: `src` about **9,459**, within 9,445 to 9,475 (658 lines of `engines/breathless/*.py`, 1
+Target: `src` about **9,469**, within 9,455 to 9,485 (658 lines of `engines/breathless/*.py`, 1
 import in `registry.py`; the `BreathlessEngine()` entry is inline in a tuple and costs no line).
-`tests` about **11,457**, within 11,430 to 11,490 (592 in `tests/breathless/`, 89 in
+`tests` about **11,462**, within 11,435 to 11,495 (592 in `tests/breathless/`, 89 in
 `tests/support/breathless.py`, about 45 across the six shared test files below). `qa` about
 **2,019**, within 2,010 to 2,028 (42 in `s_breathless.py`, 16 in `s_create.py`, 10 in
 `s_endure.py`, 1 in `agents.py`; `s_requests.py` is retargeted, not shortened). Two days.
@@ -223,7 +235,8 @@ import in `registry.py`; the `BreathlessEngine()` entry is inline in a tuple and
    Breathless: rewrite both on `twentyfourxx_world()` with `KESTREL` joined to the party and
    `SABLE` as the unmet name (`tests/support/twentyfourxx.py:39-44`: both are in `run.here`, the
    same shape as Mira and Dax), `SceneDraft[Crewmate]` and `TWENTYFOURXX_BASE`. Same asserts,
-   same names.
+   same names. Run the two before counting: the rewrite is reasoned, not proven, and if
+   `check_scene` refuses the 24XX draft the fix is in the draft, never in `check_scene`.
 8. `tests/app/test_game_service.py:294` (`test_a_failed_write_after_a_hire_names_the_hire`): the
    table opens on `TWENTYFOURXX` with `TwentyfourxxGame`, and the hire names `vessa-rune`, who is
    in `scenarios/silent-relay`'s opening `present` list and so known and hireable at the first
@@ -246,7 +259,10 @@ import in `registry.py`; the `BreathlessEngine()` entry is inline in a tuple and
 11. `README.md`: delete the Breathless paragraph (`:23`), its notes link (`:63`) and its licence
     line (`:72`); "Four engines ship from one build" (`:16`) becomes three. `IDEAS.md` and
     `docs/COMPETITOR-RESEARCH.md` name neither Breathless nor the scenario; confirm with grep.
-12. `grep -ri "breathless\|drowned" --exclude-dir=.venv --exclude-dir=.git .` returns only
-    `PLAN.md`, `PROGRESS.md` and the two `tests/core/fixtures/source/drowned-road.*` fixtures.
+12. `grep -ril "breathless\|drowned-road" --exclude-dir=.venv --exclude-dir=.git .` returns
+    only `PLAN.md`, `PROGRESS.md`, the two `tests/core/fixtures/source/drowned-road.*` fixtures
+    and `tests/core/test_documents.py`, which reads them. The word `drowned` alone also matches
+    a room in `scenarios/buried-keep/world.json`, the tunnelgoons narrator golden and a title in
+    `tests/core/test_prompt.py`; none of those is Breathless and none changes.
 13. Full check, then `uv run aidm`: the launcher lists three engines, kael has three sheets, the
     three scenarios each take a turn. `PROGRESS.md` entry with both counts.
