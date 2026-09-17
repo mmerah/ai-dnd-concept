@@ -12,6 +12,33 @@ second model family.
 Each proposal: what it is in plain words, what the code is now, what it becomes, feature impact,
 size, and a decision where one is open. Options are listed recommended-first.
 
+## Measured summary
+
+Every accepted proposal was implemented by an Opus subagent in a throwaway worktree with ruff,
+ruff format, basedpyright and pytest clean. These are `git diff --numstat` numbers, not estimates.
+
+| # | Proposal (accepted option) | Claimed | Measured net | src | tests | Verdict |
+|---|---|---|---|---|---|---|
+| 1 | Packs never optional (a) | −30 | **−59** | −60 | −14 | holds; two follow-ups |
+| 2 | Engine generics (a) | −12 | **−9** | −6 | −3 | holds |
+| 3 | Pack editor to JSON (a) | −290 | **−460** | −323 | −137 | holds |
+| 4 | Pack choice one mechanism | −35 | **−7** | −16 | +9 | a wash; kept for the concept |
+| 5 | Only `Panel.portrait` (b) | +2 | **+10** | +1 | +9 | holds; lift dropped (+36) |
+| 6 | `leave_party` base + frozen drafts (b) | small − | **−5** | −5 | 0 | holds; rest dropped (+16) |
+| 7 | Meanwhile clock and tool (a) | −15 | **+12** | +20 | −8 | kept for structure; do 2 first |
+| 8 | `Game.source` (b) | −5 | **−4** | −4 | 0 | holds; (a) was +38 |
+| 9 | `Gate` + `Busy` + `check_resumes` (d) | +20 | **+17** | +17 | 0 | kept for structure |
+| 10 | Rooms family: keep (A) | 0 | 0 | 0 | 0 | decided |
+| 11 | One home per string (a) | −15 | **+9** | +7 | +1 | kept for the rule; import cycle noted |
+| 12 | Vocabulary (a) | ±0 | **+6** | −8 | +12 | holds |
+| 13 | UI trims (+ b) | −75 | **+24** | +35 | −11 | trims hold; (b) and media mounts to re-decide |
+| 14 | Tests (a) | −830 | **−1221** | 0 | −406 (+ −810 script/fixture) | holds |
+| 15 | Small cuts | −90 | **−14** | −21 | +13 | two bullets dropped |
+
+Total as accepted so far: about **−1700** lines, of which −1221 is proposal 14 and −460 is
+proposal 3. The structural proposals (5b, 7, 9d, 11, 13) add about +70 between them; they are kept
+for the rules they enforce, not for size. Effort measured in minutes per proposal, not hours.
+
 ---
 
 ## 1. Packs are never optional
@@ -167,6 +194,8 @@ one entry point. Delete everything listed in "Now" except `select_packs`.
 
 **Status.** Re-decided, option (b): only `Panel.portrait` (2 lines) replaces the page's `index == 0` guess. The lift itself is dropped.
 
+**Measured, re-decided option (Opus, worktree, all four checks clean).** src +1, tests +9 (a new test that exactly one panel carries the portrait), net **+10**. 1 min. Holds.
+
 **Measured (Opus implemented it in a worktree, all four checks clean).** src **+36** (deleted −115 from the families, added +161: shared builders in `seam.py` +78, `World` hooks +35). 30 min. Two surprises: `premise_of` cannot be typed without `Any` under strict, so each family keeps a ~10-line `author`; and one `family_panels` hook cannot reproduce both panel orders, so the room page now shows Carrying and Ways out above Party and Also here. **Re-decide**: the duplication is gone, but it costs lines and changes the room page.
 
 **Plain words.** The scene family and the room family each build the narrator's view, the player's
@@ -198,6 +227,8 @@ DecisionOption | None` (MOVE_ON if offered / MORE_MAP if frontier == 0), `openin
 ## 6. State owns its own mutation
 
 **Status.** Re-decided, option (b): only `World.leave_party` concrete and `SceneDraft`/`NextDraft` frozen. `Game.close`/`open_chapter` and the `kill` skeleton are dropped.
+
+**Measured, re-decided option (Opus, worktree, all four checks clean).** src **−5**, tests 0. 1.5 min. Holds; `SceneDraft(Frozen)` was free.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src **+16** (claimed −12 plus ~20 moved). 15 min. `Game.close` needs its own six-line signature; `require_present` costs about what the branch it replaced cost. No test pinned the changed refusal. **Re-decide**: the ownership rule is the only win.
 
@@ -269,6 +300,8 @@ knows no world shape); `Engine.meanwhile_turns` and the `RoomEngine.tick` overri
 
 **Status.** Re-decided, option (b): `Game.source: str = ""` set in `Engine.begin` from `scenario.source`, read by `render_request`; both `opening` classmethods lose the parameter; `World.source` deleted. Still saved; no signature threading.
 
+**Measured, re-decided option (Opus, worktree, all four checks clean).** src **−4**, tests 0 (three one-line reads become `state.source`; one direct `opening` call in `tests/tunnelgoons/test_world.py`). 1.5 min. Holds; no golden moved.
+
 **Measured (Opus implemented it in a worktree, all four checks clean).** src +24, tests +14, net **+38** (claimed −12). 4 min. Deleting `World.source` is one line; threading `source` through `_grow` → `advance` → `Request.write` → `depart`/`complicate`/`extend`/`write_hire` → `write_next`/`write_sheet` → `render_request` widens nine signatures, and `ruff format` expands each past the 100-column limit. Also: a golden test calls `advance` directly and would have silently lost its SOURCE MATERIAL region; a `scenario_source()` test helper was needed. **Re-decide**: (b) `Game.source` set in `begin`, read by `render_request`: about −8/+4 and honest, still saved; or (a) as measured; or drop.
 
 **Plain words.** Every save file carries a copy of the scenario's source text (up to 48 KB) and a
@@ -301,6 +334,8 @@ parameter; `World.source` deleted.
 ## 9. Runtime and GameService: one job each, no back-reference
 
 **Status.** Re-decided: option (d) below, the structural wins without the costly extractions.
+
+**Measured, re-decided option (Opus, worktree, all four checks clean).** src **+17**, tests 0, net +17 (expected about +20). 4 min. Every structural win landed. Notes for the plan: the constructor is `spawner: InitVar[Spawner | None]` with the stored attribute renamed `roles` (`GameService.spawner` stays); `check_resumes` is only a real check in `_resumed` (the launcher builds the target from the state's own ids, and the "filed under another name" slug rule stays in `_save_option`); two UI tests raise `Busy(elsewhere=...)` now; `qa/agents.py` and `tests/support/table.py` reach `require_turn` through `.gate`.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src **+60**, tests +6, net **+66** (claimed −60). 7 min. Every extraction is paid in lines: `Presentation` costs ~35 to absorb ~20, `Gate` ~28 for ~22, `Busy` 7 to save 2, `check_resumes` 10 to save 6. `_tell` cannot cover `interject` (different role, must not illustrate) and a test pins that a failed save is not swallowed by `_grow`, so `_tell` returns the state and the caller saves. Structural wins are real: `mcp` no longer imports `Runtime`, the page no longer compares refusal text. **Re-decide**: (a) drop 9, (b) keep only `Gate` + `Busy` (the back-reference and the string compare, ~+10), (c) do it all for clarity at +66, (d) **chosen**: `Gate` + `Busy` + `check_resumes` + `Runtime(settings, spawner=None)`, and drop `Presentation` and `_tell`. That keeps every structural win (`mcp` takes a `Gate`, not `Runtime`; `GameService` holds a `Gate`, not `Runtime`; the page catches `Busy`; one resume rule; no test-only factory lambda) and skips the two extractions that cost 35 lines each to absorb 20. Expected about +20 net; to be measured. A cleaner cut still: `Gate` is the only object that knows which session is playing, so `Runtime.turn`/`require_turn` move onto it and `Runtime` stops knowing about turns at all.
 
@@ -543,7 +578,9 @@ partial(open_table, ...)`.
 
 ## 15. Small cuts, one PR
 
-**Status.** Accepted with the recommendations: `source_max_bytes` becomes a constant; the hire stub stays as is.
+**Status.** Accepted with the recommendations (`source_max_bytes` constant; hire stub stays). Measured at −14, not −90; two bullets dropped after measuring (below).
+
+**Measured, re-decided option (Opus, worktree, all four checks clean).** src **−21**, tests +13, content −6 (three `look.json`), net **−14** (claimed −90). 14 min. Paid as advertised: the two `for_name` blocks (−9), `Look`/`DiceLook` flattened (−11 src, −6 JSON), `Turn` properties, `PackSet.installed` property, `Engine.tool`, `twists` once, `Gear(**kit.model_dump())`, `GoonSheet.rows(carried=)`, `SOURCE_MAX_BYTES`, docstrings, settings hints, `let_party_speak`. **Dropped after measuring**: the lambda-vs-method bullet (each lambda wraps to five lines at 100 columns: +6, not −8) and the "drop the third decode" bullet (all three passes guard something pinned; the −4 does not exist). **Wash, keep for the rule only**: `PackStore` into `PackSet` (−16 in `core/io.py`, +9 in `engines/packs.py`, +6 in eight test constructions, and it puts a file write into `engines/packs.py`); decide at plan time. **Behaviour change to name**: `CrewSheet.gear_text()` needs an `ids` flag and the character preview now shows item notes such as "(bulky)". Tests that pin things: `Engine.tool`'s message in `tests/turn/test_decisions.py`; three tests that called `validate` directly now go through `restore`; `tests/ui/test_dice.py` rewritten to walk the palette.
 
 **Plain words.** Two dozen one-file changes, each obvious once seen. No behaviour change unless
 marked.
