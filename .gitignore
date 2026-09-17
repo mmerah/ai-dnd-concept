@@ -21,3 +21,6 @@ evals/results/
 
 # QA harness screenshots
 qa/shots/
+
+# Subagent worktrees
+.claude/worktrees/
