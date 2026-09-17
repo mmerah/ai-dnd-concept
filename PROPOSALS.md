@@ -2,7 +2,7 @@
 
 Sources: a full read of `src/aidm` by four reviewers (three Fable subagents on concepts, engines/seam,
 app/ui/tests, plus the lead), checked against CLAUDE.md and README.md. Baseline: 795 tests pass,
-ruff and basedpyright clean. Line counts are estimates (±20%).
+ruff and basedpyright clean. Line counts under **Size** are the reviewers' estimates; where a **Measured** line exists, an Opus subagent implemented the proposal in a throwaway worktree with all four checks clean and the measured `git diff --numstat` is the number to trust.
 
 What was looked for and not found: import-direction violations, `Any` outside the allowed bound,
 properties with side effects, settings without a reader, dead top-level code. The fat is
@@ -16,7 +16,9 @@ size, and a decision where one is open. Options are listed recommended-first.
 
 ## 1. Packs are never optional
 
-**Status.** Accepted, option (a): tuple + ship the Tunnel Goons SRD pack.
+**Status.** Accepted, option (a). Measured: holds. Two follow-ups to fold into the plan (below).
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src −60, tests −14, content +10 (the new pack +25, six shipped files −15), one golden, net **−59** (claimed ≈ −30). 11 min. Follow-ups the proposal missed: (1) `.gitignore` line `packs/` also hides `src/aidm/engines/*/packs/`; change it to `/packs/`. (2) Deleting the `SceneEngine` overrides also deleted the "a game plays the SRD" check and its two tests, so a save whose list omits `srd` is now accepted. Since every engine now requires the SRD, put that check once in base `Engine.validate` (3 lines) and keep the tests. (3) `tests/support/sixth.py` needs a `packs/srd.json` too.
 
 **Plain words.** Every game plays a list of packs. Today that list can be "nothing", only because
 Tunnel Goons ships no pack. That one gap costs 28 `None` branches and four whole overrides.
@@ -132,7 +134,9 @@ from labels and the ask can carry `min_length=6, max_length=36` steering.
 
 ## 4. Pack choice is one mechanism, not a creation step
 
-**Status.** Accepted.
+**Status.** Accepted. Measured at −7, a wash, not a saving. The concept still unifies; re-confirm.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src −16, tests +9, net **−7** (claimed −35). 5 min. Two reasons: the UI may not import `aidm.engines` (`test_package_boundary`), so the shared select takes `DecisionOption`s, not an engine; and dropping `chosen_packs` removed the one non-raising path, so both forms need a small helper that alerts on a `Refusal` (the 2-pack cap is reachable from the page) and keeps the previous selection. Nine test files touched, not two: every `create_character` call site gains a `packs` argument.
 
 **Plain words.** Picking packs is smuggled through character creation as a special "multiple"
 answer joined with commas, while the scenario page draws its own select for the same thing. One
@@ -263,7 +267,9 @@ knows no world shape); `Engine.meanwhile_turns` and the `RoomEngine.tick` overri
 
 ## 8. The save copies nothing from the scenario it does not need
 
-**Status.** Accepted, option (a): source not saved at all.
+**Status.** Accepted option (a), then measured at **+38**: sign is wrong. Awaiting re-decision.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src +24, tests +14, net **+38** (claimed −12). 4 min. Deleting `World.source` is one line; threading `source` through `_grow` → `advance` → `Request.write` → `depart`/`complicate`/`extend`/`write_hire` → `write_next`/`write_sheet` → `render_request` widens nine signatures, and `ruff format` expands each past the 100-column limit. Also: a golden test calls `advance` directly and would have silently lost its SOURCE MATERIAL region; a `scenario_source()` test helper was needed. **Re-decide**: (b) `Game.source` set in `begin`, read by `render_request`: about −8/+4 and honest, still saved; or (a) as measured; or drop.
 
 **Plain words.** Every save file carries a copy of the scenario's source text (up to 48 KB) and a
 copy of its title, premise and scope. The source is read once per world-growth request; the copy of
