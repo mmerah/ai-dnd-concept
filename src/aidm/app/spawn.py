@@ -24,6 +24,7 @@ LOGGER = logging.getLogger(__name__)
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
+PROMPT_MAX_BYTES = 131_072  # Linux MAX_ARG_STRLEN: the prompt is one argv element
 # A resumed session id is fed back as an argv element; a leading `-` must not parse as a flag.
 SessionId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")]
 
@@ -163,6 +164,11 @@ async def run_cli(
     role: Role, config: RoleConfig, driver: Driver, port: int, prompt: str, session: str | None
 ) -> RunResult:
     """The only thing in the codebase that starts a process."""
+    if (size := len(prompt.encode())) >= PROMPT_MAX_BYTES:
+        raise Refusal(
+            f"the {role} prompt is {size} bytes; "
+            f"the command line takes fewer than {PROMPT_MAX_BYTES}"
+        )
     url = f"http://localhost:{port}/mcp/"
     argv = driver.command(role, config, session, url)
     started = monotonic()

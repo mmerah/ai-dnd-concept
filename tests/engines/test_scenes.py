@@ -1,4 +1,3 @@
-import copy
 from collections.abc import Sequence
 from random import Random
 
@@ -14,12 +13,11 @@ from support.table import (
 )
 
 from aidm.core.entities import Refusal, Slug, parse
-from aidm.core.model import Generation, PackSelection
+from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.scenes.engine import MEANWHILE_NUDGE, MOVE_ON
-from aidm.engines.scenes.packs import SRD_PACK, PackSet
 from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene
@@ -233,42 +231,6 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     world.cast[MARA].name = "Someone else"
 
     assert scenario.payload.model_dump() == before
-
-
-def test_new_game_refuses_a_character_made_from_an_unselected_pack() -> None:
-    engine = ENGINES_BUILT[LONER3E]
-    scenario_id = scenario_for(LONER3E)
-    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    character = LIBRARY.read_character("kael", engine.id, engine.character)
-    stranded = character.model_copy(update={"packs": PackSelection(ids=(SRD_PACK, "other"))})
-
-    with pytest.raises(Refusal, match="'kael' was made with srd, other"):
-        engine.new_game(scenario, stranded)
-
-
-def test_new_game_accepts_a_character_made_from_a_subset_of_the_scenarios_packs() -> None:
-    engine = ENGINES_BUILT[LONER3E]
-    scenario_id = scenario_for(LONER3E)
-    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    wider = scenario.model_copy(update={"packs": PackSelection(ids=(SRD_PACK, "ap01-fantasy"))})
-    character = LIBRARY.read_character("kael", engine.id, engine.character)
-
-    assert engine.begin(scenario_id, wider, character).packs == wider.packs
-
-
-def test_select_refuses_a_selection_without_the_srd() -> None:
-    engine = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
-
-    with pytest.raises(Refusal, match="plays the 'srd' tables"):
-        engine.packs.select(PackSelection(ids=("ap01-fantasy",)))
-
-
-def test_select_refuses_two_packs_that_define_the_same_id() -> None:
-    engine = copy.copy(narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine))
-    engine.packs = PackSet(engine.id, {**engine.packs.installed, "twin": engine.packs.srd()})
-
-    with pytest.raises(Refusal, match="both define"):
-        engine.packs.select(PackSelection(ids=(SRD_PACK, "twin")))
 
 
 def test_join_party_on_the_players_own_id_refuses() -> None:

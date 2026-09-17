@@ -64,6 +64,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     # Declared, not `ClassVar`: `type[G]` cannot be one, and a test sets them on its own instance.
     id: EngineId
     title: str
+    authoring: str
     art_style: str
     meanwhile_turns: int = 6
     hires: bool = False
@@ -358,6 +359,3 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     @abstractmethod
     def act(self, draft: G, action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
-
-    @abstractmethod
-    def guidance(self, selection: PackSelection | None, /) -> str: ...

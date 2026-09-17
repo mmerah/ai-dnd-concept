@@ -1,8 +1,6 @@
 from pathlib import Path
 from random import Random
 
-from pydantic import JsonValue
-
 from aidm.core.creation import (
     CreationStep,
     Picks,
@@ -13,7 +11,6 @@ from aidm.core.creation import (
 )
 from aidm.core.entities import EngineId, Slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, master_tool
@@ -41,7 +38,7 @@ from aidm.engines.loner3e.world import (
     pack_meanings,
     twist_pairing,
 )
-from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
+from aidm.engines.loner3e.worldsmith import AUTHORING, Loner3ePack
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 
 TWIST_NOTE = (
@@ -57,15 +54,16 @@ DEFEAT_NOTE = (
 )
 
 
-class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
+class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
+    authoring = AUTHORING
     art_style = "Painterly illustration, muted colours, no text or lettering."
     directory = Path(__file__).parent
     game = Loner3eGame
     scenario = Loner3eScenario
     character = Loner3eCharacter
-    pack = Pack
+    pack = Loner3ePack
     world = Loner3eWorld
     member = Loner3eCast
 
@@ -140,10 +138,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         )
         return self.sheet_character(name, sheet, packs)
 
-    def guidance(self, selection: PackSelection | None) -> str:
-        chosen = self.packs.require(selection)
-        return f"{AUTHORING}\n\n{self.packs.content(chosen, _revised)}"
-
     def master_sections(self, state: Loner3eGame) -> Sections:
         packs = self.packs.chosen(state.packs)
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
@@ -160,7 +154,11 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             )
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         glossary = (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
-        return (*super().master_sections(state), *glossary)
+        return (
+            *super().master_sections(state),
+            *self.packs.rules_sections(state.packs),
+            *glossary,
+        )
 
     def twist_table(self) -> Rows:
         """Always the SRD's own table: no other pack publishes one."""
@@ -255,8 +253,3 @@ def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
     """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
     lines = tuple(fact.card for fact in exchange if fact.told and fact.card)
     return [fact.model_copy(update={"card": ""}) for fact in exchange], lines
-
-
-def _revised(pack: Pack) -> JsonValue:
-    """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
-    return pack.model_dump(mode="json", exclude_defaults=True)

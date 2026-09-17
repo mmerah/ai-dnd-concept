@@ -10,7 +10,7 @@ from aidm.core.io import Library
 from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
-from aidm.engines.scenes.packs import SRD_PACK
+from aidm.engines.packs import SRD_PACK
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:

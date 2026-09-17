@@ -4,7 +4,7 @@ from aidm.core.entities import EngineId, Slug
 from aidm.core.model import PackSelection, ScenarioMeta
 from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.scenes.packs import SRD_PACK
+from aidm.engines.packs import SRD_PACK
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import (

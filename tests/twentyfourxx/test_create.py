@@ -3,7 +3,7 @@ from support.twentyfourxx import ENGINE
 
 from aidm.core.entities import Refusal
 from aidm.core.model import PackSelection
-from aidm.engines.scenes.packs import SRD_PACK
+from aidm.engines.packs import SRD_PACK
 
 SNEAK = {
     "specialty": "sneak",

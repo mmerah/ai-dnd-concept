@@ -20,8 +20,8 @@ from aidm.core.model import AnyGame, Check, Generation, PackSelection
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
+from aidm.engines.packs import SRD_PACK
 from aidm.engines.scenes.engine import DEPARTURE, SceneEngine
-from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene

@@ -27,7 +27,7 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.scenes.packs import SRD_PACK, PackSet, ScenePack, read_packs
+from aidm.engines.packs import SRD_PACK, Pack, PackSet, read_packs
 from aidm.engines.scenes.tools import (
     ENTER,
     LEAVE,
@@ -77,7 +77,7 @@ MEANWHILE_NUDGE = (
 )
 
 
-class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
+class SceneEngine[C: Person, G: Game[Any], K: Pack](Engine[C, C, G]):
     pack: type[K]
     world: type[SceneWorld[C]]
     packs: PackSet[K]
@@ -90,6 +90,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
     def __init__(self) -> None:
         self.packs = read_packs(self.id, self.directory / "packs", self.pack)
+        self.packs.srd()  # an engine that ships no srd pack is a bug, not a refusal
         super().__init__()
 
     def world_of(self, state: G) -> SceneWorld[C]:
@@ -105,7 +106,14 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
     def validate(self, state: G) -> None:
         super().validate(state)
-        self.packs.select(self.packs.require(state.packs))
+        selection = self.packs.require(state.packs)
+        if SRD_PACK not in selection.ids:
+            raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")
+        self.packs.select(selection)
+
+    def guidance(self, selection: PackSelection | None, /, *, opening: bool) -> str:
+        packs = self.packs.guidance(self.packs.require(selection), opening=opening)
+        return f"{self.authoring}\n\n{packs}" if packs else self.authoring
 
     def chosen_packs(self, picks: Picks) -> tuple[K, ...]:
         """An uninstalled id is skipped: the page calls this on every change and cannot raise."""
@@ -242,7 +250,10 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         if world.meanwhile_due:
             intent += f"\n\n{MEANWHILE_NUDGE}"
         return self.render_request(
-            draft, guidance=self.guidance(draft.packs), intent=intent, answer=NextDraft[self.member]
+            draft,
+            guidance=self.guidance(draft.packs, opening=False),
+            intent=intent,
+            answer=NextDraft[self.member],
         )
 
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> NextDraft[C]:
@@ -278,7 +289,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         def built(draft: SceneDraft[C]) -> AnyScenario:
             return self.build_scenario(meta, selection, draft, source, draft.situation)
 
-        guidance = self.guidance(selection)
+        guidance = self.guidance(selection, opening=True)
         model = SceneDraft[self.member]
         prompt = self.render_worldsmith(
             source, meta.scope, self.opening_sections, OPENING, guidance, model
