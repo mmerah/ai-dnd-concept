@@ -134,7 +134,7 @@ from labels and the ask can carry `min_length=6, max_length=36` steering.
 
 ## 4. Pack choice is one mechanism, not a creation step
 
-**Status.** Accepted. Measured at −7, a wash, not a saving. The concept still unifies; re-confirm.
+**Status.** Accepted, kept after measuring at −7: the one mechanism is the point, not the lines.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src −16, tests +9, net **−7** (claimed −35). 5 min. Two reasons: the UI may not import `aidm.engines` (`test_package_boundary`), so the shared select takes `DecisionOption`s, not an engine; and dropping `chosen_packs` removed the one non-raising path, so both forms need a small helper that alerts on a `Refusal` (the 2-pack cap is reachable from the page) and keeps the previous selection. Nine test files touched, not two: every `create_character` call site gains a `packs` argument.
 
@@ -165,7 +165,7 @@ one entry point. Delete everything listed in "Now" except `select_packs`.
 
 ## 5. Lift the view and authoring builders out of the two families
 
-**Status.** Accepted, then measured at +36 lines with a panel-order change; awaiting re-decision.
+**Status.** Re-decided, option (b): only `Panel.portrait` (2 lines) replaces the page's `index == 0` guess. The lift itself is dropped.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src **+36** (deleted −115 from the families, added +161: shared builders in `seam.py` +78, `World` hooks +35). 30 min. Two surprises: `premise_of` cannot be typed without `Any` under strict, so each family keeps a ~10-line `author`; and one `family_panels` hook cannot reproduce both panel orders, so the room page now shows Carrying and Ways out above Party and Also here. **Re-decide**: the duplication is gone, but it costs lines and changes the room page.
 
@@ -197,7 +197,7 @@ DecisionOption | None` (MOVE_ON if offered / MORE_MAP if frontier == 0), `openin
 
 ## 6. State owns its own mutation
 
-**Status.** Accepted, then measured at +16 lines; awaiting re-decision.
+**Status.** Re-decided, option (b): only `World.leave_party` concrete and `SceneDraft`/`NextDraft` frozen. `Game.close`/`open_chapter` and the `kill` skeleton are dropped.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src **+16** (claimed −12 plus ~20 moved). 15 min. `Game.close` needs its own six-line signature; `require_present` costs about what the branch it replaced cost. No test pinned the changed refusal. **Re-decide**: the ownership rule is the only win.
 
@@ -231,7 +231,7 @@ instead of "does not travel with the player".
 
 ## 7. Meanwhile: the world keeps the clock, the tool resolves the ids
 
-**Status.** Accepted, option (a): one `meanwhile` tool. Measured at +12 lines; one behaviour question below.
+**Status.** Accepted, option (a). Order: do proposal 2 first, so the base engine declares `world` and the tempo floor check ("ticks every N turns", refuses < 2) reads `self.world.tempo` and survives with its test. Measured at +12; accepted for the import direction and the tool/world split, not for lines.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src **+20**, tests −8, net **+12** (claimed −15). 4 min. The import from world to tools is gone and every `test_rooms.py` refusal passes unchanged. The growth is the split: one 48-line method becomes four world methods plus a 21-line engine method. **Question**: the tempo floor check in `Engine.__init__` ("ticks every N turns", refuses < 2) has nothing to read once the tempo is a world `ClassVar`; the verifier deleted it and its test. Keep it by doing proposal 2 first (the base then declares `world`), or accept the deletion.
 
@@ -267,7 +267,7 @@ knows no world shape); `Engine.meanwhile_turns` and the `RoomEngine.tick` overri
 
 ## 8. The save copies nothing from the scenario it does not need
 
-**Status.** Accepted option (a), then measured at **+38**: sign is wrong. Awaiting re-decision.
+**Status.** Re-decided, option (b): `Game.source: str = ""` set in `Engine.begin` from `scenario.source`, read by `render_request`; both `opening` classmethods lose the parameter; `World.source` deleted. Still saved; no signature threading.
 
 **Measured (Opus implemented it in a worktree, all four checks clean).** src +24, tests +14, net **+38** (claimed −12). 4 min. Deleting `World.source` is one line; threading `source` through `_grow` → `advance` → `Request.write` → `depart`/`complicate`/`extend`/`write_hire` → `write_next`/`write_sheet` → `render_request` widens nine signatures, and `ruff format` expands each past the 100-column limit. Also: a golden test calls `advance` directly and would have silently lost its SOURCE MATERIAL region; a `scenario_source()` test helper was needed. **Re-decide**: (b) `Game.source` set in `begin`, read by `render_request`: about −8/+4 and honest, still saved; or (a) as measured; or drop.
 
@@ -300,9 +300,9 @@ parameter; `World.source` deleted.
 
 ## 9. Runtime and GameService: one job each, no back-reference
 
-**Status.** Accepted with doubt; measured at **+66** lines. Awaiting re-decision.
+**Status.** Re-decided: option (d) below, the structural wins without the costly extractions.
 
-**Measured (Opus implemented it in a worktree, all four checks clean).** src **+60**, tests +6, net **+66** (claimed −60). 7 min. Every extraction is paid in lines: `Presentation` costs ~35 to absorb ~20, `Gate` ~28 for ~22, `Busy` 7 to save 2, `check_resumes` 10 to save 6. `_tell` cannot cover `interject` (different role, must not illustrate) and a test pins that a failed save is not swallowed by `_grow`, so `_tell` returns the state and the caller saves. Structural wins are real: `mcp` no longer imports `Runtime`, the page no longer compares refusal text. **Re-decide**: (a) drop 9, (b) keep only `Gate` + `Busy` (the back-reference and the string compare, ~+10), (c) do it all for clarity at +66.
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+60**, tests +6, net **+66** (claimed −60). 7 min. Every extraction is paid in lines: `Presentation` costs ~35 to absorb ~20, `Gate` ~28 for ~22, `Busy` 7 to save 2, `check_resumes` 10 to save 6. `_tell` cannot cover `interject` (different role, must not illustrate) and a test pins that a failed save is not swallowed by `_grow`, so `_tell` returns the state and the caller saves. Structural wins are real: `mcp` no longer imports `Runtime`, the page no longer compares refusal text. **Re-decide**: (a) drop 9, (b) keep only `Gate` + `Busy` (the back-reference and the string compare, ~+10), (c) do it all for clarity at +66, (d) **chosen**: `Gate` + `Busy` + `check_resumes` + `Runtime(settings, spawner=None)`, and drop `Presentation` and `_tell`. That keeps every structural win (`mcp` takes a `Gate`, not `Runtime`; `GameService` holds a `Gate`, not `Runtime`; the page catches `Busy`; one resume rule; no test-only factory lambda) and skips the two extractions that cost 35 lines each to absorb 20. Expected about +20 net; to be measured. A cleaner cut still: `Gate` is the only object that knows which session is playing, so `Runtime.turn`/`require_turn` move onto it and `Runtime` stops knowing about turns at all.
 
 **Plain words.** `Runtime` is five things (builder, spawner holder, one-writer gate, session cache,
 author). `GameService` is orchestration plus presentation plus persistence and points back at
@@ -365,6 +365,8 @@ are written against the family. The scene family has two real users and stays.
 
 ## 11. Every model-facing string has one home; role logic sits with the roles
 
+**Status.** Accepted, option (a): master prompt and `render_master` stay in `turn/`.
+
 **Plain words.** A prompt edit is a treasure hunt: prose the models read is spread over four kinds
 of module per family and three places in the app. The re-prompt loop lives in the process-spawning
 module.
@@ -400,6 +402,8 @@ timeout, refusal and log line; `run_cli`/`run_builtin` return a result and a det
 ---
 
 ## 12. Vocabulary: one word per thing, and the rules written as the code lives them
+
+**Status.** Accepted, option (a): the worldsmith's `*Draft` classes become `*Proposal`.
 
 **Plain words.** "Draft" means two things. Tool arguments name the same idea five ways. `line` is a
 property in three classes and a method in three others. Two CLAUDE.md rules are broken by the code
@@ -446,6 +450,8 @@ in ways that are right, so the rules should change.
 
 ## 13. UI trims: no engine knowledge above the seam, and one file per job
 
+**Status.** Accepted: all trims, and option (b) the `GameService.version` counter replaces `Observed` diffing. (Read as "a and b" = the trims plus the counter; (a) alone was "keep polling as is".)
+
 **Plain words.** The UI reaches into engine internals in four places, registers media routes
 through a module-global dict, and `ui/game.py` (709 lines) mixes page state with transcript
 rendering.
@@ -487,6 +493,8 @@ actions.
 
 ## 14. Tests: delete what the goldens already pin, parametrize the copies
 
+**Status.** Accepted, option (a): delete `scripts/srd_packs.py`, its test, fixture and pyproject entries. Scripted roles stay as they are (two harnesses).
+
 **Plain words.** About 450 test lines test prose already pinned by goldens, or repeat one shape
 six times. One script and its test exist for a conversion that ran once.
 
@@ -526,6 +534,8 @@ partial(open_table, ...)`.
 ---
 
 ## 15. Small cuts, one PR
+
+**Status.** Accepted with the recommendations: `source_max_bytes` becomes a constant; the hire stub stays as is.
 
 **Plain words.** Two dozen one-file changes, each obvious once seen. No behaviour change unless
 marked.
