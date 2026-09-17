@@ -13,13 +13,12 @@ from nicegui.events import GenericEventArguments, ScrollEventArguments
 
 from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, GameService
 from aidm.config import Role
-from aidm.core.entities import Frozen, Refusal, Slug, parse
+from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
 from aidm.ui.dice import DiceTray, rolled_since
 from aidm.ui.widgets import (
-    Dictation,
     alert,
     avatar,
     decision_widget,
@@ -48,11 +47,6 @@ STEP_COPY: dict[Role, tuple[str, str]] = {
     ),
 }
 
-DICTATION_FAILURES = {
-    "not-allowed": "The browser refused the microphone (a secure context is needed).",
-    "audio-capture": "No microphone.",
-    "no-speech": "Nothing was heard.",
-}
 TURN_FAILED = "Something went wrong. The turn did not land — check the server log."
 BLANK = string.whitespace + (
     "\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"
@@ -72,13 +66,6 @@ MARK_LABELS: dict[Marked, str] = {
     "interjection": "(the party speaks)",
 }
 DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
-
-
-class DictatedSpeech(Frozen):
-    """`ui/dictation.js`'s payload."""
-
-    text: str
-    caret: int
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -423,7 +410,6 @@ class GamePage:
                     "e.preventDefault(); emit(); }"
                 ),
             )
-            Dictation(self.box).on("dictated", self.dictated).on("failed", self.dictation_failed)
             # `color=None`: Quasar's `text-primary` would paint the glyph the button's own gold.
             self.send = (
                 ui.button(icon="send", on_click=self.submit, color=None)
@@ -547,15 +533,6 @@ class GamePage:
         self.transcript.scroll_to(percent=1.0)
         self.new_activity.set_visibility(False)
 
-    def dictated(self, event: GenericEventArguments) -> None:
-        speech = parse(DictatedSpeech, event.args)
-        self.box.value = insert_at_caret(self.box.value or "", speech.text, speech.caret)
-        self.box.run_method("updateValue")
-
-    def dictation_failed(self, event: GenericEventArguments) -> None:
-        reason = str(event.args)
-        warn(DICTATION_FAILURES.get(reason, reason))
-
     def _set_composer(self) -> None:
         session = self.session
         player = self.view
@@ -664,13 +641,6 @@ def draft_spent(draft: str, newest_prompt: str) -> bool:
 def whole_page(now: Observed, seen: Observed) -> bool:
     """False when only the fact count moved: the live turn is then the one part that can differ."""
     return replace(now, facts=0) != replace(seen, facts=0)
-
-
-def insert_at_caret(draft: str, text: str, caret: int) -> str:
-    before, after = draft[:caret], draft[caret:]
-    lead = "" if not before or before[-1].isspace() else " "
-    trail = "" if not after or after[0].isspace() else " "
-    return f"{before}{lead}{text}{trail}{after}"
 
 
 def placeholder(player: PlayerView, phase: Role | None) -> str:

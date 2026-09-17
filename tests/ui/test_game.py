@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 from nicegui import Client, app, core, ui
-from nicegui.events import GenericEventArguments
 from support.game import open_game
 from support.table import (
     BREATHLESS,
@@ -40,7 +39,6 @@ from aidm.ui.game import (
     can_type,
     draft_spent,
     game_page,
-    insert_at_caret,
     near_end,
     placeholder,
     standing_proposal,
@@ -102,13 +100,6 @@ def test_near_end_follows_a_reader_within_slack_of_the_bottom() -> None:
     assert near_end(960, 1600, 600)
     assert not near_end(400, 1600, 600)
     assert near_end(0, 300, 600)
-
-
-def test_insert_at_caret_spaces_only_against_a_non_space_neighbour() -> None:
-    assert insert_at_caret("abcd", "x", 2) == "ab x cd"
-    assert insert_at_caret("I go", "north", 4) == "I go north"
-    assert insert_at_caret("", "hi", 0) == "hi"
-    assert insert_at_caret("I ", "go", 2) == "I go"
 
 
 def test_placeholder_names_the_working_role_between_turns() -> None:
@@ -511,36 +502,5 @@ async def test_build_remembers_scene_art_already_on_disk_like_the_clip(tmp_path:
             page = GamePage(session)
             page.build()
             assert page.shown_art == session.scene_art()
-    finally:
-        client.delete()
-
-
-async def test_dictated_rejects_a_payload_missing_what_dictation_js_promises(
-    tmp_path: Path,
-) -> None:
-    table = open_game(tmp_path)
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            event = GenericEventArguments(sender=page.box, client=client, args={"text": "north"})
-            with pytest.raises(Refusal):
-                page.dictated(event)
-    finally:
-        client.delete()
-
-
-async def test_dictated_inserts_a_well_formed_payload_at_the_caret(tmp_path: Path) -> None:
-    table = open_game(tmp_path)
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            page.box.value = "I go"
-            event = GenericEventArguments(
-                sender=page.box, client=client, args={"text": "north", "caret": 4}
-            )
-            page.dictated(event)
-            assert page.box.value == "I go north"
     finally:
         client.delete()
