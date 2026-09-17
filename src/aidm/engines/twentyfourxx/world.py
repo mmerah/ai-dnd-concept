@@ -4,11 +4,11 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Frozen, Refusal, Slug, slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows, filled
-from aidm.engines.base import Item, ItemSheet, Sheeted
+from aidm.engines.base import Sheet, Sheeted, Thing
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -39,7 +39,8 @@ class Kit(Frozen):
     harmless: bool = False  # SRD: "break harmlessly for defense"
 
 
-class Gear(Item):
+class Gear(Mutable):
+    name: str
     bulky: bool = False
     breaks: int = Field(default=1, ge=1)  # a vest breaks once; battle armor "up to 3x"
     broken_times: int = Field(default=0, ge=0)
@@ -74,9 +75,10 @@ class Gear(Item):
         return ", ".join(parts)
 
 
-class CrewSheet(ItemSheet[Gear]):
+class CrewSheet(Sheet):
     """The dice a crew member rolls."""
 
+    items: dict[Slug, Gear] = Field(default_factory=dict)
     specialty: str
     origin: str = ""  # empty on a hired member: the worldsmith writes no origin
     traits: tuple[str, ...] = ()  # an alien's two; an android's body
@@ -97,6 +99,17 @@ class CrewSheet(ItemSheet[Gear]):
             ("Credits", f"₡{self.credits}"),
             ("Hindrances", ", ".join(self.hindrances)),
         )
+
+    def require(self, item_id: Slug, owner: str) -> Gear:
+        item = self.items.get(item_id)
+        if item is None:
+            raise Refusal(f"{item_id!r} is not among {owner}'s items")
+        return item
+
+    def drop_item(self, item_id: Slug, owner: Thing) -> list[Fact]:
+        item = self.require(item_id, owner.name)
+        del self.items[item_id]
+        return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
 
 
 class Crewmate(Sheeted[CrewSheet]):

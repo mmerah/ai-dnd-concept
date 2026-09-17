@@ -27,17 +27,17 @@ def last_calls(role: str = "master") -> list[tuple[str, dict[str, object], str]]
 def body(s: Session) -> None:
     page = s.page()
 
-    # 1. Breathless: a departure request, then two more calls. Both later calls get the wait line.
-    page.goto(BASE + "/game/drowned-road/kael")
+    # 1. 24XX: a departure request, then two more calls. Both later calls get the wait line.
+    page.goto(BASE + "/game/silent-relay/kael")
     wait_idle(page)
     submit(
         page,
-        'I run for the ridge.\n!next_scene pursuit="Up the ridge"\n'
-        '!roll what="Keep running" skill="dash"\n!change_stress actor_id=player amount=1',
+        'I run for the docking ring.\n!next_scene pursuit="Down the docking ring"\n'
+        '!roll what="Keep running" skill="Stealth"\n!change_hindrances gained=\'["Bruised"]\'',
     )
     wait_idle(page, timeout=60)
     calls = last_calls()
-    s.note(f"breathless departure calls: {[(n, a[:70]) for n, _, a in calls]}")
+    s.note(f"24xx departure calls: {[(n, a[:70]) for n, _, a in calls]}")
     s.check(len(calls) == 3, f"expected 3 calls, saw {len(calls)}")
     s.check(
         all("worldsmith writes what you asked for" in answer for _, _, answer in calls[1:]),
@@ -47,13 +47,14 @@ def body(s: Session) -> None:
         "QA Scene" in clean(page.inner_text("body")),
         "the departure never installed a new scene",
     )
-    s.shot(page, "breathless-departure")
+    s.shot(page, "24xx-departure")
 
     # 2. The same request tool twice in one turn: the second must not queue a second write.
     before = len([entry for entry in log() if entry["role"] == "worldsmith"])
     submit(
         page,
-        'I run again.\n!next_scene pursuit="Down the slope"\n!next_scene pursuit="Back up"',
+        'I run again.\n!next_scene pursuit="Through the airlock"\n'
+        '!next_scene pursuit="Back to the hub"',
     )
     wait_idle(page, timeout=60)
     smiths = len([entry for entry in log() if entry["role"] == "worldsmith"]) - before
@@ -65,7 +66,7 @@ def body(s: Session) -> None:
 
     # 3. A crash after the request landed: the request must not survive into the next turn.
     before = len([entry for entry in log() if entry["role"] == "worldsmith"])
-    submit(page, 'I bolt.\n!next_scene pursuit="Through the flood"\n!crash')
+    submit(page, 'I bolt.\n!next_scene pursuit="Down the service shaft"\n!crash')
     page.wait_for_timeout(6000)
     wait_idle(page, timeout=60)
     s.note(
@@ -84,22 +85,22 @@ def body(s: Session) -> None:
     s.check(after == 0, f"a stale request ran the worldsmith {after} times on the next turn")
     s.shot(page, "crash-after-request")
 
-    # 4. 24XX: a complication at the same place, then a call after it.
-    page.goto(BASE + "/game/silent-relay/kael")
+    # 4. Loner 3e: a complication at the same place, then a call after it.
+    page.goto(BASE + "/game/whispering-vault/kael")
     wait_idle(page)
     submit(
         page,
-        'I hold position.\n!next_scene complication="Sirens open up"\n!spend item_id="fuel"',
+        'I hold position.\n!next_scene complication="Sirens open up"\n!reveal entity_id=vault-map',
     )
     wait_idle(page, timeout=60)
     calls = last_calls()
-    s.note(f"24xx complication calls: {[(n, a[:70]) for n, _, a in calls]}")
+    s.note(f"loner complication calls: {[(n, a[:70]) for n, _, a in calls]}")
     s.check(
         len(calls) > 1 and "worldsmith writes what you asked for" in calls[-1][2],
         f"the call after a complication was not waited: {[a for _, _, a in calls]}",
     )
     s.check("QA Scene" in clean(page.inner_text("body")), "the complication installed no scene")
-    s.shot(page, "24xx-complication")
+    s.shot(page, "loner-complication")
 
     # 5. Tunnel Goons: walk the authored map out, unlock the last cell, then push on for more.
     page.goto(BASE + "/game/buried-keep/kael")

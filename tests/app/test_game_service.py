@@ -7,8 +7,8 @@ from random import Random
 import pytest
 from support.game import TARGET, open_game, session, with_entity
 from support.table import (
-    BREATHLESS,
     TUNNELGOONS,
+    TWENTYFOURXX,
     ScriptedSpawner,
     narrated,
     offline_settings,
@@ -28,12 +28,12 @@ from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.seam import Written
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
+from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 
 class _UnsavableStore(FileStore):
@@ -291,12 +291,12 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
 
 
 async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> None:
-    table = open_table(tmp_path, engine_id=BREATHLESS, state_type=BreathlessGame)
+    table = open_table(tmp_path, engine_id=TWENTYFOURXX, state_type=TwentyfourxxGame)
 
     state = await play_turn(
         table,
-        "I ask Ovid to guide us across the flats.",
-        tool_call("hire", entity_id="ovid-sarn", terms="Guide us across the flats."),
+        "I ask Vessa to guide us through the relay.",
+        tool_call("hire", entity_id="vessa-rune", terms="Guide us through the relay."),
     )
 
     exchange = state.exchanges()[-1]
@@ -524,7 +524,7 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
     runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
     first = runtime.session(TARGET)
     second = runtime.session(
-        LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")
+        LaunchTarget(scenario_id=scenario_for(TWENTYFOURXX), character_id="kael")
     )
     spawner.turns.append(lambda: None)
     spawner.answers["narrator"] = [narrated("You wait.")]

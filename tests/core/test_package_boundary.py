@@ -7,7 +7,6 @@ SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = (
     "aidm.engines.loner3e",
     "aidm.engines.tunnelgoons",
-    "aidm.engines.breathless",
     "aidm.engines.twentyfourxx",
 )
 # The composition root builds the installed concrete engines.

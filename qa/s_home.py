@@ -25,7 +25,7 @@ def body(s: Session) -> None:
     page.locator(".q-select").first.click()
     options = [clean(t) for t in page.locator(".q-menu .q-item").all_inner_texts()]
     s.note(f"scenario options: {options}")
-    s.check(len(options) == 4, f"expected 4 scenarios, saw {options}")
+    s.check(len(options) == 3, f"expected 3 scenarios, saw {options}")
     page.keyboard.press("Escape")
     pick(page, "Scenario", "The Whispering Vault")
     text = clean(page.inner_text("body"))

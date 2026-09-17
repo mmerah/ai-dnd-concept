@@ -1,15 +1,9 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from random import Random
-from typing import cast
 
 import pytest
 from pydantic import JsonValue
-from support.breathless import ENGINE as BREATHLESS_ENGINE
-from support.breathless import MIRA as BREATHLESS_MIRA
-from support.breathless import SKILLS_RATED
-from support.breathless import hired as breathless_hired
-from support.breathless import small_world as breathless_world
 from support.table import narrowed, stub_worldsmith
 from support.tunnelgoons import ENGINE as TUNNELGOONS_ENGINE
 from support.tunnelgoons import MIRA as TUNNELGOONS_MIRA
@@ -21,7 +15,6 @@ from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.model import AnyGame, Generation
-from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.seam import AnyEngine
 from aidm.engines.tools import HIRE, SIGNED_ON
 from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
@@ -39,11 +32,6 @@ class HireCase:
     answer: dict[str, JsonValue]  # the worldsmith's sheet
 
 
-def _breathless_sheeted(game: AnyGame) -> AnyGame:
-    breathless_hired(narrowed(game, BreathlessGame).payload, BREATHLESS_MIRA)
-    return game
-
-
 def _twentyfourxx_sheeted(game: AnyGame) -> AnyGame:
     return twentyfourxx_hired(narrowed(game, TwentyfourxxGame), KESTREL, skills={"Intimidation": 8})
 
@@ -56,20 +44,8 @@ def _tunnelgoons_sheeted(game: AnyGame) -> AnyGame:
     return game
 
 
-# Breathless and 24XX read a pack off the game when hiring, so their cases carry one.
+# 24XX reads a pack off the game when hiring, so its case carries one.
 CASES = (
-    HireCase(
-        engine=BREATHLESS_ENGINE,
-        game=breathless_world,
-        member=BREATHLESS_MIRA,
-        sheeted=_breathless_sheeted,
-        answer={
-            "pronouns": "he/him",
-            "job": "Bell-ringer",
-            "skills": cast(dict[str, JsonValue], SKILLS_RATED),
-            "item": "Boat hook",
-        },
-    ),
     HireCase(
         engine=TWENTYFOURXX_ENGINE,
         game=twentyfourxx_world,

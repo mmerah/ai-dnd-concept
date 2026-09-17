@@ -38,7 +38,6 @@ CHARACTERS = REPOSITORY_ROOT / "characters"
 LIBRARY = Library(SCENARIOS, CHARACTERS)
 LONER3E = EngineId("loner3e")
 TUNNELGOONS = EngineId("tunnelgoons")
-BREATHLESS = EngineId("breathless")
 TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINES_BUILT = build_engines()
 ENGINE_IDS = tuple(ENGINES_BUILT)

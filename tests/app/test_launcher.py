@@ -7,7 +7,6 @@ import pytest
 from pydantic import JsonValue
 from support.game import TARGET
 from support.table import (
-    BREATHLESS,
     ENGINES_BUILT,
     LONER3E,
     REPOSITORY_ROOT,
@@ -37,7 +36,6 @@ INSTALLED = {**ENGINES_BUILT, MIRROR: _MIRRORED}
 KAEL_FOR_EACH = [
     ("kael", LONER3E),
     ("kael", TUNNELGOONS),
-    ("kael", BREATHLESS),
     ("kael", TWENTYFOURXX),
 ]
 

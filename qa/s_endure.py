@@ -30,16 +30,6 @@ RUNS: dict[str, tuple[str, ...]] = {
         "!meanwhile dweller_id=grix dweller_to=corridor",
         "!move to_id=entrance",
     ),
-    "drowned-road": (
-        '!roll what="Wade the flats" skill=dash',
-        '!roll what="Wade again" skill=dash',
-        '!roll what="Wade again" skill=dash',
-        '!roll what="Wade again" skill=dash dangerous=true',
-        "!catch_breath actor_id=player",
-        '!change_stress actor_id=player amount=2 why="The cold"',
-        '!roll what="Think it through" skill=think',
-        '!ask_world question="Is the bell still ringing?" die=8',
-    ),
     "silent-relay": (
         '!roll what="Slip the hatch" skill="Stealth"',
         '!gain_item name="Cutting torch"',
