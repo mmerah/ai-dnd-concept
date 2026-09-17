@@ -11,7 +11,7 @@ from aidm.config import SERVER_HOST, read_settings
 from aidm.core.entities import Refusal, Slug, content_id
 from aidm.ui import theme
 from aidm.ui.create import character_page, scenario_page
-from aidm.ui.dice import DICE_ASSETS, DICE_ASSETS_ROUTE
+from aidm.ui.dice import DICE_SOUND, DICE_SOUND_ROUTE
 from aidm.ui.game import game_page
 from aidm.ui.settings import settings_page
 from aidm.ui.widgets import (
@@ -185,7 +185,7 @@ def _refused_page(message: str) -> None:
 def _register_pages(runtime: Runtime) -> None:
     asgi, manager = endpoint(runtime)
     app.mount(MOUNT_PATH, asgi)
-    app.add_static_files(DICE_ASSETS_ROUTE, DICE_ASSETS)
+    app.add_static_file(local_file=DICE_SOUND, url_path=DICE_SOUND_ROUTE)
     lifespan = MountedLifespan(manager)
     app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
     app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]

@@ -250,27 +250,24 @@ body, body.body--dark {
 .game-avatar-dm { color: var(--game-accent); border-color: var(--game-accent) }
 
 .game-die {
-  background: var(--game-surface-raised);
+  background: var(--game-die-body);
+  color: var(--game-die-ink);
   border: 1px solid var(--game-border);
   border-radius: calc(var(--game-radius) * .6);
   min-width: 2.4rem;
   padding: .2rem .4rem;
   align-items: center;
 }
-.game-die-face { font-size: .6rem; color: var(--game-muted); text-transform: uppercase }
+.game-die-face { font-size: .6rem; text-transform: uppercase }
 .game-die-value {
   font-size: 1.15rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
 }
-.game-die-kept { border-color: var(--game-accent); box-shadow: 0 0 0 1px var(--game-accent) }
+.game-die-kept { border-color: var(--game-die-glow); box-shadow: 0 0 0 1px var(--game-die-glow) }
 .game-die-live { animation: game-die-tumble 600ms cubic-bezier(.2, .8, .3, 1) both }
 @keyframes game-die-tumble {
   from { opacity: 0; transform: perspective(240px) rotateX(-220deg) rotateY(160deg) scale(.5) }
   60% { opacity: 1; transform: perspective(240px) rotateX(20deg) rotateY(-15deg) scale(1.08) }
   to { transform: none }
-}
-.game-dice-overlay {
-  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5000;
-  transition: opacity .5s;
 }
 
 .game-composer {
@@ -328,5 +325,5 @@ body, body.body--dark {
 }
 @media (prefers-reduced-motion: reduce) {
   .game-die-live { animation: none }
-  .q-btn, .game-dice-overlay, .game-scene-chevron { transition: none }
+  .q-btn, .game-scene-chevron { transition: none }
 }
