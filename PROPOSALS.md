@@ -16,6 +16,8 @@ size, and a decision where one is open. Options are listed recommended-first.
 
 ## 1. Packs are never optional
 
+**Status.** Accepted, option (a): tuple + ship the Tunnel Goons SRD pack.
+
 **Plain words.** Every game plays a list of packs. Today that list can be "nothing", only because
 Tunnel Goons ships no pack. That one gap costs 28 `None` branches and four whole overrides.
 
@@ -50,6 +52,8 @@ overrides, every `None` branch, `STARTING_ITEM_LIST`.
 
 ## 2. Engine generics: the world type is the parameter
 
+**Status.** Accepted, option (a): replace `G` by `W` only.
+
 **Plain words.** Every engine spells the same five lines to tell the type checker what its state is.
 One parameter carries all of it.
 
@@ -77,6 +81,8 @@ The `Loner3eGame = Game[Loner3eWorld]` aliases stay for tests and app typing.
 ---
 
 ## 3. Pack editor: JSON fields, not a home-made text format
+
+**Status.** Accepted, option (a): JSON per field. Ask models stay separate.
 
 **Plain words.** The pack edit page has its own mini-language (`Label — detail` lines, `Key: value`
 blocks) with a parser and a printer. One page reads it. Pydantic already knows how to read and
@@ -122,6 +128,8 @@ from labels and the ask can carry `min_length=6, max_length=36` steering.
 
 ## 4. Pack choice is one mechanism, not a creation step
 
+**Status.** Accepted.
+
 **Plain words.** Picking packs is smuggled through character creation as a special "multiple"
 answer joined with commas, while the scenario page draws its own select for the same thing. One
 select, used by both pages.
@@ -148,6 +156,8 @@ one entry point. Delete everything listed in "Now" except `select_packs`.
 ---
 
 ## 5. Lift the view and authoring builders out of the two families
+
+**Status.** Accepted.
 
 **Plain words.** The scene family and the room family each build the narrator's view, the player's
 page and the opening prompt with the same code, only the field names differ. Build them once.
