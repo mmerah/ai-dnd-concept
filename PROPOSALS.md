@@ -187,6 +187,8 @@ DecisionOption | None` (MOVE_ON if offered / MORE_MAP if frontier == 0), `openin
 
 ## 6. State owns its own mutation
 
+**Status.** Accepted.
+
 **Plain words.** Four places change the game's log or the party from outside the object that holds
 them. Move each onto its owner, as CLAUDE.md says.
 
@@ -216,6 +218,8 @@ instead of "does not travel with the player".
 ---
 
 ## 7. Meanwhile: the world keeps the clock, the tool resolves the ids
+
+**Status.** Accepted, option (a): one `meanwhile` tool.
 
 **Plain words.** The "time passes offscreen" clock is spread over six files, and the room world
 does the tool's id-lookup job itself.
@@ -249,6 +253,8 @@ knows no world shape); `Engine.meanwhile_turns` and the `RoomEngine.tick` overri
 
 ## 8. The save copies nothing from the scenario it does not need
 
+**Status.** Accepted, option (a): source not saved at all.
+
 **Plain words.** Every save file carries a copy of the scenario's source text (up to 48 KB) and a
 copy of its title, premise and scope. The source is read once per world-growth request; the copy of
 the meta exists so a changed scenario file can be detected.
@@ -277,6 +283,8 @@ parameter; `World.source` deleted.
 ---
 
 ## 9. Runtime and GameService: one job each, no back-reference
+
+**Status.** Accepted. Maintainer doubts the line saving; estimate to be verified by implementation.
 
 **Plain words.** `Runtime` is five things (builder, spawner holder, one-writer gate, session cache,
 author). `GameService` is orchestration plus presentation plus persistence and points back at
@@ -313,6 +321,8 @@ and `Tasks.settled` have no reader in `src`.
 ---
 
 ## 10. The rooms family has one engine
+
+**Status.** Decided, option (A): keep the family; no new room-only hook until a second room engine lands.
 
 **Plain words.** `RoomEngine`/`RoomWorld` are generic over exactly one engine (Tunnel Goons) plus a
 test double. CLAUDE.md says no abstraction until two things need it; IDEAS.md #18 (Maze Rats) is a
