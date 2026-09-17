@@ -21,7 +21,7 @@ from aidm.app.roles import RoleRunner
 from aidm.app.spawn import CodexDriver, final_message
 from aidm.config import Role
 from aidm.core.entities import Frozen, Refusal, Slug
-from aidm.core.model import Check, ScenarioMeta
+from aidm.core.model import AnyScenario, Check, ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
 from aidm.engines.base import PLAYER_ID
@@ -247,13 +247,16 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
         check(answer)
         return answer
 
+    def begun(built: AnyScenario) -> None:
+        _ = table.service.engine.begin("t", built, table.service.character)
+
     with pytest.raises(Refusal, match="the scene needs"):
         _ = await table.service.engine.author(
             ScenarioMeta(title="T", premise="p", scope="s"),
             "",
             table.state.packs,
             answer,
-            lambda built: table.service.engine.begin("t", built, table.service.character),
+            begun,
         )
 
 

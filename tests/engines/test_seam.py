@@ -2,16 +2,20 @@ import json
 from pathlib import Path
 
 import pytest
-from support.fifth import FifthEngine, FifthGame, engine_at, installed
-from support.table import ENGINE_IDS, game
+from support.fifth import FifthEngine, FifthGame, FifthState, engine_at, installed
+from support.sixth import SixthEngine
+from support.table import ENGINE_IDS, game, updated
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING
 
 
 def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
+    class Impatient(FifthState):
+        tempo = 1
+
     class TooFast(type(installed(tmp_path))):
-        meanwhile_turns = 1
+        world = Impatient
 
     with pytest.raises(ValueError, match="ticks every"):
         TooFast(tmp_path / "written")
@@ -22,10 +26,10 @@ def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(
 ) -> None:
     draft = begun_scene.draft()
 
-    for _ in range(scene_engine.meanwhile_turns - 1):
+    for _ in range(FifthState.tempo - 1):
         scene_engine.tick(draft, counted=True)
     assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (
-        scene_engine.meanwhile_turns - 1,
+        FifthState.tempo - 1,
         False,
     )
 
@@ -72,6 +76,14 @@ def test_a_game_with_no_chapter_open_is_refused(
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_validate_refuses_a_game_that_does_not_play_the_srd(engine_id: EngineId) -> None:
+    engine, state = game(engine_id)
+
+    with pytest.raises(Refusal, match="plays the 'srd' tables"):
+        engine.validate(updated(state, packs=()))
+
+
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
 def test_restored_round_trips(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     assert engine.restore(state.model_dump_json()) == state
@@ -92,3 +104,10 @@ def test_restore_accepts_a_save_with_a_null_generation() -> None:
     raw["generation"] = None
 
     assert engine.restore(json.dumps(raw)) == state
+
+
+def test_admit_refuses_a_pack_the_engine_has_not_installed(room_engine: SixthEngine) -> None:
+    character = room_engine.create_character("Wren", "A quiet scout", ("srd",), {})
+
+    with pytest.raises(Refusal, match="packs not installed"):
+        room_engine.admit(("srd", "gone"), character)

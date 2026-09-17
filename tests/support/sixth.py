@@ -19,11 +19,10 @@ LANTERN = "lantern"
 
 
 class SixthWorld(RoomWorld[Person, Dweller]):
-    pass
+    tempo = 6
 
 
-class SixthGame(Game[SixthWorld]):
-    pass
+SixthGame = Game[SixthWorld]
 
 
 class SixthScenario(Scenario[MapDraft[Dweller]]):
@@ -34,7 +33,7 @@ class SixthCharacter(Character[Person]):
     pass
 
 
-class SixthEngine(RoomEngine[Person, Dweller, SixthGame, Pack]):
+class SixthEngine(RoomEngine[Person, Dweller, SixthWorld, Pack]):
     """A sixth engine, a room crawler; the tools are the family's."""
 
     id = SIXTH
@@ -48,13 +47,16 @@ class SixthEngine(RoomEngine[Person, Dweller, SixthGame, Pack]):
     pack = Pack
     world = SixthWorld
 
-    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
+    def creation_steps(self, _packs: tuple[Slug, ...], _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
 
-    def build_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
+    def build_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], _picks: Picks
+    ) -> AnyCharacter:
         return SixthCharacter(
             id=slug(name, ()),
             engine=SIXTH,
+            packs=packs,
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
@@ -64,6 +66,10 @@ def installed(tmp_path: Path) -> SixthEngine:
         directory = tmp_path
 
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
+    (tmp_path / "packs").mkdir()
+    (tmp_path / "packs" / "srd.json").write_text(
+        '{"name": "The SRD", "source": "the test", "license": "CC0"}', encoding=ENCODING
+    )
     (tmp_path / "look.json").write_text(
         '{"palette": {}, "dice": {"body": "#000", "ink": "#fff", "glow": "#fff"}}',
         encoding=ENCODING,
@@ -82,6 +88,7 @@ def scenario() -> SixthScenario:
             title="The Keep", premise="A keep with one gate.", scope="One keep, one visit."
         ),
         engine=SIXTH,
+        packs=("srd",),
         payload=MapDraft[Dweller](
             places={
                 GATE: _place(GATE, "Gate", known=True),

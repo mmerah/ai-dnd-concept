@@ -2,7 +2,6 @@ from support.game import with_entity
 from support.table import ENGINES_BUILT, LONER3E, game, narrowed
 
 from aidm.app.spawn import PROMPT_MAX_BYTES
-from aidm.core.model import PackSelection
 from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
@@ -23,8 +22,8 @@ def test_a_heavy_game_still_fits_the_command_line() -> None:
     state = narrowed(raw_state, Loner3eGame)
 
     draft = state.draft()
-    draft.packs = PackSelection(ids=("srd", *_heaviest_packs()))
-    draft.payload.source = "x" * SOURCE_BYTES
+    draft.packs = ("srd", *_heaviest_packs())
+    draft.source = "x" * SOURCE_BYTES
     draft.log = _chapters()
     state = draft.commit()
 

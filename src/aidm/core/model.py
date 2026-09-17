@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Protocol, Self
+from typing import Annotated, Any, Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, Field
 
 from aidm.core.entities import (
     EngineId,
@@ -23,6 +23,15 @@ type AnyGame = Game[Any]
 type Check[T] = Callable[[T], None]
 
 
+def _distinct_packs(ids: tuple[Slug, ...]) -> tuple[Slug, ...]:
+    check_unique("packs", ids)
+    return ids
+
+
+# assignment, not `type`: `Annotated` carries the validator into every field spelled with it
+Packs = Annotated[tuple[Slug, ...], AfterValidator(_distinct_packs)]
+
+
 class ScenarioMeta(Frozen):
     title: str
     premise: str
@@ -40,17 +49,6 @@ class ScenarioMeta(Frozen):
             raise Refusal(f"save scenario differs from the one on disk in: {', '.join(drifted)}")
 
 
-class PackSelection(Frozen):
-    """The table sets a game or a character is made from, in order."""
-
-    ids: tuple[Slug, ...] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def _distinct(self) -> Self:
-        check_unique("selected pack ids", self.ids)
-        return self
-
-
 class EngineHeader(Loose):
     engine: EngineId
 
@@ -63,7 +61,7 @@ class SheetHeader(Loose):
 class CharacterHeader(EngineHeader):
     id: Slug
     payload: SheetHeader
-    packs: PackSelection | None = None
+    packs: Packs
 
 
 class Scenario[P: BaseModel](Frozen):
@@ -71,7 +69,7 @@ class Scenario[P: BaseModel](Frozen):
 
     meta: ScenarioMeta
     engine: EngineId
-    packs: PackSelection | None = None
+    packs: Packs
     source: str = ""
     payload: P
 
@@ -81,7 +79,7 @@ class Character[P: BaseModel](Frozen):
 
     id: Slug
     engine: EngineId
-    packs: PackSelection | None = None
+    packs: Packs
     payload: P
 
 
@@ -104,9 +102,10 @@ class Game[P: BaseModel](Mutable):
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
-    packs: PackSelection | None = None
+    packs: Packs
+    source: str = ""
     pending: PendingDecision | None = None
-    # In flight only, never saved; `restore` refuses a save that carries one.
+    # `exclude=True` keeps it out of every save, so `restore` only refuses a hand-edited one.
     generation: Generation | None = Field(default=None, exclude=True)
     notes: list[str] = Field(default_factory=list)
     log: list[Chapter] = Field(default_factory=list)

@@ -14,19 +14,11 @@ from support.table import (
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
-from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.packs import Pack, PackSet
+from aidm.engines.packs import SRD_PACK, Pack, PackSet
 from aidm.engines.rooms.engine import ELSEWHERE
-from aidm.engines.rooms.world import (
-    MOVED_CARD,
-    MOVES_OFFSCREEN,
-    NOTHING_OFFSCREEN,
-    Dweller,
-    MapDraft,
-    Prop,
-    Way,
-)
+from aidm.engines.rooms.tools import MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN
+from aidm.engines.rooms.world import Dweller, MapDraft, Prop, Way
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 
@@ -155,14 +147,16 @@ def test_a_room_game_validates_the_packs_it_plays(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
     room_engine.packs = PackSet(
-        room_engine.id, {"mine": Pack(name="Mine", source="", license="")}, {}
+        room_engine.id,
+        {SRD_PACK: room_engine.packs.srd(), "mine": Pack(name="Mine", source="", license="")},
+        {},
     )
 
-    room_engine.validate(updated(begun_room, packs=PackSelection(ids=("mine",))))
-    room_engine.validate(updated(begun_room, packs=None))
+    played = updated(begun_room, packs=(SRD_PACK, "mine"))
+    assert room_engine.restore(played.model_dump_json()).packs == (SRD_PACK, "mine")
 
     with pytest.raises(Refusal, match="packs not installed"):
-        room_engine.validate(updated(begun_room, packs=PackSelection(ids=("gone",))))
+        _ = room_engine.restore(updated(played, packs=(SRD_PACK, "gone")).model_dump_json())
 
 
 def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:

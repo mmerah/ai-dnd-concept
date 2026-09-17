@@ -25,7 +25,7 @@ from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING, FileStore, Library
-from aidm.core.model import PackSelection, ScenarioMeta
+from aidm.core.model import ScenarioMeta
 from aidm.core.play import DecisionOption
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
@@ -207,7 +207,7 @@ def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[
 
 def test_a_save_playing_an_uninstalled_pack_is_not_listed(tmp_path: Path) -> None:
     settings = offline_settings(tmp_path)
-    state = updated(_opening_state(settings), packs=PackSelection(ids=("srd", "gone")))
+    state = updated(_opening_state(settings), packs=("srd", "gone"))
     FileStore(tmp_path).write(TARGET.slug, state)
 
     catalog = _catalog(settings, ENGINES_BUILT)
@@ -318,7 +318,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
         scope="One crossing, before the tide turns.",
         art_style="woodcut",
     )
-    name = await runtime.new_scenario(LONER3E, meta, None, PackSelection(ids=("srd",)), "kael")
+    name = await runtime.new_scenario(LONER3E, meta, None, ("srd",), "kael")
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
     assert "these name nobody" in spawner.prompts[1][1]
@@ -329,7 +329,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     assert (name, len(state.exchanges())) == ("the-sunken-bell", 0)
     assert state.payload.run.title == "The Bell Under the Water"
     assert state.payload.player.name == "Kael"
-    assert state.payload.source.startswith("PREMISE:")
+    assert state.source.startswith("PREMISE:")
     world = json.loads((settings.scenarios_dir / name / "world.json").read_text(encoding=ENCODING))
     assert world["meta"]["art_style"] == "woodcut"
 
@@ -353,7 +353,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
             LONER3E,
             ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
             None,
-            PackSelection(ids=("srd",)),
+            ("srd",),
             "kael",
         )
 
@@ -366,9 +366,7 @@ async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_p
     characters = tmp_path / "characters"
     shutil.copytree(REPOSITORY_ROOT / "characters", characters)
     sheet = characters / "kael" / "loner3e.json"
-    widened = json.loads(sheet.read_text(encoding=ENCODING)) | {
-        "packs": {"ids": ["srd", "ap01-fantasy"]}
-    }
+    widened = json.loads(sheet.read_text(encoding=ENCODING)) | {"packs": ["srd", "ap01-fantasy"]}
     sheet.write_text(json.dumps(widened), encoding=ENCODING)
     settings = offline_settings(tmp_path, tmp_path / "scenarios").model_copy(
         update={"characters_dir": characters}
@@ -381,7 +379,7 @@ async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_p
             LONER3E,
             ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
             None,
-            PackSelection(ids=("srd",)),
+            ("srd",),
             "kael",
         )
 
@@ -397,12 +395,12 @@ async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Pat
         LONER3E,
         ScenarioMeta(title="The Sunken Bell", premise="", scope="One crossing."),
         SOURCE_MD,
-        PackSelection(ids=("srd",)),
+        ("srd",),
         "kael",
     )
 
     catalog = _catalog(runtime.settings, runtime.engines)
     state = runtime.session(catalog.target(name, "kael")).state
-    assert state.payload.source.startswith("SOURCE DOCUMENT:")
+    assert state.source.startswith("SOURCE DOCUMENT:")
     # The premise the player never wrote is the scene's own words.
     assert state.scenario.premise == _OPENING["situation"]

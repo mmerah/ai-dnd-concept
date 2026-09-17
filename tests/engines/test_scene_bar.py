@@ -16,7 +16,7 @@ from support.twentyfourxx import hired as twentyfourxx_hired
 from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
-from aidm.core.model import AnyGame, Check, Generation, PackSelection
+from aidm.core.model import AnyGame, Check, Generation
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
@@ -325,7 +325,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
         {
             "meta": {"title": "Test", "premise": "A test scenario.", "scope": "One tense evening."},
             "engine": case.engine.id,
-            "packs": PackSelection(ids=(SRD_PACK,)),
+            "packs": (SRD_PACK,),
             "payload": {**case.base, "cast": {PLAYER_ID: DECOY_CAST_ENTRY}},
         }
     )
@@ -336,15 +336,15 @@ def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_scenario_with_no_packs_is_refused_by_check_packs(case: SceneCase) -> None:
-    with pytest.raises(Refusal, match="needs a table set"):
-        case.engine.validate(updated(case.game(), packs=None))
+    with pytest.raises(Refusal, match="plays the 'srd' tables"):
+        case.engine.validate(updated(case.game(), packs=()))
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_scenario_with_an_uninstalled_pack_is_refused_by_check_packs(case: SceneCase) -> None:
+def test_a_scenario_with_an_uninstalled_pack_is_refused_by_restore(case: SceneCase) -> None:
+    stale = updated(case.game(), packs=(SRD_PACK, "uninstalled"))
     with pytest.raises(Refusal, match="not installed"):
-        packs = PackSelection(ids=(SRD_PACK, "uninstalled"))
-        case.engine.validate(updated(case.game(), packs=packs))
+        _ = case.engine.restore(stale.model_dump_json())
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

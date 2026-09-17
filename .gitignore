@@ -10,7 +10,7 @@ __pycache__/
 
 # Play data
 saves/
-packs/
+/packs/
 
 # Repo formatter
 .repo_formatter.yaml

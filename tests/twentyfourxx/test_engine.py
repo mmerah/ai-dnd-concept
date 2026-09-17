@@ -2,7 +2,6 @@ import pytest
 from support.table import TWENTYFOURXX, game, narrowed
 from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
-from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
 from aidm.engines.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
@@ -21,7 +20,7 @@ def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
 
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> None:
     _, state = _twentyfourxx_game()
-    assert state.packs == PackSelection(ids=(SRD_PACK,))
+    assert state.packs == (SRD_PACK,)
     world = state.payload
     assert list(world.player.require_sheet().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"

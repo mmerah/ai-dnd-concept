@@ -45,6 +45,8 @@ class SceneRun(Mutable):
 
 
 class SceneWorld[C: Person](World[C, C]):
+    tempo = 6
+
     runs: list[SceneRun] = Field(min_length=1)
     cast: dict[Slug, C] = Field(default_factory=dict)
     arc: str = ""
@@ -65,12 +67,10 @@ class SceneWorld[C: Person](World[C, C]):
         return self
 
     @classmethod
-    def opening(cls, draft: SceneDraft[C], player: C, source: str) -> Self:
+    def opening(cls, draft: SceneDraft[C], player: C) -> Self:
         """The player is added by code and never authored, so no scenario can claim their id."""
         cast, run = settled(draft, player, dict(draft.cast), ())
-        return parse(
-            cls, {"player": player, "cast": cast, "runs": [run], "arc": draft.arc, "source": source}
-        )
+        return parse(cls, {"player": player, "cast": cast, "runs": [run], "arc": draft.arc})
 
     @property
     def run(self) -> SceneRun:
@@ -202,9 +202,6 @@ class SceneWorld[C: Person](World[C, C]):
         entity.alive = False
         card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
         return [entity.fact(f"{entity.mention} is dead", card=card)]
-
-    def leave_party(self, entity_id: Slug) -> list[Fact]:
-        return self.part(self.require(entity_id))
 
     def offer(self) -> list[Fact]:
         if self.run.offered:

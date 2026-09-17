@@ -58,8 +58,8 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
     }
 
 
-def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
-    twists = ENGINE.twist_table()
+def test_the_twists_read_a_subject_off_one_die_and_an_action_off_the_other() -> None:
+    twists = ENGINE.twists
     assert len(twists) == 6
     subject, action = twist_pairing(4, 2, twists)
     assert (subject, action) == ("A physical event", "Alters the location")

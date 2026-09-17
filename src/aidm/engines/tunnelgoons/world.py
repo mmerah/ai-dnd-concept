@@ -30,10 +30,11 @@ class GoonSheet(Sheet):
     inventory: int = Field(default=INVENTORY_START, ge=0)
     level: int = Field(default=1, ge=1)
 
-    def rows(self) -> Rows:
+    def rows(self, *, carried: int | None = None) -> Rows:
+        held = str(self.inventory) if carried is None else f"{carried}/{self.inventory}"
         return (
             *((ability.capitalize(), str(self.abilities[ability])) for ability in ABILITIES),
-            ("Inventory", str(self.inventory)),
+            ("Inventory", held),
             ("Level", str(self.level)),
         )
 
@@ -41,8 +42,8 @@ class GoonSheet(Sheet):
 class Adventurer(Sheeted[GoonSheet]):
     hp: Gauge
 
-    def rows(self) -> Rows:
-        return (("Health", str(self.hp)), *self.require_sheet().rows())
+    def rows(self, *, carried: int | None = None) -> Rows:
+        return (("Health", str(self.hp)), *self.require_sheet().rows(carried=carried))
 
     def level(self, ability: Ability, boost: Boost) -> list[Fact]:
         sheet = self.require_sheet()
@@ -81,9 +82,9 @@ class Npc(Adventurer, Dweller):
             f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
         )
 
-    def rows(self) -> Rows:
+    def rows(self, *, carried: int | None = None) -> Rows:
         if self.hired:
-            return super().rows()
+            return super().rows(carried=carried)
         # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
         return (("Health", f"{self.hp} (its Difficulty Score)"),)
 
@@ -107,14 +108,10 @@ class Goon(Adventurer):
 
 
 class TunnelGoonsWorld(RoomWorld[Goon, Npc]):
+    tempo = 4
+
     def sheet_rows(self) -> Rows:
-        carried = len(list(self.carried(self.player.id)))
-        return tuple(
-            (label, f"{carried}/{self.player.require_sheet().inventory}")
-            if label == "Inventory"
-            else (label, value)
-            for label, value in self.player.rows()
-        )
+        return self.player.rows(carried=len(list(self.carried(self.player.id))))
 
     def rest(self) -> list[Fact]:
         player = self.player

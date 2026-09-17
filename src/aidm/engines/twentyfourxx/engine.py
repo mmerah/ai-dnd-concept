@@ -19,14 +19,6 @@ from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.packs import (
-    LIST_ROWS,
-    EditField,
-    block_fields,
-    block_values,
-    blocks_text,
-    parse_blocks,
-)
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.tools import DROP_ITEM, AskWorld, DropItem, Kill
 from aidm.engines.twentyfourxx.tools import (
@@ -74,11 +66,8 @@ from aidm.engines.twentyfourxx.worldsmith import (
     HIRING,
     SKILL_COUNT,
     Origin,
-    OriginDraft,
     SheetDraft,
     Specialty,
-    SpecialtyDraft,
-    TwentyfourxxBlock,
     TwentyfourxxBody,
     TwentyfourxxHead,
     TwentyfourxxPack,
@@ -98,7 +87,7 @@ class Helping(NamedTuple):
     terms: Helper
 
 
-class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPack]):
+class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     authoring = AUTHORING
@@ -126,9 +115,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
             )
         if not srd.starting_kit:
             raise ValueError(f"the {self.id!r} srd pack has no starting kit")
-
-    def world_of(self, state: TwentyfourxxGame) -> TwentyfourxxWorld:
-        return state.payload
 
     async def write_sheet(
         self, draft: TwentyfourxxGame, member: Crewmate, terms: str, worldsmith: WorldsmithAnswer, /
@@ -171,63 +157,11 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
             master_tool("job", JOB, Job, self.job),
         )
 
-    def engine_fields(self, pack: TwentyfourxxPack) -> tuple[EditField, ...]:
-        """The tables are written by hand: a draft holds no pick within a pick."""
-        return (
-            EditField(
-                id="specialties",
-                label="Specialties",
-                text=blocks_text(
-                    {
-                        "label": specialty.label,
-                        "detail": specialty.detail,
-                        "skills": tuple(specialty.skills),
-                        "kit": tuple(kit.name for kit in specialty.kit),
-                    }
-                    for specialty in pack.specialties
-                ),
-                rows=LIST_ROWS,
-            ),
-            EditField(
-                id="origins",
-                label="Origins",
-                text=blocks_text(
-                    {
-                        "label": origin.label,
-                        "detail": origin.detail,
-                        "increases": origin.increases,
-                        "invents": origin.invents,
-                    }
-                    for origin in pack.origins
-                ),
-                rows=LIST_ROWS,
-            ),
-            *block_fields(
-                (
-                    ("factions", "Factions", pack.factions),
-                    ("npcs", "People", pack.npcs),
-                    ("hostiles", "Hostiles", pack.hostiles),
-                )
-            ),
-        )
-
-    def engine_values(
-        self, _pack: TwentyfourxxPack, values: Mapping[str, str]
-    ) -> dict[str, object]:
-        return {
-            "specialties": parse_blocks(SpecialtyDraft, values["specialties"]),
-            "origins": parse_blocks(OriginDraft, values["origins"]),
-            **block_values(TwentyfourxxBlock, values, ("factions", "npcs", "hostiles")),
-        }
-
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        specialties, origins = self._offered(picks)
+    def creation_steps(self, packs: tuple[Slug, ...], picks: Picks) -> tuple[CreationStep, ...]:
+        specialties, origins = self._offered(packs)
         # The rules fix the seventeen skills; a pack adds specialties and origins, not skills.
         skills = self.packs.srd().skills
-        steps = [
-            *self.supplement_steps(),
-            CreationStep(id="specialty", label="Specialty", options=specialties),
-        ]
+        steps = [CreationStep(id="specialty", label="Specialty", options=specialties)]
         specialty = option_of(specialties, picked(picks, "specialty"))
         if specialty is None:
             return tuple(steps)
@@ -269,9 +203,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
         )
         return tuple(steps)
 
-    def build_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
-        packs = self.picked_packs(picks)
-        offered_specialties, offered_origins = self._offered(picks)
+    def build_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+    ) -> TwentyfourxxCharacter:
+        offered_specialties, offered_origins = self._offered(packs)
         specialty = chosen_option(offered_specialties, picked(picks, "specialty"))
         origin = chosen_option(offered_origins, picked(picks, "origin"))
 
@@ -324,7 +259,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
-        return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
+        return (*sheet.rows(), ("Gear", sheet.gear_text()))
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
         world = self.world_of(state)
@@ -408,8 +343,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
         self._succession(draft)
         return facts
 
-    def _offered(self, picks: Picks) -> tuple[tuple[Specialty, ...], tuple[Origin, ...]]:
-        chosen = self.chosen_packs(picks)
+    def _offered(self, packs: tuple[Slug, ...]) -> tuple[tuple[Specialty, ...], tuple[Origin, ...]]:
+        chosen = self.packs.chosen(packs)
         return (
             tuple(option for pack in chosen for option in pack.specialties),
             tuple(option for pack in chosen for option in pack.origins),
@@ -602,7 +537,7 @@ def items_from_kits(kits: Sequence[Kit]) -> dict[Slug, Gear]:
     for kit in kits:
         key = slug(kit.name, taken)
         taken.append(key)
-        items[key] = Gear(name=kit.name, bulky=kit.bulky, breaks=kit.breaks, harmless=kit.harmless)
+        items[key] = Gear(**kit.model_dump())
     return items
 
 

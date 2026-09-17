@@ -1,31 +1,30 @@
+import json
 import logging
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Self, cast, get_origin
+from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import EngineId, Frozen, Refusal, Slug, content_id, parse, slug
+from aidm.core.entities import (
+    EngineId,
+    Frozen,
+    Refusal,
+    Slug,
+    check_unique,
+    content_id,
+    slug,
+)
 from aidm.core.io import read_model
-from aidm.core.model import PackSelection
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, section_if, sections
 
 LOGGER = logging.getLogger(__name__)
 
-DASH = " — "  # `Label — detail` in a table line; nowhere inside a label or a detail
-SEPARATOR = ", "  # how a list reads inside a block line; nowhere inside an item
-PROSE_ROWS = 8
-NAME_ROWS = 4
-LIST_ROWS = 14
-NAME_LABELS: Mapping[Slug, str] = {
-    "female": "Female names",
-    "male": "Male names",
-    "neutral": "Neutral names",
-    "surnames": "Surnames",
-    "nicknames": "Nicknames",
-}
+DASH = " — "  # parts a label from its detail (`Labelled`, `Pack.sections`); inside neither
+SEPARATOR = ", "  # parts one name from the next in the NAMES line; nowhere inside a name
+PROVENANCE = frozenset(("name", "source", "license"))  # the pack's own; no box edits it
 SRD_PACK: Slug = "srd"
 MAX_SUPPLEMENTS = 2  # two packs in play beside the source fill the worldsmith's command line
 SOURCE_BOUND = (
@@ -99,15 +98,6 @@ class Location(Frozen):
         return self
 
 
-class EditField(Frozen):
-    """One textarea on the pack page: what it is called, what it holds, how tall it stands."""
-
-    id: Slug
-    label: str
-    text: str
-    rows: int
-
-
 class Pack(Frozen):
     """The setting kit every engine's pack carries; an engine adds its tables and its cast."""
 
@@ -150,29 +140,14 @@ class Pack(Frozen):
             *(bullets("ADVENTURE SEEDS", self.seeds) if opening else ()),
         )
 
-    def head_fields(self) -> tuple[EditField, ...]:
-        """The kit fields of the head, as the page shows them; an engine's tables follow."""
-        return (
-            EditField(id="setting", label="Setting", text=self.setting, rows=PROSE_ROWS),
-            *(
-                EditField(id=kind, label=NAME_LABELS[kind], text="\n".join(values), rows=NAME_ROWS)
-                for kind, values in self.names.listed
-            ),
-            EditField(id="rules", label="Special rules", text=self.rules, rows=PROSE_ROWS),
-        )
-
-    def body_fields(self) -> tuple[EditField, ...]:
-        return (
-            EditField(
-                id="locations",
-                label="Locations",
-                text=blocks_text(location.model_dump() for location in self.locations),
-                rows=LIST_ROWS,
-            ),
-            EditField(
-                id="seeds", label="Adventure seeds", text="\n".join(self.seeds), rows=LIST_ROWS
-            ),
-        )
+    def boxes(self) -> dict[str, str]:
+        """Every field but its provenance as JSON text: one textarea on the pack page each."""
+        dumped: dict[str, JsonValue] = self.model_dump(mode="json")
+        return {
+            field_id: json.dumps(value, indent=2, ensure_ascii=False)
+            for field_id, value in dumped.items()
+            if field_id not in PROVENANCE
+        }
 
 
 class PackHead(Frozen):
@@ -235,32 +210,26 @@ class PackSet[K: Pack]:
             raise ValueError(f"the {self.engine!r} engine ships no {SRD_PACK!r} pack")
         return found
 
-    def require(self, selection: PackSelection | None) -> PackSelection:
-        if selection is None:
-            raise Refusal(f"a {self.engine!r} game needs a table set")
-        return selection
-
     def supplements(self) -> tuple[tuple[Slug, K], ...]:
         return tuple((key, pack) for key, pack in self.installed.items() if key != SRD_PACK)
 
-    def chosen(self, selection: PackSelection | None) -> tuple[K, ...]:
-        if selection is None:
-            return ()
-        return tuple(self.installed[pack_id] for pack_id in selection.ids)
+    def chosen(self, selection: tuple[Slug, ...]) -> tuple[K, ...]:
+        return tuple(self.installed[pack_id] for pack_id in selection)
 
-    def select(self, selection: PackSelection) -> PackSelection:
-        if missing := sorted(set(selection.ids) - set(self.installed)):
+    def select(self, ids: Sequence[Slug]) -> tuple[Slug, ...]:
+        check_unique("selected pack ids", ids)
+        if missing := sorted(set(ids) - set(self.installed)):
             raise Refusal(f"packs not installed for {self.engine!r}: {missing}")
-        supplements = [pack_id for pack_id in selection.ids if pack_id != SRD_PACK]
+        supplements = [pack_id for pack_id in ids if pack_id != SRD_PACK]
         if len(supplements) > MAX_SUPPLEMENTS:
             raise Refusal(f"a game plays at most {MAX_SUPPLEMENTS} packs beside the SRD")
         defined: dict[Slug, Slug] = {}
-        for pack_id in selection.ids:
-            ids = set(self.installed[pack_id].defined_ids())
-            if shared := sorted(ids & defined.keys()):
+        for pack_id in ids:
+            defines = set(self.installed[pack_id].defined_ids())
+            if shared := sorted(defines & defined.keys()):
                 raise Refusal(f"{pack_id!r} and {defined[shared[0]]!r} both define {shared[0]!r}")
-            defined.update(dict.fromkeys(ids, pack_id))
-        return selection
+            defined.update(dict.fromkeys(defines, pack_id))
+        return tuple(ids)
 
     def installing(self, pack_id: Slug, pack: K) -> "PackSet[K]":
         """A new set: the same shipped packs, `written` with this one added or replaced."""
@@ -270,10 +239,9 @@ class PackSet[K: Pack]:
         """Refuse a pack that could not be selected beside the SRD, before anything is written."""
         if pack_id in self.shipped:
             raise Refusal(f"{pack_id!r} is a shipped pack")
-        ids = (SRD_PACK, pack_id) if SRD_PACK in self.installed else (pack_id,)
-        self.installing(pack_id, pack).select(parse(PackSelection, {"ids": ids}))
+        self.installing(pack_id, pack).select((SRD_PACK, pack_id))
 
-    def guidance(self, selection: PackSelection | None, *, opening: bool) -> str:
+    def guidance(self, selection: tuple[Slug, ...], *, opening: bool) -> str:
         blocks = [
             f"PACK: {pack.name}\n\n{sections(parts)}"
             for pack in self.chosen(selection)
@@ -281,14 +249,14 @@ class PackSet[K: Pack]:
         ]
         return "\n\n".join(blocks)
 
-    def rules_sections(self, selection: PackSelection | None) -> Sections:
+    def rules_sections(self, selection: tuple[Slug, ...]) -> Sections:
         return tuple(
             (f"SPECIAL RULES: {pack.name}", pack.rules)
             for pack in self.chosen(selection)
             if pack.rules
         )
 
-    def seeds(self, selection: PackSelection | None) -> tuple[str, ...]:
+    def seeds(self, selection: tuple[Slug, ...]) -> tuple[str, ...]:
         return tuple(seed for pack in self.chosen(selection) for seed in pack.seeds)
 
 
@@ -310,100 +278,6 @@ def options(labelled: Iterable[Labelled], taken: list[Slug]) -> tuple[DecisionOp
 
 def bullets(title: str, lines: Iterable[str]) -> Sections:
     return section_if(title, "\n".join(f"- {line}" for line in lines))
-
-
-def table_text(entries: Iterable[DecisionOption]) -> str:
-    """One entry per line, `Label` or `Label — detail`."""
-    return "\n".join(
-        f"{entry.label}{DASH}{entry.detail}" if entry.detail else entry.label for entry in entries
-    )
-
-
-def parse_table(text: str) -> tuple[Labelled, ...]:
-    """A blank line is skipped; a line with two dashes is refused as `line N: one " — " at most`."""
-    entries: list[Labelled] = []
-    for number, line in enumerate(text.splitlines(), start=1):
-        if not line.strip():
-            continue
-        parts = line.split(DASH)
-        if len(parts) > 2:
-            raise Refusal(f'line {number}: one "{DASH}" at most')
-        label, detail = parts[0], parts[1] if len(parts) == 2 else ""
-        try:
-            entries.append(parse(Labelled, {"label": label.strip(), "detail": detail.strip()}))
-        except Refusal as refused:
-            raise Refusal(f"line {number}: {refused}") from refused
-    return tuple(entries)
-
-
-def parse_list(text: str) -> tuple[str, ...]:
-    return tuple(stripped for line in text.splitlines() if (stripped := line.strip()))
-
-
-def blocks_text(blocks: Iterable[Mapping[str, object]]) -> str:
-    """Blocks a blank line apart: the first value is the name line, then `Key: value` per field."""
-    return "\n\n".join(_block_text(block) for block in blocks)
-
-
-def parse_blocks[T: BaseModel](model: type[T], text: str) -> tuple[T, ...]:
-    """The first field is the name line; a key is a field name, `hit_points` as `Hit points`."""
-    fields = model.model_fields
-    named = next(iter(fields))
-    blocks: list[T] = []
-    for number, lines in enumerate(_blocks(text), start=1):
-        where = f"block {number} ({lines[0].strip()})"
-        written: dict[str, object] = {named: lines[0].strip()}
-        for line in lines[1:]:
-            key, marked, value = line.partition(": ")
-            if not marked:
-                raise Refusal(f'{where}: not "Key: value": {line}')
-            field_name = key.strip().lower().replace(" ", "_")
-            found = fields.get(field_name)
-            if found is None:
-                raise Refusal(f"{where}: unknown key {key.strip()}")
-            written[field_name] = _field_value(where, key.strip(), found.annotation, value.strip())
-        for field_name, info in fields.items():
-            if info.is_required() and field_name not in written:
-                raise Refusal(f"{where}: missing {_key_label(field_name)}")
-        try:
-            blocks.append(parse(model, written))
-        except Refusal as refused:
-            raise Refusal(f"{where}: {refused}") from refused
-    return tuple(blocks)
-
-
-def block_fields(rows: Iterable[tuple[Slug, str, Iterable[BaseModel]]]) -> tuple[EditField, ...]:
-    """One field per cast list an engine names: its id, its label, its blocks."""
-    return tuple(
-        EditField(
-            id=field_id,
-            label=label,
-            text=blocks_text(block.model_dump() for block in blocks),
-            rows=LIST_ROWS,
-        )
-        for field_id, label, blocks in rows
-    )
-
-
-def block_values[T: BaseModel](
-    model: type[T], values: Mapping[str, str], keys: Iterable[Slug]
-) -> dict[str, object]:
-    return {key: parse_blocks(model, values[key]) for key in keys}
-
-
-def head_values(values: Mapping[str, str]) -> dict[str, object]:
-    return {
-        "setting": values["setting"].strip(),
-        "names": {kind: parse_list(values[kind]) for kind in NAME_LABELS},
-        "rules": values["rules"].strip(),
-    }
-
-
-def body_values(values: Mapping[str, str]) -> dict[str, object]:
-    return {
-        "locations": parse_blocks(Location, values["locations"]),
-        "seeds": parse_list(values["seeds"]),
-    }
 
 
 def check_lines(what: str, values: Iterable[str]) -> None:
@@ -441,61 +315,3 @@ def read_packs[P: Pack](
             continue
         written_packs[pack_id] = pack
     return PackSet(engine, shipped_packs, written_packs)
-
-
-def _blocks(text: str) -> Iterator[list[str]]:
-    """The written lines of each block, blocks parted by a blank line."""
-    block: list[str] = []
-    for line in text.splitlines():
-        if line.strip():
-            block.append(line)
-        elif block:
-            yield block
-            block = []
-    if block:
-        yield block
-
-
-def _block_text(block: Mapping[str, object]) -> str:
-    named, *rest = block.items()
-    if not (name_line := _printed(*named)):
-        raise ValueError(f"a block is named by its first field, and {named[0]} is empty")
-    lines = [
-        f"{_key_label(key)}: {written}" for key, value in rest if (written := _printed(key, value))
-    ]
-    return "\n".join((name_line, *lines))
-
-
-def _printed(key: str, value: object) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, bool):  # before `int`: no key reads back as a truth value
-        raise ValueError(f"{key} is neither text, a number nor a list of names")
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, tuple):
-        items = cast(tuple[object, ...], value)
-        names = [item for item in items if isinstance(item, str)]
-        if len(names) != len(items):
-            raise ValueError(f"{key} holds something that is not a name")
-        return SEPARATOR.join(names)
-    raise ValueError(f"{key} is neither text, a number nor a list of names")
-
-
-def _field_value(
-    where: str, key: str, annotation: object, value: str
-) -> str | int | tuple[str, ...]:
-    if annotation is str:
-        return value
-    if annotation is int:
-        try:
-            return int(value)
-        except ValueError as broken:
-            raise Refusal(f"{where}: {key} is not a number") from broken
-    if get_origin(annotation) is tuple:
-        return tuple(item.strip() for item in value.split(SEPARATOR))
-    raise ValueError(f"{key} is neither text, a number nor a list of names")
-
-
-def _key_label(field_name: str) -> str:
-    return field_name.replace("_", " ").capitalize()

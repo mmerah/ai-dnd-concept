@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 
 from aidm.core.entities import EngineId, Slug
-from aidm.core.model import PackSelection, ScenarioMeta
+from aidm.core.model import ScenarioMeta
 from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.packs import SRD_PACK
@@ -50,7 +50,7 @@ def small_world() -> TwentyfourxxGame:
             title="Loading Bay", premise="A cargo job gone quiet.", scope="One tense night shift."
         ),
         engine=EngineId("twentyfourxx"),
-        packs=PackSelection(ids=(SRD_PACK,)),
+        packs=(SRD_PACK,),
         log=[
             Chapter(
                 title="The Loading Bay",

@@ -11,6 +11,9 @@ MEANWHILE = (
     "Time has passed where the player is not. Move a dweller, move a loose item, and shut a "
     "way they know — any combination, in one call, while ELSEWHERE is shown."
 )
+NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
+MOVES_OFFSCREEN = "something moves where the player cannot see"
+MOVED_CARD = "Elsewhere, something moves."
 
 
 class MoveItem(Frozen):

@@ -16,7 +16,7 @@ from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.io import FileStore, Library, PackStore
-from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, PackSelection, ScenarioMeta
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.views import Chattiness, PlayerView
@@ -361,7 +361,7 @@ class Runtime:
         engine_id: EngineId,
         meta: ScenarioMeta,
         document: Path | None,
-        packs: PackSelection | None,
+        packs: tuple[Slug, ...],
         character_id: Slug,
     ) -> Slug:
         engine = self.engines[engine_id]
