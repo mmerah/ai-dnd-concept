@@ -613,3 +613,10 @@ One line per concept: where, verdict, which proposal touches it.
 | `tests/support` harness | tests | dedupe (14) |
 | qa harness | qa/ | keep; decision (14) |
 | `scripts/srd_packs.py` | scripts, tests | decision (14) |
+
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src −6, tests −3, net **−9** (claimed −12). 15 min. Two test engines subclassed `Game[...]` and had to become aliases; one test lambda became a `def` once `begin` returned `Game[W]`.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+36** (deleted −115 from the families, added +161: shared builders in `seam.py` +78, `World` hooks +35). 30 min. Two surprises: `premise_of` cannot be typed without `Any` under strict, so each family keeps a ~10-line `author`; and one `family_panels` hook cannot reproduce both panel orders, so the room page now shows Carrying and Ways out above Party and Also here. **Re-decide**: the duplication is gone, but it costs lines and changes the room page.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+16** (claimed −12 plus ~20 moved). 15 min. `Game.close` needs its own six-line signature; `require_present` costs about what the branch it replaced cost. No test pinned the changed refusal. **Re-decide**: the ownership rule is the only win.
