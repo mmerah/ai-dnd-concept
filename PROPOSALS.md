@@ -454,7 +454,9 @@ in ways that are right, so the rules should change.
 
 ## 13. UI trims: no engine knowledge above the seam, and one file per job
 
-**Status.** Accepted: all trims, and option (b) the `GameService.version` counter replaces `Observed` diffing. (Read as "a and b" = the trims plus the counter; (a) alone was "keep polling as is".)
+**Status.** Accepted (trims + option b), then measured at +35 src with three costs the proposal did not name. **Re-decide** option (b) and the media mounts; the other trims hold.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+35**, tests −11, net **+24** (claimed −75). 10 min. `ui/game.py` 709 → 543, `ui/transcript.py` 173: the split is line-neutral (imports, signatures and docstrings eat the saving). `Panel.portrait`, `Engine.seeds`, `drop_stale`, `register_pages` and `_form_page` landed as described. Three parts cost more than they give: (1) **option (b)** needs a `GameService.step(phase)` method (a side-effecting setter is forbidden) touching eight test lines, and `Turn.version` added to the service's count so the number never goes backwards; and dropping `Observed` drops the partial refresh, so every landed fact now rebuilds chat, sidebar, journal and header, not just the live turn. (2) **Static media mounts** still need a module-level root table (a page holds only a `Path`) and must `mkdir` the three roots at startup; a path outside them is a dead URL. (3) `can_type` moves with `standing_proposal`. Recommendation: keep the trims and the split, **drop option (b)** (keep `Observed`) and **drop the media-mount change** (keep the lazy `media_url`).
 
 **Plain words.** The UI reaches into engine internals in four places, registers media routes
 through a module-global dict, and `ui/game.py` (709 lines) mixes page state with transcript
@@ -498,6 +500,8 @@ actions.
 ## 14. Tests: delete what the goldens already pin, parametrize the copies
 
 **Status.** Accepted, option (a): delete `scripts/srd_packs.py`, its test, fixture and pyproject entries. Scripted roles stay as they are (two harnesses).
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** tests **−406**, scripts and fixture **−810**, other −5, net **−1221** (claimed ≈ −830). 10 min. Tests 795 → 765. Holds and beats it. Notes for the plan: the `page` fixture must enter the NiceGUI client in the test's own asyncio task (slot stacks are keyed by task id) and pop that stack at teardown; the six launcher copies are one assertion block, not one shape, so that file is line-neutral; `pyproject.toml` has three `scripts` entries, not two; `docs/LONER-3E.md` documents the deleted converter and needs a paragraph rewritten; two helpers in `test_roles.py` go dead with the prose tests.
 
 **Plain words.** About 450 test lines test prose already pinned by goldens, or repeat one shape
 six times. One script and its test exist for a conversion that ran once.
