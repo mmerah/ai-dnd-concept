@@ -17,7 +17,7 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
-from aidm.ui.dice import DiceTray, rolled_since
+from aidm.ui.dice import DiceSound, rolled_since
 from aidm.ui.widgets import (
     alert,
     avatar,
@@ -100,7 +100,7 @@ class GamePage:
         self.drawer: ui.right_drawer
         self.tabs: ui.tabs
         self.rail: dict[str, ui.button] = {}
-        self.dice: DiceTray
+        self.dice: DiceSound
         self.sound: ui.button
         self.new_activity: ui.button
         self.scene_card: ui.element
@@ -180,7 +180,7 @@ class GamePage:
                 ui.button("Keep playing", on_click=self.restart_dialog.close).props("flat")
                 ui.button("Restart", on_click=self.confirmed_restart)
 
-        self.dice = DiceTray(session.engine.look.dice)
+        self.dice = DiceSound()
         self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
@@ -427,13 +427,14 @@ class GamePage:
         if now.phase != self.seen.phase:
             self.step_started = None if now.phase is None else monotonic()
         if now != self.seen:
-            self.dice.toss(self._landed(now))
-            landed = now.exchanges > self.seen.exchanges
+            if self._dice_landed(now):
+                self.dice.play()
+            closed = now.exchanges > self.seen.exchanges
             # Both reads are of the old `seen`, so neither may move below this line.
             whole = whole_page(now, self.seen)
             self.seen = now
             self._set_composer()
-            if landed:
+            if closed:
                 self._clear_spent_draft()
             self.refresh(whole=whole)
             self._scroll(follow=self.at_end or self.own_move)
@@ -547,16 +548,15 @@ class GamePage:
         self.box.props(f'placeholder="{placeholder(player, session.phase)}"')
         self.restart_item.set_enabled(not session.busy)
 
-    def _landed(self, now: Observed) -> tuple[DiceEvent, ...]:
-        """Since the last poll: the seen turn's tail once it closed, then the live turn's dice."""
-        session = self.session
+    def _dice_landed(self, now: Observed) -> bool:
+        """Whether the closed turn's tail or the live turn rolled dice since the last poll."""
         since = self.seen.facts
-        closed: tuple[DiceEvent, ...] = ()
+        closed = False
         if now.exchanges > self.seen.exchanges:
             closed = rolled_since(self.history[-1].facts, since)
             since = 0
-        live = () if session.turn is None else rolled_since(session.turn.facts, since)
-        return closed + live
+        turn = self.session.turn
+        return closed or (turn is not None and rolled_since(turn.facts, since))
 
     def _scroll(self, *, follow: bool) -> None:
         if not follow:

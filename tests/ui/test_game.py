@@ -31,7 +31,7 @@ from aidm.core.play import (
     SpokenLine,
 )
 from aidm.core.views import PlayerView, Subject
-from aidm.ui.dice import DiceTray
+from aidm.ui.dice import DiceSound
 from aidm.ui.game import (
     TURN_FAILED,
     GamePage,
@@ -152,7 +152,7 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page = GamePage(table.service)
     page.transcript = ui.scroll_area()
     page.new_activity = ui.button("New activity")
-    page.dice = DiceTray(table.service.engine.look.dice)
+    page.dice = DiceSound()
     page.box = ui.input()
     page.send = ui.button()
     page.action_button = ui.button()

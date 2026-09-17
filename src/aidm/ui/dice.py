@@ -3,33 +3,21 @@ from pathlib import Path
 
 from nicegui import ui
 
-from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.views import DiceLook
+from aidm.core.facts import Fact, cards
 
-DICE_ASSETS = Path(__file__).parent / "dice_assets"
-DICE_ASSETS_ROUTE = "/dice/"
+DICE_SOUND = Path(__file__).parent / "roll.mp3"
+DICE_SOUND_ROUTE = "/dice/roll.mp3"
 
 
-class DiceTray(ui.element, component="dice_tray.js", dependencies=["lib/dice-box-threejs.es.js"]):
-    def __init__(self, look: DiceLook) -> None:
+class DiceSound(ui.element, component="dice_sound.js"):
+    def __init__(self) -> None:
         super().__init__()
-        self._props["look"] = look.model_dump()
-        self._props["assets"] = DICE_ASSETS_ROUTE
-        self.classes("game-dice-overlay")
+        self._props["src"] = DICE_SOUND_ROUTE
 
-    def toss(self, events: Sequence[DiceEvent]) -> None:
-        if dice := thrown(events):
-            self.run_method("toss", dice)
+    def play(self) -> None:
+        self.run_method("play")
 
 
-def thrown(events: Sequence[DiceEvent]) -> list[dict[str, int]]:
-    """One die per rolled value, in event order; the card, not the toss, says which are kept."""
-    return [
-        {"faces": face, "value": value}
-        for event in events
-        for face, value in zip(event.faces, event.rolled, strict=True)
-    ]
-
-
-def rolled_since(facts: Sequence[Fact], seen: int) -> tuple[DiceEvent, ...]:
-    return tuple(event for fact in cards(facts[seen:]) for event in fact.dice)
+def rolled_since(facts: Sequence[Fact], seen: int) -> bool:
+    """Whether any told card fact after `seen` carries dice."""
+    return any(fact.dice for fact in cards(facts[seen:]))
