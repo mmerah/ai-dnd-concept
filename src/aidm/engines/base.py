@@ -1,13 +1,12 @@
 import re
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
-from random import Random
 from typing import Self
 
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Mutable, Refusal, Slug, check_unique
-from aidm.core.facts import DiceEvent, Fact, roll
+from aidm.core.facts import DiceEvent, Fact
 from aidm.core.prompt import Sections
 from aidm.core.views import Chattiness, Panel, PanelRow, Rows, Subject
 
@@ -171,28 +170,6 @@ class Sheeted[S: Sheet](Person):
     @property
     def hireable(self) -> bool:
         return self.sheet is None
-
-
-class Item(Mutable):
-    name: str
-
-    def notes(self) -> str:
-        return ""
-
-
-class ItemSheet[I: Item](Sheet):
-    items: dict[Slug, I] = Field(default_factory=dict)
-
-    def require(self, item_id: Slug, owner: str) -> I:
-        item = self.items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among {owner}'s items")
-        return item
-
-    def drop_item(self, item_id: Slug, owner: Thing) -> list[Fact]:
-        item = self.require(item_id, owner.name)
-        del self.items[item_id]
-        return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
 
 
 class World[P: Person, M: Person](Mutable):
@@ -359,14 +336,3 @@ def leaked_names(read: str, things: Iterable[Thing], hidden: Sequence[Thing]) ->
         text = "\n".join((thing.brief, *(value for _, value in thing.rows())))
         leaked.update(named_unmet(text, (other for other in hidden if other.id != thing.id)))
     return leaked
-
-
-def banded(face: int, low: str, mid: str, high: str) -> str:
-    return low if face <= 2 else mid if face <= 4 else high
-
-
-def oracle_roll(question: str, die: int, bands: tuple[str, str, str], rng: Random) -> list[Fact]:
-    """A question about the world when nobody acts: the dice trace, the answer is never told."""
-    rolled = roll((die,), question, rng)
-    result = banded(rolled.face, *bands)
-    return [rolled.fact, Fact(trace=f"{question} — d{die} [{rolled.face}] → {result}")]

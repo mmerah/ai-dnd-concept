@@ -5,12 +5,6 @@ from typing import Any
 
 import pytest
 from pydantic import BaseModel
-from support.breathless import DAX as BREATHLESS_DAX
-from support.breathless import ENGINE as BREATHLESS_ENGINE
-from support.breathless import MIRA as BREATHLESS_MIRA
-from support.breathless import SITUATION as BREATHLESS_SITUATION
-from support.breathless import hired as breathless_hired
-from support.breathless import small_world as breathless_world
 from support.game import ENGINE as LONER3E_ENGINE
 from support.game import MAP, MARA, initialized
 from support.game import SITUATION as LONER3E_SITUATION
@@ -25,7 +19,6 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.model import AnyGame, Check, Generation, PackSelection
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.breathless.world import BreathlessWorld, Survivor
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
 from aidm.engines.scenes.engine import DEPARTURE, SceneEngine
 from aidm.engines.scenes.packs import SRD_PACK
@@ -35,13 +28,6 @@ from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.twentyfourxx.world import Crewmate, CrewSheet, TwentyfourxxWorld
 
 DECOY_CAST_ENTRY = {"id": PLAYER_ID, "name": "Someone", "brief": "filed wrongly", "known": True}
-BREATHLESS_BASE: Mapping[str, object] = {
-    "place": "alley",
-    "title": "The Alley",
-    "focus": "Can they lose the mob in the alley?",
-    "situation": BREATHLESS_SITUATION,
-    "arc": "Farther on, the mob's own paymaster still doesn't know Jax's face.",
-}
 LONER3E_BASE: Mapping[str, object] = {
     "place": "cloister",
     "title": "The Cloister",
@@ -60,8 +46,6 @@ class SceneCase:
     base: Mapping[str, object]  # the draft fields every scene of this case starts from
     bar: Callable[[Mapping[str, object]], None]
     apply: Callable[[AnyGame, Mapping[str, object]], None]
-    hire: Callable[[AnyGame, Slug], AnyGame] | None  # None where the engine hires nobody
-    sheets_the_player: bool  # whether the player's own `Person` subtype carries a `sheet`
     player: str
     met: Slug
     unmet: Slug
@@ -96,36 +80,13 @@ def _plain_scene(base: Mapping[str, object], fields: Mapping[str, object]) -> Sc
     return SceneDraft[Person].model_validate(dict(base) | dict(fields))
 
 
-def _twentyfourxx_hire(state: AnyGame, member_id: Slug) -> AnyGame:
-    return twentyfourxx_hired(state, member_id, skills={"Shooting": 8})
-
-
-def _breathless_hire(state: AnyGame, member_id: Slug) -> AnyGame:
-    breathless_hired(state.payload, member_id)
-    return state
-
-
 CASES = (
-    SceneCase(
-        engine=BREATHLESS_ENGINE,
-        game=breathless_world,
-        base=BREATHLESS_BASE,
-        bar=_bar(SceneDraft[Survivor], BreathlessWorld, BREATHLESS_BASE, breathless_world),
-        apply=_apply(SceneDraft[Survivor], BREATHLESS_BASE),
-        hire=_breathless_hire,
-        sheets_the_player=True,
-        player="Jax",
-        met=BREATHLESS_MIRA,
-        unmet=BREATHLESS_DAX,
-    ),
     SceneCase(
         engine=TWENTYFOURXX_ENGINE,
         game=twentyfourxx_world,
         base=TWENTYFOURXX_BASE,
         bar=_bar(SceneDraft[Crewmate], TwentyfourxxWorld, TWENTYFOURXX_BASE, twentyfourxx_world),
         apply=_apply(SceneDraft[Crewmate], TWENTYFOURXX_BASE),
-        hire=_twentyfourxx_hire,
-        sheets_the_player=True,
         player="Rook",
         met=KESTREL,
         unmet=SABLE,
@@ -136,8 +97,6 @@ CASES = (
         base=LONER3E_BASE,
         bar=_bar(SceneDraft[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
         apply=_apply(SceneDraft[Loner3eCast], LONER3E_BASE),
-        hire=None,  # loner3e plays solo: nobody but the player ever acts
-        sheets_the_player=False,  # Loner3eCast is a plain Person: no `Sheeted` mixin at all
         player="Kael",
         met=MARA,
         unmet=MAP,
@@ -147,10 +106,6 @@ CASES = (
 
 def _case_id(case: SceneCase) -> str:
     return case.engine.id
-
-
-SHEETED_CASES = tuple(case for case in CASES if case.sheets_the_player)
-HIRING_CASES = tuple((case, case.hire) for case in CASES if case.hire is not None)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
@@ -244,7 +199,7 @@ def test_a_present_entitys_row_values_naming_what_is_hidden_is_refused() -> None
 
 
 def test_a_sheeted_draft_cast_member_is_refused() -> None:
-    """Only twentyfourxx and breathless carry a sheet at all; pinned once is enough."""
+    """Only twentyfourxx carries a sheet at all; pinned once is enough."""
     world = twentyfourxx_world().payload
     stranger = "stranger"
     draft = SceneDraft[Crewmate].model_validate(
@@ -274,17 +229,17 @@ def test_the_bar_refuses_a_scene_that_lists_a_party_member() -> None:
 
 def test_a_party_members_own_brief_naming_what_is_hidden_is_refused() -> None:
     """The party travels unlisted, but its members' briefs are read as closely as anyone's."""
-    world = breathless_world().payload
-    world.join_party(BREATHLESS_MIRA)
-    draft = SceneDraft[Survivor].model_validate(
-        dict(BREATHLESS_BASE)
+    world = twentyfourxx_world().payload
+    world.join_party(KESTREL)
+    draft = SceneDraft[Crewmate].model_validate(
+        dict(TWENTYFOURXX_BASE)
         | {
-            "hidden": (BREATHLESS_DAX,),
+            "hidden": (SABLE,),
             "cast": {
-                BREATHLESS_MIRA: {
-                    "id": BREATHLESS_MIRA,
-                    "name": "Mira",
-                    "brief": "She is watching for Dax.",
+                KESTREL: {
+                    "id": KESTREL,
+                    "name": "Kestrel",
+                    "brief": "She is watching for Sable.",
                 }
             },
         }
@@ -295,10 +250,10 @@ def test_a_party_members_own_brief_naming_what_is_hidden_is_refused() -> None:
 
 def test_a_party_members_stored_brief_naming_an_absent_unmet_neighbour_is_accepted() -> None:
     """An old brief naming someone unmet outside this scene must not wedge every later one."""
-    world = breathless_world().payload
-    world.cast[BREATHLESS_MIRA].brief = "She is watching for Dax."
-    world.join_party(BREATHLESS_MIRA)
-    draft = SceneDraft[Survivor].model_validate(dict(BREATHLESS_BASE))
+    world = twentyfourxx_world().payload
+    world.cast[KESTREL].brief = "She is watching for Sable."
+    world.join_party(KESTREL)
+    draft = SceneDraft[Crewmate].model_validate(dict(TWENTYFOURXX_BASE))
     check_scene(draft, world)
 
 
@@ -493,9 +448,8 @@ def test_render_worldsmith_says_who_travels_with_the_player(case: SceneCase) -> 
     assert "travels with the player" in prompt
 
 
-@pytest.mark.parametrize("case", SHEETED_CASES, ids=_case_id)
-def test_a_player_with_no_sheet_is_refused(case: SceneCase) -> None:
-    world = case.game().payload
+def test_a_player_with_no_sheet_is_refused() -> None:
+    world = twentyfourxx_world().payload
     unsheeted = world.player.model_copy(update={"sheet": None})
     with pytest.raises(ValueError, match="the player carries no sheet"):
         type(world)(cast=world.cast, player=unsheeted, runs=world.runs)
@@ -557,14 +511,9 @@ def test_here_yields_the_player_first(case: SceneCase) -> None:
     assert next(world.here()) is world.player
 
 
-@pytest.mark.parametrize(
-    ("case", "hire"), HIRING_CASES, ids=[case.engine.id for case, _ in HIRING_CASES]
-)
-def test_require_actor_accepts_a_living_sheeted_party_member(
-    case: SceneCase, hire: Callable[[AnyGame, Slug], AnyGame]
-) -> None:
-    world = hire(case.game(), case.met).payload
-    assert world.require_actor(case.met) is world.cast[case.met]
+def test_require_actor_accepts_a_living_sheeted_party_member() -> None:
+    world = twentyfourxx_hired(twentyfourxx_world(), KESTREL, skills={"Shooting": 8}).payload
+    assert world.require_actor(KESTREL) is world.cast[KESTREL]
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

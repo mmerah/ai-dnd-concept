@@ -41,7 +41,6 @@ DEFAULT_ROLLS: dict[str, tuple[str, dict[str, JsonValue]]] = {
         },
     ),
     "tunnelgoons": ("roll", {"what": "Try it", "ability": "skulker", "difficulty": 8}),
-    "breathless": ("roll", {"what": "Try it", "skill": "think"}),
     "twentyfourxx": ("roll", {"what": "Try it", "skill": "Stealth"}),
 }
 
@@ -192,22 +191,6 @@ class ScriptedAgents:
             )
         if '"abilities"' in schema:
             return json.dumps({"abilities": {"brute": 1, "skulker": 1, "erudite": 1}})
-        if '"pronouns"' in schema:
-            return json.dumps(
-                {
-                    "pronouns": "they/them",
-                    "job": "Nurse",
-                    "skills": {
-                        "bash": 4,
-                        "dash": 4,
-                        "sneak": 4,
-                        "shoot": 6,
-                        "think": 8,
-                        "sway": 10,
-                    },
-                    "item": "Baseball Bat",
-                }
-            )
         if '"specialty"' in schema:
             return json.dumps(
                 {

@@ -8,7 +8,7 @@ import pytest
 from nicegui import Client, app, core, ui
 from support.game import open_game
 from support.table import (
-    BREATHLESS,
+    TWENTYFOURXX,
     Table,
     narrated,
     offline_settings,
@@ -323,7 +323,7 @@ async def test_opened_retries_silently_while_the_gate_is_held_by_another_game(
     table.spawner.hooks.append(hold_narrator)
     table.spawner.answers["narrator"] = [narrated("Elsewhere begins.")]
     elsewhere = table.runtime.session(
-        LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")
+        LaunchTarget(scenario_id=scenario_for(TWENTYFOURXX), character_id="kael")
     )
     held = create_task(elsewhere.open())
     await sleep(0)

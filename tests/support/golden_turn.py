@@ -70,12 +70,6 @@ def _loner3e_behind(state: AnyGame) -> AnyGame:
     return draft.commit()
 
 
-_BREATHLESS_SCRIPT: tuple[Call, ...] = (
-    tool_call("reveal", entity_id="drowned-marta"),
-    tool_call("roll", what="Listen for what moves on the flats", skill="think"),
-    tool_call("change_stress", amount=1, why="the bell rang twice"),
-)
-
 _LONER3E_SCRIPT: tuple[Call, ...] = (
     tool_call("reveal", entity_id="vault-map"),
     tool_call(
@@ -109,14 +103,6 @@ _TWENTYFOURXX_SCRIPT: tuple[Call, ...] = (
 )
 
 SCRIPTS: dict[EngineId, tuple[tuple[Call, ...], Callable[[AnyGame], AnyGame]]] = {
-    EngineId("breathless"): (
-        _BREATHLESS_SCRIPT,
-        partial(
-            _one_exchange,
-            words="I look around the Bell House before going further.",
-            said="Ovid Sarn watches you from the cracked window.",
-        ),
-    ),
     EngineId("loner3e"): (_LONER3E_SCRIPT, _loner3e_behind),
     EngineId("tunnelgoons"): (
         _TUNNELGOONS_SCRIPT,

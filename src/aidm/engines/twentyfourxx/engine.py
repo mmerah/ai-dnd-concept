@@ -19,7 +19,7 @@ from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
-from aidm.engines.base import PLAYER_ID, banded, oracle_roll
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 from aidm.engines.tools import DROP_ITEM, AskWorld, DropItem, Kill
 from aidm.engines.twentyfourxx.tools import (
@@ -399,7 +399,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         rolled = roll(
             pool.faces, f"{args.what} — {pool.label}", rng, label=label, highlight_kept=True
         )
-        result = banded(rolled.kept, "disaster", "setback", "success")
+        result = _banded(rolled.kept, "disaster", "setback", "success")
 
         line = f"{args.what} — {actor.card_line(sentence(pool.label))} d{pool.die}"
         if args.helped:
@@ -466,7 +466,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return DicePool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 
     def ask_world(self, _draft: TwentyfourxxGame, args: AskWorld, rng: Random) -> list[Fact]:
-        return oracle_roll(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)
+        rolled = roll((6,), args.question, rng)
+        result = _banded(rolled.face, "trouble now", "signs of it", "nothing")
+        # The dice trace; the answer itself is never told.
+        return [rolled.fact, Fact(trace=f"{args.question} — d6 [{rolled.face}] → {result}")]
 
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
         match args.verb:
@@ -486,7 +489,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             raise Refusal(f"a job is open: {world.job}")
         rolled = roll((6,), where, rng)
         face = rolled.face
-        result = banded(
+        result = _banded(
             face,
             "nothing; the player owes somebody to get in on a job",
             "a job, but something seems off",
@@ -541,3 +544,7 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
 
 def _staked(risk: str, *, deadly: bool) -> str:
     return f"{risk} (deadly)" if deadly else risk
+
+
+def _banded(face: int, low: str, mid: str, high: str) -> str:
+    return low if face <= 2 else mid if face <= 4 else high

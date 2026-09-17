@@ -114,22 +114,6 @@ def body(s: Session) -> None:
     page.get_by_role("button", name="Create").click()
     page.wait_for_url("**/")
 
-    # Breathless.
-    page.goto(BASE + "/create")
-    page.wait_for_timeout(800)
-    select(page, "Rules", "BREATHLESS")
-    text(page, "Name", "Wren")
-    text(page, "Pronouns", "she/her")
-    text(page, "Job", "Nurse")
-    select(page, "Skill at d10", "Think")
-    select(page, "Skill at d8", "Sway")
-    select(page, "Skill at d6", "Dash")
-    text(page, "Your one item", "Crowbar")
-    page.wait_for_timeout(400)
-    s.shot(page, "breathless-filled")
-    page.get_by_role("button", name="Create").click()
-    page.wait_for_url("**/")
-
     # 24XX: a specialty with a choice and a weapon, an origin with a body and an increase.
     page.goto(BASE + "/create")
     page.wait_for_timeout(800)
