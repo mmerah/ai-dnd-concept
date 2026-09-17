@@ -367,6 +367,8 @@ are written against the family. The scene family has two real users and stays.
 
 **Status.** Accepted, option (a): master prompt and `render_master` stay in `turn/`.
 
+**Measured (Opus implemented it in a worktree, all four checks clean).** src +7, tests +1, net **+9** (claimed −15). 9 min. The engine half is a pure move (±0 across six families; the inventory of constants was exact). The app half hides an import cycle: `builtin` imports from `spawn`, so `RoleRunner` in `spawn` importing `run_builtin` cannot load; the fix moves the `Tools` protocol to `core/tools.py` and has `run_builtin` return raw text. Two changes the proposal did not name: the CLI timeout now cancels from the runner (the process is still killed by `_spawn`'s `finally`), and the two providers now share one log wording. Accepted for the rule, not the lines.
+
 **Plain words.** A prompt edit is a treasure hunt: prose the models read is spread over four kinds
 of module per family and three places in the app. The re-prompt loop lives in the process-spawning
 module.
@@ -404,6 +406,8 @@ timeout, refusal and log line; `run_cli`/`run_builtin` return a result and a det
 ## 12. Vocabulary: one word per thing, and the rules written as the code lives them
 
 **Status.** Accepted, option (a): the worldsmith's `*Draft` classes become `*Proposal`.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src −8, tests +12 (longer keyword names wrap under `ruff format`), goldens 3 schema files, net **+6** (claimed ±0). 9 min, not 3 h. Three qualifiers to add to the rule: it covers tool arguments only (`World.require(entity_id)` and `UNKNOWN_ID` keep `entity_id`, ~90 sites), saved world fields keep their names (`Way.to`), and dict-built calls in tests and `qa/` (about 73 lines) are found by the test run, not the type checker. One latent bug caught: the 24XX `take_lead` pending option was built as a dict with the old key and only a play test noticed.
 
 **Plain words.** "Draft" means two things. Tool arguments name the same idea five ways. `line` is a
 property in three classes and a method in three others. Two CLAUDE.md rules are broken by the code
