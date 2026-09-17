@@ -7,7 +7,6 @@ from aidm.core.creation import (
     chosen_option,
     other_than,
     picked,
-    picked_many,
 )
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact, roll
@@ -41,7 +40,7 @@ from aidm.engines.loner3e.world import (
     twist_pairing,
 )
 from aidm.engines.loner3e.worldsmith import AUTHORING, Loner3ePack
-from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
+from aidm.engines.scenes.engine import SceneEngine
 
 TWIST_NOTE = (
     "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
@@ -69,8 +68,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
     world = Loner3eWorld
     member = Loner3eCast
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, written: Path) -> None:
+        super().__init__(written)
         self.twist_table()  # fails at start, not mid-scene
 
     def world_of(self, state: Loner3eGame) -> Loner3eWorld:
@@ -118,7 +117,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
 
     def build_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
         steps = self.creation_steps(picks)
-        packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
+        packs = self.picked_packs(picks)
         # The steps already carry the options pooled across the picked packs.
         by_id = {step.id: step for step in steps}
 
@@ -159,7 +158,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
         glossary = (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
         return (
             *super().master_sections(state),
-            *self.packs.rules_sections(state.packs),
             *glossary,
         )
 

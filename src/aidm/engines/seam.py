@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.creation import CreationStep, Picks, check_picks
+from aidm.core.creation import CreationStep, Picks, check_picks, picked_many
 from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json, slug
 from aidm.core.facts import Fact
 from aidm.core.io import decode, read_cached_text, read_model
@@ -27,6 +27,7 @@ from aidm.core.prompt import Sections, sections
 from aidm.core.tools import MasterTool, master_tool, schema_text
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import PLAYER_ID, Person, World
+from aidm.engines.packs import Pack, PackSet, read_packs
 from aidm.engines.tools import (
     HIRE,
     HIRE_TOOL,
@@ -44,8 +45,10 @@ from aidm.engines.tools import (
 )
 
 SOURCELESS = "(none — write from what is below)"
+SUPPLEMENTS: Slug = "supplements"
+SUPPLEMENTS_LABEL = "Packs"
 
-type AnyEngine = Engine[Any, Any, Any]
+type AnyEngine = Engine[Any, Any, Any, Any]
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +63,7 @@ class Request[G: Game[Any]]:
     write: Callable[[G, Generation, WorldsmithAnswer], Awaitable[Written]]
 
 
-class Engine[P: Person, M: Person, G: Game[Any]](ABC):
+class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
     # Declared, not `ClassVar`: `type[G]` cannot be one, and a test sets them on its own instance.
     id: EngineId
     title: str
@@ -68,19 +71,22 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     art_style: str
     meanwhile_turns: int = 6
     hires: bool = False
-    directory: Path  # rules.md; a scene engine's packs/
+    directory: Path  # rules.md, look.json and a shipped packs/
     family_dir: Path
     game: type[G]
     member: type[M]
+    pack: type[K]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
     # Derived by __init__ from the above.
+    packs: PackSet[K]
     instructions: str
     look: Look
     tools: dict[str, MasterTool[G]]
     requests: dict[Slug, Request[G]]
 
-    def __init__(self) -> None:
+    def __init__(self, written: Path) -> None:
+        self.packs = read_packs(self.id, self.directory / "packs", written, self.pack)
         self.instructions = (
             f"{read_cached_text(self.directory / 'rules.md')}\n"
             f"{read_cached_text(self.family_dir / 'rules.md')}"
@@ -153,14 +159,55 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         return await self.requests[request.operation].write(draft, request, worldsmith)
 
     def supplement_options(self) -> tuple[DecisionOption, ...]:
-        return ()
+        return tuple(
+            DecisionOption(id=key, label=pack.name) for key, pack in self.packs.supplements()
+        )
 
-    def select_packs(self, _supplements: Sequence[Slug]) -> PackSelection | None:
-        return None
+    def supplement_steps(self) -> tuple[CreationStep, ...]:
+        options = self.supplement_options()
+        if not options:
+            return ()
+        return (
+            CreationStep(
+                id=SUPPLEMENTS,
+                label=SUPPLEMENTS_LABEL,
+                options=options,
+                multiple=True,
+            ),
+        )
 
-    def admit(self, _packs: PackSelection | None, _character: AnyCharacter) -> None:
-        """Refuse a character these packs cannot start; the seam admits anyone."""
-        return
+    def pack_ids(self, supplements: Sequence[Slug]) -> tuple[Slug, ...]:
+        """The packs a creation pick selects, in order; a scene family prepends the SRD's."""
+        return tuple(supplements)
+
+    def select_packs(self, supplements: Sequence[Slug]) -> PackSelection | None:
+        ids = self.pack_ids(supplements)
+        if not ids:
+            return None
+        return self.packs.select(parse(PackSelection, {"ids": ids}))
+
+    def picked_packs(self, picks: Picks) -> PackSelection | None:
+        return self.select_packs(picked_many(picks, SUPPLEMENTS))
+
+    def chosen_packs(self, picks: Picks) -> tuple[K, ...]:
+        """An uninstalled id is skipped: the page calls this on every change and cannot raise."""
+        installed = self.packs.installed
+        wanted = self.pack_ids(picked_many(picks, SUPPLEMENTS))
+        return tuple(installed[pack_id] for pack_id in wanted if pack_id in installed)
+
+    def admit(self, packs: PackSelection | None, character: AnyCharacter) -> None:
+        """Refuse a character these packs cannot start: every pack it was made with is in play."""
+        made_with = () if character.packs is None else character.packs.ids
+        playing = () if packs is None else packs.ids
+        if not set(made_with) <= set(playing):
+            raise Refusal(
+                f"{character.id!r} was made with {', '.join(made_with)}; "
+                f"this scenario plays {', '.join(playing) or 'no pack'}"
+            )
+
+    def guidance(self, selection: PackSelection | None, /, *, opening: bool) -> str:
+        packs = self.packs.guidance(selection, opening=opening)
+        return f"{self.authoring}\n\n{packs}" if packs else self.authoring
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()
@@ -225,7 +272,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         )
 
     def sheet_character(
-        self, name: str, payload: BaseModel, packs: PackSelection | None = None
+        self, name: str, payload: BaseModel, packs: PackSelection | None
     ) -> AnyCharacter:
         return self.character(id=slug(name, ()), engine=self.id, packs=packs, payload=payload)
 
@@ -297,6 +344,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
                 f"{character.id!r} is written for the {character.engine!r} rules, "
                 f"which the {self.id!r} engine does not play"
             )
+        self.admit(scenario.packs, character)
         state = parse(
             self.game,
             {
@@ -330,6 +378,8 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         request = state.generation
         if request is not None and request.operation not in self.requests:
             raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
+        if state.packs is not None:
+            self.packs.select(state.packs)
 
     @abstractmethod
     def creation_steps(self, picks: Picks, /) -> tuple[CreationStep, ...]: ...

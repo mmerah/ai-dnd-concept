@@ -5,6 +5,7 @@ from aidm.core.entities import EngineId, Slug, slug
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.packs import Pack
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Way
 
@@ -33,7 +34,7 @@ class SixthCharacter(Character[Person]):
     pass
 
 
-class SixthEngine(RoomEngine[Person, Dweller, SixthGame]):
+class SixthEngine(RoomEngine[Person, Dweller, SixthGame, Pack]):
     """A sixth engine, a room crawler; the tools are the family's."""
 
     id = SIXTH
@@ -44,6 +45,7 @@ class SixthEngine(RoomEngine[Person, Dweller, SixthGame]):
     scenario = SixthScenario
     character = SixthCharacter
     member = Dweller
+    pack = Pack
     world = SixthWorld
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
@@ -66,7 +68,7 @@ def installed(tmp_path: Path) -> SixthEngine:
         '{"palette": {}, "dice": {"body": "#000", "ink": "#fff", "glow": "#fff"}}',
         encoding=ENCODING,
     )
-    return Installed()
+    return Installed(tmp_path / "written")
 
 
 def _place(place_id: Slug, name: str, *, known: bool) -> Place:

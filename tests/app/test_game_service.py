@@ -7,6 +7,7 @@ from random import Random
 import pytest
 from support.game import TARGET, open_game, session, with_entity
 from support.table import (
+    NO_PACKS,
     TUNNELGOONS,
     TWENTYFOURXX,
     ScriptedSpawner,
@@ -53,8 +54,8 @@ class _RefusingStore(FileStore):
 class _LandFailsAfterAdvance(Loner3eEngine):
     """`close` ends in `land`: only the landing after a successful write fails."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, written: Path) -> None:
+        super().__init__(written)
         self._advanced = False
 
     async def advance(
@@ -330,7 +331,7 @@ async def test_a_failed_write_during_grow_propagates_without_discarding_the_scen
 
 async def test_a_write_that_lands_invalid_falls_back_to_the_unwritten_fact(tmp_path: Path) -> None:
     """`advance` succeeds; only the landing that follows it fails — the scene must not survive."""
-    table = open_game(tmp_path, engine=_LandFailsAfterAdvance())
+    table = open_game(tmp_path, engine=_LandFailsAfterAdvance(NO_PACKS))
     table.spawner.answers["worldsmith"] = [_scene()]
 
     state = await play_turn(

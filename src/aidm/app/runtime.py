@@ -319,7 +319,7 @@ class Runtime:
     store: FileStore = field(init=False)
 
     def __post_init__(self) -> None:
-        self.engines = build_engines()
+        self.engines = build_engines(self.settings.packs_dir)
         self.spawner = self.spawn(self.settings)
         self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
         self.store = FileStore(self.settings.saves_dir)

@@ -106,6 +106,7 @@ def home_page(runtime: Runtime) -> None:
                 ui.label("No playable scenario was found.").classes("text-negative")
         _new_content()
         _saved_games(catalog)
+        _packs(catalog)
 
 
 def start() -> None:
@@ -144,6 +145,18 @@ def _saved_games(catalog: LauncherCatalog) -> None:
     with ui.column().classes("w-full game-gap-xl"):
         for saved in catalog.saves:
             _saved_card(saved)
+
+
+def _packs(catalog: LauncherCatalog) -> None:
+    heading("Packs")
+    with ui.column().classes("w-full game-gap-md"):
+        for pack in catalog.packs:
+            with ui.row().classes("w-full items-center game-gap-lg"):
+                ui.label(pack.label).classes("game-title")
+                ui.label(pack.tables).classes("text-sm opacity-70 col")
+                ui.badge(pack.rules)
+                if pack.written:
+                    ui.badge("Written").props("color=secondary")
 
 
 def _saved_card(saved: SaveOption) -> None:

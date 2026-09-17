@@ -9,6 +9,7 @@ from support.game import TARGET
 from support.table import (
     ENGINES_BUILT,
     LONER3E,
+    NO_PACKS,
     REPOSITORY_ROOT,
     SCENARIOS,
     TUNNELGOONS,
@@ -16,6 +17,7 @@ from support.table import (
     ScriptedSpawner,
     narrowed,
     offline_settings,
+    updated,
 )
 
 from aidm.app.launch import LauncherCatalog
@@ -24,12 +26,15 @@ from aidm.config import Settings
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING, FileStore, Library
 from aidm.core.model import PackSelection, ScenarioMeta
+from aidm.core.play import DecisionOption
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.loner3e.worldsmith import Loner3ePack
+from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 
 MIRROR = EngineId("mirror")
-_MIRRORED = Loner3eEngine()
+_MIRRORED = Loner3eEngine(NO_PACKS)
 _MIRRORED.id = MIRROR
 # A second engine installed, so the engine the launcher pairs on is observable at all.
 INSTALLED = {**ENGINES_BUILT, MIRROR: _MIRRORED}
@@ -118,6 +123,31 @@ def test_a_character_is_offered_only_to_the_rules_it_is_written_for(tmp_path: Pa
         _ = catalog.target("whispering-vault", "kael")
 
 
+def test_the_catalog_lists_shipped_and_written_packs(tmp_path: Path) -> None:
+    written = tmp_path / "loner3e"
+    written.mkdir()
+    mine = Loner3ePack(
+        name="Mine",
+        source="",
+        license="",
+        concepts=(DecisionOption(id="concept", label="Concept"),),
+        skills=(DecisionOption(id="skill", label="Skill"),),
+        frailties=(DecisionOption(id="frailty", label="Frailty"),),
+        gear=(DecisionOption(id="gear", label="Gear"),),
+    )
+    (written / "mine.json").write_text(mine.model_dump_json(), encoding=ENCODING)
+
+    catalog = _catalog(offline_settings(tmp_path), build_engines(tmp_path))
+
+    by_id = {entry.id: entry for entry in catalog.packs}
+    assert by_id["mine"].written is True
+    assert by_id["ap01-fantasy"].written is False
+    assert by_id["ap01-fantasy"].tables == (
+        "36 concepts · 36 skills · 36 frailties · 36 gear · 6 factions · 6 people · "
+        "6 monsters · 6 locations · 36 seeds"
+    )
+
+
 def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) -> None:
     FileStore(tmp_path).write("whispering-vault--kael", _opening_state(offline_settings(tmp_path)))
 
@@ -173,6 +203,17 @@ def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[
 
     assert not catalog.saves
     assert catalog.unresumable == ("orphan",)
+
+
+def test_a_save_playing_an_uninstalled_pack_is_not_listed(tmp_path: Path) -> None:
+    settings = offline_settings(tmp_path)
+    state = updated(_opening_state(settings), packs=PackSelection(ids=("srd", "gone")))
+    FileStore(tmp_path).write(TARGET.slug, state)
+
+    catalog = _catalog(settings, ENGINES_BUILT)
+
+    assert not catalog.saves
+    assert catalog.unresumable == (TARGET.slug,)
 
 
 def test_a_save_whose_scenario_has_drifted_is_not_listed(tmp_path: Path) -> None:

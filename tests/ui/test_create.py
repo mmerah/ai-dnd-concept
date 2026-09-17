@@ -46,7 +46,7 @@ def test_picking_a_character_made_with_ap01_fantasy_selects_it(tmp_path: Path) -
         look=ENGINES_BUILT[LONER3E].look,
         packs=("srd", "ap01-fantasy"),
     )
-    catalog = LauncherCatalog(scenarios=(), characters=(entry,), saves=(), unresumable=())
+    catalog = LauncherCatalog(scenarios=(), characters=(entry,), packs=(), saves=(), unresumable=())
     runtime = Runtime(offline_settings(tmp_path), lambda _: ScriptedSpawner())
     form = ScenarioForm(runtime, catalog)
     client = Client(ui.page("/"))
@@ -54,5 +54,28 @@ def test_picking_a_character_made_with_ap01_fantasy_selects_it(tmp_path: Path) -
         with client:
             form.build()
         assert form.supplements is not None and form.supplements.value == ["ap01-fantasy"]
+    finally:
+        client.delete()
+
+
+def test_rolling_a_seed_writes_one_of_the_chosen_packs_seeds(tmp_path: Path) -> None:
+    entry = CatalogEntry(
+        id="kael",
+        engine=LONER3E,
+        label="Kael",
+        detail="a wanderer",
+        rules="LONER 3E",
+        look=ENGINES_BUILT[LONER3E].look,
+        packs=("srd", "ap01-fantasy"),
+    )
+    catalog = LauncherCatalog(scenarios=(), characters=(entry,), packs=(), saves=(), unresumable=())
+    runtime = Runtime(offline_settings(tmp_path), lambda _: ScriptedSpawner())
+    form = ScenarioForm(runtime, catalog)
+    client = Client(ui.page("/"))
+    try:
+        with client:
+            form.build()
+            form.roll_seed()
+        assert form.premise.value in ENGINES_BUILT[LONER3E].packs.installed["ap01-fantasy"].seeds
     finally:
         client.delete()

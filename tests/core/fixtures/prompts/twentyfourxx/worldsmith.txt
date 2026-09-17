@@ -61,5 +61,20 @@ ENGINE GUIDANCE:
 24XX AUTHORING
 The cast carries no dice until the player hires them in play. An npc is a name, a brief, and whether the player has met them. A threat is a brief that the player's own roll meets, never a stat block. The player is an operator on a job in a hard science-fiction future. Write scenes as work sites, stations, ships, and the people who hold them.
 
+PACK: Core tables
+
+SPECIALTIES:
+Face: Reading People d8, Deception d8
+Muscle: Intimidation d8 plus one of: Hand-to-hand d8 / Shooting d8
+Psychic: one of: Telepathy d8, Telekinesis d8 / Telepathy d10 / Telekinesis d10
+Medic: Medicine d8, Electronics d8
+Sneak: Climbing d8, Stealth d8
+Tech: Hacking d8, Electronics d8
+
+ORIGINS:
+- Alien — Invent two traits, like electric current, wings, natural camouflage, or six-limbed.
+- Android — Take an upgrade-ready cyber-body: synth skin (looks human) or a case (breaks harmlessly for defense).
+- Human — Apply 3 skill increases.
+
 ANSWER WITH:
 <<schema>>

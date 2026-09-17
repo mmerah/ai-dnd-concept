@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from httpx import ASGITransport, AsyncClient
-from support.table import narrated, offline_settings
+from support.table import NO_PACKS, narrated, offline_settings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import MountedLifespan, endpoint
@@ -92,7 +92,7 @@ async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
             assert content is not None and "no turn is open" in content[0]["text"]
 
             # First of the installed engines, so reading the engines instead would show it.
-            toolless = Loner3eEngine()
+            toolless = Loner3eEngine(NO_PACKS)
             toolless.id = EngineId("mirror")
             toolless.tools = {}
             runtime.engines = {toolless.id: toolless, **runtime.engines}

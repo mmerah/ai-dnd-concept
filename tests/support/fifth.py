@@ -80,7 +80,7 @@ def installed(tmp_path: Path) -> FifthEngine:
         '{"palette": {}, "dice": {"body": "#000", "ink": "#fff", "glow": "#fff"}}',
         encoding=ENCODING,
     )
-    return engine_at(tmp_path)()
+    return engine_at(tmp_path)(tmp_path / "written")
 
 
 def scenario() -> FifthScenario:

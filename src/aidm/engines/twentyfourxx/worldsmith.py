@@ -5,7 +5,8 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Refusal, Slug, check_unique
 from aidm.core.play import DecisionOption
-from aidm.engines.packs import Pack as SettingPack
+from aidm.core.prompt import Sections, section_if
+from aidm.engines.packs import Pack, block_line, bullets
 from aidm.engines.tools import HIRED, UNWRITTEN_CAST
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
@@ -19,6 +20,7 @@ HIRING = (
     "could plausibly be hired for this work. The specialty's own skills belong in `skills`; "
     "invent a fitting skill beyond that list when none printed suits them."
 )
+SKILL_COUNT = 17
 
 
 class SkillChoice(DecisionOption):
@@ -56,11 +58,32 @@ class Origin(DecisionOption):
     choice: tuple[Body, ...] = ()
 
 
-class Pack(SettingPack):
-    skills: tuple[DecisionOption, ...] = Field(min_length=17, max_length=17)
-    specialties: tuple[Specialty, ...]
-    origins: tuple[Origin, ...]
-    starting_kit: tuple[Kit, ...]
+class TwentyfourxxBlock(Frozen):
+    name: str = Field(min_length=1)
+    brief: str = Field(min_length=1)
+    skills: tuple[str, ...] = Field(min_length=1)
+    items: tuple[str, ...] = ()
+    hindrances: tuple[str, ...] = ()
+
+    @property
+    def line(self) -> str:
+        return block_line(
+            self.name,
+            self.brief,
+            ("skills", ", ".join(self.skills)),
+            ("items", ", ".join(self.items)),
+            ("hindrances", ", ".join(self.hindrances)),
+        )
+
+
+class TwentyfourxxPack(Pack):
+    skills: tuple[DecisionOption, ...] = ()  # the SRD's seventeen; a supplement adds none
+    specialties: tuple[Specialty, ...] = ()
+    origins: tuple[Origin, ...] = ()
+    starting_kit: tuple[Kit, ...] = ()
+    factions: tuple[TwentyfourxxBlock, ...] = ()
+    npcs: tuple[TwentyfourxxBlock, ...] = ()
+    hostiles: tuple[TwentyfourxxBlock, ...] = ()
 
     @model_validator(mode="after")
     def _every_pick_told(self) -> Self:
@@ -75,6 +98,27 @@ class Pack(SettingPack):
 
     def defined_ids(self) -> tuple[Slug, ...]:
         return tuple(option.id for option in (*self.specialties, *self.origins))
+
+    @property
+    def counts(self) -> tuple[tuple[str, int], ...]:
+        return (
+            ("specialties", len(self.specialties)),
+            ("origins", len(self.origins)),
+            ("factions", len(self.factions)),
+            ("people", len(self.npcs)),
+            ("hostiles", len(self.hostiles)),
+            *super().counts,
+        )
+
+    def sections(self, *, opening: bool) -> Sections:
+        return (
+            *super().sections(opening=opening),
+            *section_if("SPECIALTIES", self.specialty_lines()),
+            *bullets("ORIGINS", (f"{origin.label} — {origin.detail}" for origin in self.origins)),
+            *bullets("FACTIONS", (block.line for block in self.factions)),
+            *bullets("PEOPLE", (block.line for block in self.npcs)),
+            *bullets("HOSTILES", (block.line for block in self.hostiles)),
+        )
 
 
 class SheetDraft(Frozen):
@@ -95,7 +139,7 @@ class SheetDraft(Frozen):
         description="What already slows them down, if anything: an injury, a debt, a fear.",
     )
 
-    def check(self, packs: Sequence[Pack]) -> None:
+    def check(self, packs: Sequence[TwentyfourxxPack]) -> None:
         check_unique("items", self.items)
         check_unique("hindrances", self.hindrances)
         specialties = {specialty.label for pack in packs for specialty in pack.specialties}
