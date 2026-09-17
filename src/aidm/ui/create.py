@@ -1,7 +1,7 @@
 import logging
 import random
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from functools import partial
 from pathlib import Path
 from tempfile import mkdtemp
@@ -11,10 +11,11 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.launch import LauncherCatalog, LaunchTarget
 from aidm.app.runtime import Runtime
-from aidm.core.creation import MANY, CreationStep, picked, picked_many
+from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioMeta
+from aidm.core.play import DecisionOption
 from aidm.ui import theme
 from aidm.ui.widgets import (
     alert,
@@ -63,6 +64,7 @@ class CharacterForm:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
         self.engine_id = runtime.default_engine
+        self.packs = runtime.engines[self.engine_id].select_packs(())
         self.picks: dict[Slug, str] = {}
         self.name: ui.input
         self.brief: ui.input
@@ -95,7 +97,8 @@ class CharacterForm:
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
         theme.set_look(self.runtime.engines[self.engine_id].look)
-        # The steps come from the engine, so an answer to the old ones means nothing.
+        # The packs and the steps come from the engine, so an answer to the old ones means nothing.
+        self.packs = self.runtime.engines[self.engine_id].select_packs(())
         self.picks.clear()
         self.steps.refresh()
         self.preview.refresh()
@@ -107,12 +110,14 @@ class CharacterForm:
         self.picks[step_id] = event.value
         self.answered()
 
-    def choose_many(self, step_id: Slug, event: ValueChangeEventArguments[list[str]]) -> None:
-        self.picks[step_id] = MANY.join(event.value)
+    def choose_packs(self, event: ValueChangeEventArguments[list[str]]) -> None:
+        if (packs := _selected_packs(self.runtime, self.engine_id, event.value)) is not None:
+            self.packs = packs
         self.answered()
 
     def answered(self) -> None:
-        _drop_stale(self.runtime.engines[self.engine_id].creation_steps(self.picks), self.picks)
+        engine = self.runtime.engines[self.engine_id]
+        _drop_stale(engine.creation_steps(self.packs, self.picks), self.picks)
         self.steps.refresh()
         self.preview.refresh()
 
@@ -135,23 +140,14 @@ class CharacterForm:
             )
             for option in step.options
         }
-        if step.multiple:
-            chosen = ui.select(
-                options=options,
-                value=list(picked_many(self.picks, step.id)),
-                label=step.label,
-                multiple=True,
-                on_change=partial(self.choose_many, step.id),
-            )
-        else:
-            chosen = ui.select(
-                options=options,
-                value=given or None,
-                label=step.label,
-                on_change=partial(self.choose, step.id),
-                with_input=step.allows_text,
-                new_value_mode="add-unique" if step.allows_text else None,
-            )
+        chosen = ui.select(
+            options=options,
+            value=given or None,
+            label=step.label,
+            on_change=partial(self.choose, step.id),
+            with_input=step.allows_text,
+            new_value_mode="add-unique" if step.allows_text else None,
+        )
         if step.hint:
             chosen.props(f'hint="{step.hint}"')
 
@@ -162,7 +158,7 @@ class CharacterForm:
             return
         try:
             made = self.runtime.engines[self.engine_id].create_character(
-                title, (self.brief.value or "").strip(), self.picks
+                title, (self.brief.value or "").strip(), self.packs, self.picks
             )
             self.runtime.library.write_character(made)
         except Refusal as refused:
@@ -174,7 +170,8 @@ class CharacterForm:
     @ui.refreshable_method
     def steps(self) -> None:
         engine = self.runtime.engines[self.engine_id]
-        for step in engine.creation_steps(self.picks):
+        _packs_select(engine.supplement_options(), self.packs, self.choose_packs)
+        for step in engine.creation_steps(self.packs, self.picks):
             self.field(step)
 
     @ui.refreshable_method
@@ -185,6 +182,7 @@ class CharacterForm:
                 engine.create_character(
                     (self.name.value or "").strip() or "Unnamed",
                     (self.brief.value or "").strip(),
+                    self.packs,
                     self.picks,
                 )
             )
@@ -204,6 +202,7 @@ class ScenarioForm:
         self.runtime = runtime
         self.catalog = catalog
         self.engine_id = runtime.default_engine
+        self.packs = runtime.engines[self.engine_id].select_packs(())
         self.upload = DocumentUpload()
         self.title: ui.input
         self.supplements: ui.select | None = None
@@ -248,6 +247,7 @@ class ScenarioForm:
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
         theme.set_look(self.runtime.engines[self.engine_id].look)
+        self.packs = self.runtime.engines[self.engine_id].select_packs(())
         self.character_fields.refresh()
         self._set_style_placeholder()
         self.button_row.refresh()
@@ -260,18 +260,7 @@ class ScenarioForm:
     def character_fields(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
-        offered = {pack.id: pack.label for pack in engine.supplement_options()}
-        self.supplements = (
-            ui.select(
-                options=offered,
-                value=[],
-                label="Packs",  # the seam's `SUPPLEMENTS_LABEL`; ui may not import engines
-                multiple=True,
-                on_change=lambda _: self.follow_supplements(),
-            )
-            if offered
-            else None
-        )
+        self.supplements = _packs_select(engine.supplement_options(), self.packs, self.choose_packs)
         self.seed_button = ui.button("Roll a seed", icon="casino", on_click=self.roll_seed).props(
             "outline dense"
         )
@@ -294,19 +283,23 @@ class ScenarioForm:
             if entry.id == character_id
         )
         # The SRD is implicit and never offered, so this keeps only the named supplements.
-        offered = {pack.id for pack in self.runtime.engines[self.engine_id].supplement_options()}
-        self.supplements.value = [pack for pack in entry.packs if pack in offered]
+        self.supplements.value = self._offered(entry.packs)
 
-    def chosen_supplements(self) -> tuple[Slug, ...]:
-        picked: list[str] = [] if self.supplements is None else self.supplements.value or []
-        return tuple(content_id(pick) for pick in picked)
+    def choose_packs(self, event: ValueChangeEventArguments[list[str]]) -> None:
+        if (packs := _selected_packs(self.runtime, self.engine_id, event.value)) is not None:
+            self.packs = packs
+        elif self.supplements is not None:
+            self.supplements.value = self._offered(self.packs)
+        self.follow_supplements()
+
+    def _offered(self, packs: Iterable[Slug]) -> list[Slug]:
+        """The named supplements among `packs`: what the select can show."""
+        offered = {pack.id for pack in self.runtime.engines[self.engine_id].supplement_options()}
+        return [pack for pack in packs if pack in offered]
 
     def seeds(self) -> tuple[str, ...]:
         engine = self.runtime.engines[self.engine_id]
-        try:
-            return engine.packs.seeds(engine.select_packs(self.chosen_supplements()))
-        except Refusal:
-            return ()  # `write` reports the refusal; the button only hides
+        return engine.packs.seeds(self.packs)
 
     def follow_supplements(self) -> None:
         self.seed_button.set_visibility(bool(self.seeds()))
@@ -345,12 +338,10 @@ class ScenarioForm:
             art_style=(self.style.value or "").strip(),
             voice=(self.voice.value or "").strip(),
         )
-        engine = self.runtime.engines[self.engine_id]
         try:
-            packs = engine.select_packs(self.chosen_supplements())
             character_id = content_id(character_id)
             name = await self.runtime.new_scenario(
-                self.engine_id, meta, document, packs, character_id
+                self.engine_id, meta, document, self.packs, character_id
             )
             opened = LaunchTarget(scenario_id=name, character_id=character_id)
         except Refusal as refused:
@@ -451,16 +442,39 @@ def _engine_select(
     )
 
 
+def _packs_select(
+    offered: Iterable[DecisionOption],
+    chosen: Iterable[Slug],
+    on_change: Callable[[ValueChangeEventArguments[list[str]]], None],
+) -> ui.select | None:
+    """The one pack choice; `None` where the engine offers nothing beside its SRD."""
+    options = {option.id: option.label for option in offered}
+    if not options:
+        return None
+    return ui.select(
+        options=options,
+        value=[pack for pack in chosen if pack in options],
+        label="Packs",
+        multiple=True,
+        on_change=on_change,
+    )
+
+
+def _selected_packs(
+    runtime: Runtime, engine_id: EngineId, chosen: Iterable[str]
+) -> tuple[Slug, ...] | None:
+    """`None` where the choice is refused: the page says so and keeps the packs it had."""
+    try:
+        return runtime.engines[engine_id].select_packs(tuple(content_id(pick) for pick in chosen))
+    except Refusal as refused:
+        alert(str(refused))
+        return None
+
+
 def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
     """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
     for step in steps:
         if not step.constrains:
             continue
-        offered = {option.id for option in step.options}
-        if not step.multiple:
-            if picked(picks, step.id) not in offered:
-                picks.pop(step.id, None)
-        elif step.id in picks:
-            picks[step.id] = MANY.join(
-                part for part in picked_many(picks, step.id) if part in offered
-            )
+        if picked(picks, step.id) not in {option.id for option in step.options}:
+            picks.pop(step.id, None)

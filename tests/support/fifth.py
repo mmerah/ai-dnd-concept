@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, slug
+from aidm.core.entities import EngineId, Slug, slug
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
+from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.prompt import Sections
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.packs import Pack
@@ -22,8 +22,7 @@ class FifthState(SceneWorld[Person]):
     pass
 
 
-class FifthGame(Game[FifthState]):
-    pass
+FifthGame = Game[FifthState]
 
 
 class FifthScenario(Scenario[SceneDraft[Person]]):
@@ -34,7 +33,7 @@ class FifthCharacter(Character[Person]):
     pass
 
 
-class FifthEngine(SceneEngine[Person, FifthGame, Pack]):
+class FifthEngine(SceneEngine[Person, FifthState, Pack]):
     """A fifth scene engine: its state model, its creation, its sections."""
 
     id = FIFTH
@@ -48,14 +47,16 @@ class FifthEngine(SceneEngine[Person, FifthGame, Pack]):
     pack = Pack
     world = FifthState
 
-    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
-        return self.supplement_steps()
+    def creation_steps(self, _packs: tuple[Slug, ...], _picks: Picks) -> tuple[CreationStep, ...]:
+        return ()
 
-    def build_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
+    def build_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], _picks: Picks
+    ) -> AnyCharacter:
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
-            packs=PackSelection(ids=("srd",)),
+            packs=packs,
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
@@ -92,7 +93,7 @@ def scenario() -> FifthScenario:
             scope="One evening at the taproom, start to close.",
         ),
         engine=FIFTH,
-        packs=PackSelection(ids=("srd",)),
+        packs=("srd",),
         payload=SceneDraft[Person](
             place="taproom",
             title="The Taproom",

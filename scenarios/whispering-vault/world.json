@@ -5,11 +5,9 @@
     "scope": "One night in the abbey, from the study to the vault and out again. Reaching what is sealed below, or learning why it was sealed, brings the scenario toward an ending; what Kael carries out can follow him into other stories."
   },
   "engine": "loner3e",
-  "packs": {
-    "ids": [
-      "srd"
-    ]
-  },
+  "packs": [
+    "srd"
+  ],
   "source": "",
   "payload": {
     "place": "abbots-study",

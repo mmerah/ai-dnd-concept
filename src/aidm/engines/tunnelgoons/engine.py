@@ -1,16 +1,15 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, picked
-from aidm.core.entities import EngineId, Refusal
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact, roll
 from aidm.core.model import AnyCharacter, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.packs import LIST_ROWS, EditField, block_fields, block_values, parse_list
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
@@ -38,43 +37,21 @@ from aidm.engines.tunnelgoons.worldsmith import (
     HIRE_GUIDANCE,
     HIRING,
     AbilitiesDraft,
-    TunnelGoonsBlock,
     TunnelGoonsBody,
     TunnelGoonsHead,
     TunnelGoonsPack,
 )
 
-STARTING_ITEM_LIST: tuple[str, ...] = (
-    "Melee Weapon (specify)",
-    "Ranged Weapon (specify)",
-    "Piece of Armor (specify)",
-    "Cloak (specify colour)",
-    "Ration (specify)",
-    "Torch",
-    "Net",
-    "Bear Trap",
-    "Hammer",
-    "Mirror",
-    "Rope",
-    "Manacles",
-    "Flask",
-    "Marbles",
-    "Pitons",
-    "Scissors",
-    "Wire",
-    "Flint Steel",
-)
 POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
     DecisionOption(id=str(points), label=str(points)) for points in range(ABILITY_POINTS + 1)
 )
 
 
-class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack]):
+class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     authoring = AUTHORING
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
-    meanwhile_turns = 4
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
@@ -85,9 +62,6 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack])
     world = TunnelGoonsWorld
     member = Npc
     hires = True
-
-    def world_of(self, state: TunnelGoonsGame) -> TunnelGoonsWorld:
-        return state.payload
 
     async def write_sheet(
         self, draft: TunnelGoonsGame, member: Npc, terms: str, worldsmith: WorldsmithAnswer, /
@@ -110,25 +84,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack])
             master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
         )
 
-    def engine_fields(self, pack: TunnelGoonsPack) -> tuple[EditField, ...]:
-        return (
-            EditField(id="items", label="Items", text="\n".join(pack.items), rows=LIST_ROWS),
-            *block_fields(
-                (
-                    ("factions", "Factions", pack.factions),
-                    ("npcs", "People", pack.npcs),
-                    ("monsters", "Monsters", pack.monsters),
-                )
-            ),
-        )
-
-    def engine_values(self, _pack: TunnelGoonsPack, values: Mapping[str, str]) -> dict[str, object]:
-        return {
-            "items": parse_list(values["items"]),
-            **block_values(TunnelGoonsBlock, values, ("factions", "npcs", "monsters")),
-        }
-
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+    def creation_steps(self, packs: tuple[Slug, ...], _picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(
             CreationStep(
                 id=ability,
@@ -138,15 +94,16 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack])
             )
             for ability in ABILITIES
         )
-        packed = (name for pack in self.chosen_packs(picks) for name in pack.items)
-        hint = ", ".join((*STARTING_ITEM_LIST, *packed))
+        hint = ", ".join(name for pack in self.packs.chosen(packs) for name in pack.items)
         item_steps = tuple(
             CreationStep(id=f"item-{number}", label=f"Item {number}", hint=hint)
             for number in range(1, STARTING_ITEMS + 1)
         )
-        return (*self.supplement_steps(), *ability_steps, *item_steps)
+        return (*ability_steps, *item_steps)
 
-    def build_character(self, name: str, brief: str, picks: Picks) -> TunnelGoonsCharacter:
+    def build_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+    ) -> TunnelGoonsCharacter:
         abilities: dict[Ability, int] = {
             ability: int(picked(picks, ability)) for ability in ABILITIES
         }
@@ -161,7 +118,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack])
             kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
         sheet.unpack_kit(())
-        return self.sheet_character(name, sheet, self.picked_packs(picks))
+        return self.sheet_character(name, sheet, packs)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character)

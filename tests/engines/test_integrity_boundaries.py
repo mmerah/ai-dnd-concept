@@ -7,7 +7,7 @@ from support.game import character, initialized, loner_sheet, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
 from aidm.config import RoleConfig
-from aidm.core.entities import EngineId, Frozen, Refusal, parse_json
+from aidm.core.entities import EngineId, Frozen, Refusal, parse, parse_json
 from aidm.core.io import Library
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eWorld
@@ -123,6 +123,16 @@ def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -
         _ = library.read_character("mira", engine.id, engine.character)
 
 
+def test_a_character_file_that_names_one_pack_twice_is_refused(tmp_path: Path) -> None:
+    doubled = json.dumps(json.loads(character().model_dump_json()) | {"packs": ["srd", "srd"]})
+    (tmp_path / "kael").mkdir()
+    _ = (tmp_path / "kael" / f"{LONER3E}.json").write_text(doubled, encoding="utf-8")
+
+    engine = ENGINES_BUILT[LONER3E]
+    with pytest.raises(Refusal, match="duplicate packs"):
+        _ = Library(tmp_path, tmp_path).read_character("kael", engine.id, engine.character)
+
+
 def _luck(state: Loner3eGame) -> int:
     return loner_sheet(state, PLAYER_ID).luck.current
 
@@ -149,9 +159,21 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
 def test_a_save_naming_a_pack_no_longer_installed_is_refused() -> None:
     engine, state = initialized()
     raw = state.model_dump(mode="json")
-    raw["packs"] = {"ids": ["srd", "gone"]}
+    raw["packs"] = ["srd", "gone"]
     with pytest.raises(Refusal, match="not installed"):
         _ = engine.restore(json.dumps(raw))
+
+
+def test_a_scenario_or_a_character_without_packs_is_refused() -> None:
+    raw = scenario().model_dump(mode="json")
+    del raw["packs"]
+    with pytest.raises(Refusal, match="packs"):
+        _ = parse(ENGINES_BUILT[LONER3E].scenario, raw)
+
+    raw = character().model_dump(mode="json")
+    del raw["packs"]
+    with pytest.raises(Refusal, match="packs"):
+        _ = parse(ENGINES_BUILT[LONER3E].character, raw)
 
 
 def test_a_save_from_other_rules_is_refused_before_it_is_read() -> None:

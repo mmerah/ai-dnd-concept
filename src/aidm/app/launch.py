@@ -103,7 +103,7 @@ class LauncherCatalog:
                 detail=header.payload.brief,
                 rules=engines[engine].title,
                 look=engines[engine].look,
-                packs=header.packs.ids if header.packs is not None else (),
+                packs=header.packs,
             )
             for name, engine, header in library.read_characters(engines)
         )

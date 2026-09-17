@@ -7,11 +7,6 @@ from aidm.core.entities import Mutable, Refusal, Slug, check_unique, parse
 from aidm.core.facts import Fact
 from aidm.core.prompt import lines_of
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
-from aidm.engines.rooms.tools import Meanwhile
-
-NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
-MOVES_OFFSCREEN = "something moves where the player cannot see"
-MOVED_CARD = "Elsewhere, something moves."
 
 
 class Dweller(Person):
@@ -154,7 +149,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         return self
 
     @classmethod
-    def opening(cls, draft: MapDraft[N], player: P, items: Iterable[Prop], source: str) -> Self:
+    def opening(cls, draft: MapDraft[N], player: P, items: Iterable[Prop]) -> Self:
         return parse(
             cls,
             {
@@ -164,7 +159,6 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
                 "items": {**draft.items, **{item.id: item for item in items}},
                 "player": player,
                 "visits": [draft.start],
-                "source": source,
             },
         )
 
@@ -195,12 +189,23 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         """The player, whoever stands with them, and the place itself."""
         return {self.current.id, *(entity.id for entity in self.here())}
 
-    def require_member_here(self, entity_id: Slug) -> N:
+    def require_dweller(self, entity_id: Slug) -> N:
+        """An npc of this map who is still alive, wherever they stand."""
         npc = self.npcs.get(entity_id)
         if npc is None:
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         if not npc.alive:
             raise Refusal(IS_DEAD.format(name=npc.name))
+        return npc
+
+    def require_prop(self, item_id: Slug) -> Prop:
+        item = self.items.get(item_id)
+        if item is None:
+            raise Refusal(UNKNOWN_ID.format(entity_id=item_id))
+        return item
+
+    def require_member_here(self, entity_id: Slug) -> N:
+        npc = self.require_dweller(entity_id)
         if npc.place != self.current.id or not npc.known:
             raise Refusal(f"{npc.name} is not here with the player")
         return npc
@@ -223,11 +228,13 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
             items.append(item)
         return tuple(items)
 
-    def leave_party(self, entity_id: Slug) -> list[Fact]:
-        npc = self.npcs.get(entity_id)
-        if npc is None:
-            raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
-        return self.part(npc)
+    def tick(self, *, counted: bool) -> None:
+        armed = self.meanwhile_due
+        if not armed and not self.can_move_offscreen():
+            return
+        super().tick(counted=counted)
+        if armed and counted:
+            self.disarm()  # the armed turn is spent; one chance, not several
 
     def _open_way(self, way: Way, destination: Place) -> None:
         """Walked or unlocked, a way is known from both sides."""
@@ -326,7 +333,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         trace = f"{item.mention} moves to {holder.mention}"
         return [*facts, item.fact(trace, card=card)]
 
-    def _offscreen_place(self, place_id: Slug) -> Place:
+    def offscreen_place(self, place_id: Slug) -> Place:
         away = self.elsewhere()
         found = next((place for place in away if place.id == place_id), None)
         if found is None:
@@ -334,55 +341,38 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
             raise Refusal(f"{place_id!r} is not a place the player has walked away from: {options}")
         return found
 
-    def meanwhile(self, args: Meanwhile) -> list[Fact]:
-        if not self.meanwhile_due:
-            raise Refusal(NOTHING_OFFSCREEN)
-        facts: list[Fact] = []
-        if args.dweller_id is not None and args.dweller_to is not None:
-            npc = self.npcs.get(args.dweller_id)
-            if npc is None:
-                raise Refusal(UNKNOWN_ID.format(entity_id=args.dweller_id))
-            if not npc.alive:
-                raise Refusal(IS_DEAD.format(name=npc.name))
-            if npc.place == self.current.id:
-                raise Refusal(f"{npc.name} stands with the player; that is not offscreen")
-            destination = self._offscreen_place(args.dweller_to)
-            walked = self.way(npc.place, destination.id)
-            if walked is None or walked.locked:
-                origin = self.require_place(npc.place).name
-                raise Refusal(f"no unlocked way leads from {origin} to {destination.name}")
-            npc.place = destination.id
-            facts.append(Fact(trace=f"{npc.name} walks to {destination.name}"))
-        if args.item_id is not None and args.item_to is not None:
-            item = self.items.get(args.item_id)
-            if item is None:
-                raise Refusal(UNKNOWN_ID.format(entity_id=args.item_id))
-            if item.on in self.holders_here:
-                raise Refusal(f"{item.name} is here with the player")
-            where = self._offscreen_place(args.item_to)
-            if item.on == where.id:
-                raise Refusal(f"{item.name} is already there")
-            item.on = where.id
-            facts.append(Fact(trace=f"{item.name} moves to {where.name}"))
-        if args.shut_from is not None and args.shut_to is not None:
-            start = self.require_place(args.shut_from)
-            end = self.require_place(args.shut_to)
-            if self.current.id in (start.id, end.id):
-                raise Refusal("a way at the player's place cannot shut offscreen")
-            shut = self.way(start.id, end.id)
-            if shut is None:
-                raise Refusal(f"no way leads from {start.name} to {end.name}")
-            if shut.locked:
-                raise Refusal(f"the way from {start.name} to {end.name} is already shut")
-            if not shut.known:
-                raise Refusal(f"the player has not found the way from {start.name} to {end.name}")
-            shut.locked = True
-            if (back := self.way(end.id, start.id)) is not None:
-                back.locked = True
-            facts.append(Fact(trace=f"the way from {start.name} to {end.name} shuts"))
-        facts.append(Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD))
-        self.disarm()
-        return facts
+    def walk_offscreen(self, npc: N, place: Place) -> Fact:
+        if npc.place == self.current.id:
+            raise Refusal(f"{npc.name} stands with the player; that is not offscreen")
+        walked = self.way(npc.place, place.id)
+        if walked is None or walked.locked:
+            origin = self.require_place(npc.place).name
+            raise Refusal(f"no unlocked way leads from {origin} to {place.name}")
+        npc.place = place.id
+        return Fact(trace=f"{npc.name} walks to {place.name}")
+
+    def drift_item(self, item: Prop, place: Place) -> Fact:
+        if item.on in self.holders_here:
+            raise Refusal(f"{item.name} is here with the player")
+        if item.on == place.id:
+            raise Refusal(f"{item.name} is already there")
+        item.on = place.id
+        return Fact(trace=f"{item.name} moves to {place.name}")
+
+    def shut_way(self, start: Place, end: Place) -> Fact:
+        if self.current.id in (start.id, end.id):
+            raise Refusal("a way at the player's place cannot shut offscreen")
+        shut = self.way(start.id, end.id)
+        if shut is None:
+            raise Refusal(f"no way leads from {start.name} to {end.name}")
+        if shut.locked:
+            raise Refusal(f"the way from {start.name} to {end.name} is already shut")
+        if not shut.known:
+            raise Refusal(f"the player has not found the way from {start.name} to {end.name}")
+        shut.locked = True
+        if (back := self.way(end.id, start.id)) is not None:
+            back.locked = True
+        return Fact(trace=f"the way from {start.name} to {end.name} shuts")
 
     def kill(self, entity_id: Slug) -> list[Fact]:
         actor: P | N = (

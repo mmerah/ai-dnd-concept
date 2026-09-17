@@ -8,15 +8,13 @@ from support.table import (
     LONER3E,
     SCENARIO_MODELS,
     TWENTYFOURXX,
-    game,
     narrowed,
     scenario_for,
-    updated,
 )
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING
-from aidm.core.model import Character, PackSelection
+from aidm.core.model import Character
 from aidm.core.play import DecisionOption
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -90,7 +88,7 @@ def test_new_game_refuses_a_character_made_from_an_unselected_pack() -> None:
     scenario_id = scenario_for(LONER3E)
     scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
     character = LIBRARY.read_character("kael", engine.id, engine.character)
-    stranded = character.model_copy(update={"packs": PackSelection(ids=(SRD_PACK, "other"))})
+    stranded = character.model_copy(update={"packs": (SRD_PACK, "other")})
 
     with pytest.raises(Refusal, match="'kael' was made with srd, other"):
         engine.begin(scenario_id, scenario, stranded)
@@ -100,18 +98,10 @@ def test_new_game_accepts_a_character_made_from_a_subset_of_the_scenarios_packs(
     engine = ENGINES_BUILT[LONER3E]
     scenario_id = scenario_for(LONER3E)
     scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    wider = scenario.model_copy(update={"packs": PackSelection(ids=(SRD_PACK, "ap01-fantasy"))})
+    wider = scenario.model_copy(update={"packs": (SRD_PACK, "ap01-fantasy")})
     character = LIBRARY.read_character("kael", engine.id, engine.character)
 
     assert engine.begin(scenario_id, wider, character).packs == wider.packs
-
-
-def test_select_refuses_a_selection_without_the_srd() -> None:
-    engine, state = game(LONER3E)
-    state = updated(state, packs=PackSelection(ids=("ap01-fantasy",)))
-
-    with pytest.raises(Refusal, match="plays the 'srd' tables"):
-        engine.validate(state)
 
 
 def test_select_refuses_two_packs_that_define_the_same_id() -> None:
@@ -119,7 +109,7 @@ def test_select_refuses_two_packs_that_define_the_same_id() -> None:
     packs = PackSet(engine.id, {**engine.packs.installed, "twin": engine.packs.srd()}, {})
 
     with pytest.raises(Refusal, match="both define"):
-        packs.select(PackSelection(ids=(SRD_PACK, "twin")))
+        packs.select((SRD_PACK, "twin"))
 
 
 def test_check_addable_refuses_a_pack_that_could_not_be_played_beside_the_srd() -> None:
@@ -150,7 +140,7 @@ def test_select_refuses_more_than_max_supplements_beside_the_srd() -> None:
     packs = PackSet(TEST_ENGINE, {SRD_PACK: srd, "one": extra, "two": extra, "three": extra}, {})
 
     with pytest.raises(Refusal, match=f"at most {MAX_SUPPLEMENTS} packs"):
-        packs.select(PackSelection(ids=(SRD_PACK, "one", "two", "three")))
+        packs.select((SRD_PACK, "one", "two", "three"))
 
 
 def test_sections_shows_adventure_seeds_only_at_the_opening() -> None:
@@ -200,7 +190,7 @@ def test_pack_set_guidance_starts_with_pack_for_a_selection() -> None:
     pack = Pack(name="Test", source="", license="", setting="A quiet border town.")
     packs = PackSet(TEST_ENGINE, {SRD_PACK: pack}, {})
 
-    assert packs.guidance(PackSelection(ids=(SRD_PACK,)), opening=False).startswith("PACK: Test")
+    assert packs.guidance((SRD_PACK,), opening=False).startswith("PACK: Test")
 
 
 def test_rules_sections_is_empty_unless_the_pack_writes_rules() -> None:
@@ -209,8 +199,8 @@ def test_rules_sections_is_empty_unless_the_pack_writes_rules() -> None:
     plain_packs = PackSet(TEST_ENGINE, {SRD_PACK: plain}, {})
     written_packs = PackSet(TEST_ENGINE, {SRD_PACK: with_rules}, {})
 
-    assert plain_packs.rules_sections(PackSelection(ids=(SRD_PACK,))) == ()
-    assert written_packs.rules_sections(PackSelection(ids=(SRD_PACK,))) == (
+    assert plain_packs.rules_sections((SRD_PACK,)) == ()
+    assert written_packs.rules_sections((SRD_PACK,)) == (
         ("SPECIAL RULES: Test", "Spend Luck to reroll once."),
     )
 
@@ -223,23 +213,24 @@ def test_a_twentyfourxx_supplement_carries_no_skills_of_its_own() -> None:
         {},
     )
 
-    assert packs.select(PackSelection(ids=(SRD_PACK, "extra"))).ids == (SRD_PACK, "extra")
+    assert packs.select((SRD_PACK, "extra")) == (SRD_PACK, "extra")
 
 
 def test_the_seam_admits_a_character_no_wider_than_the_scenario(tmp_path: Path) -> None:
     engine = sixth.installed(tmp_path)
+    engine.install_pack("mine", Pack(name="Mine", source="", license=""))
     made_with = Character[Person](
         id="wren",
         engine=engine.id,
-        packs=PackSelection(ids=("mine",)),
+        packs=("mine",),
         payload=Person(id=PLAYER_ID, name="Wren", brief="A quiet scout", known=True),
     )
-    packless = made_with.model_copy(update={"packs": None})
+    packless = made_with.model_copy(update={"packs": ()})
 
-    engine.admit(PackSelection(ids=("mine",)), packless)
+    engine.admit(("mine",), packless)
 
     with pytest.raises(Refusal, match="this scenario plays no pack"):
-        engine.admit(None, made_with)
+        engine.admit((), made_with)
 
 
 def test_seeds_lists_the_selected_packs_seeds_in_order() -> None:
@@ -247,8 +238,8 @@ def test_seeds_lists_the_selected_packs_seeds_in_order() -> None:
     second = Pack(name="Second", source="", license="", seeds=("A debt come due.",))
     packs = PackSet(TEST_ENGINE, {SRD_PACK: first, "second": second}, {})
 
-    assert packs.seeds(None) == ()
-    assert packs.seeds(PackSelection(ids=("second", SRD_PACK))) == (
+    assert packs.seeds(()) == ()
+    assert packs.seeds(("second", SRD_PACK)) == (
         "A debt come due.",
         "A vanished caravan.",
     )

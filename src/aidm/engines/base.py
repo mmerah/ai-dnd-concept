@@ -1,7 +1,7 @@
 import re
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Self
+from typing import ClassVar, Self
 
 from pydantic import Field, model_validator
 
@@ -173,8 +173,9 @@ class Sheeted[S: Sheet](Person):
 
 
 class World[P: Person, M: Person](Mutable):
+    tempo: ClassVar[int]  # counted turns between two firings of the meanwhile clock
+
     player: P
-    source: str = ""
     party: list[Slug] = Field(default_factory=list)
     turns_played: int = Field(default=0, ge=0)  # counted turns since the last fire
     meanwhile_due: bool = False  # the clock has fired and nothing has spent it yet
@@ -211,18 +212,24 @@ class World[P: Person, M: Person](Mutable):
     @abstractmethod
     def kill(self, entity_id: Slug) -> list[Fact]: ...
     @abstractmethod
-    def leave_party(self, entity_id: Slug) -> list[Fact]: ...
-    @abstractmethod
     def unmet(self) -> Iterable[Thing]: ...
+
+    def leave_party(self, entity_id: Slug) -> list[Fact]:
+        member = self.member_of(entity_id)
+        if member is None:
+            raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
+        return self.part(member)
 
     def check_unnamed(self, *texts: str) -> None:
         if leaked := sorted(set(named_unmet("\n".join(texts), self.unmet()))):
             raise Refusal(f"this names what the player has not met: {leaked}. Say it another way.")
 
-    def count_turn(self, tempo: int) -> None:
+    def tick(self, *, counted: bool) -> None:
         """One turn against the clock; at the tempo it starts over and arms the flag."""
+        if not counted:
+            return
         self.turns_played += 1
-        if self.turns_played >= tempo:
+        if self.turns_played >= self.tempo:
             self.turns_played = 0
             self.meanwhile_due = True
 

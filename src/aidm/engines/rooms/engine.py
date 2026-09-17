@@ -10,7 +10,6 @@ from aidm.core.model import (
     AnyScenario,
     Game,
     Generation,
-    PackSelection,
     ScenarioMeta,
     WorldsmithAnswer,
 )
@@ -31,6 +30,9 @@ from aidm.engines.rooms.tools import (
     MEANWHILE,
     MOVE,
     MOVE_ITEM,
+    MOVED_CARD,
+    MOVES_OFFSCREEN,
+    NOTHING_OFFSCREEN,
     UNLOCK_WAY,
     Meanwhile,
     Move,
@@ -53,8 +55,7 @@ MAP_UNWRITTEN = Fact(
 ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 
 
-class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K]):
-    world: type[RoomWorld[P, N]]
+class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[P, N, W, K]):
     family_dir = Path(__file__).parent
     opening_sections = (
         ("MAP SO FAR", "(no map yet)"),
@@ -62,22 +63,17 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
         ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
     )
 
-    def world_of(self, state: G) -> RoomWorld[P, N]:
-        return state.payload
-
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[P, N]:
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
         draft: MapDraft[N] = scenario.payload
         check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
-        return self.world.opening(
-            draft, player, self.starting_items(player, taken), scenario.source
-        )
+        return self.world.opening(draft, player, self.starting_items(player, taken))
 
     def starting_items(self, _player: P, _taken: Iterable[str]) -> tuple[Prop, ...]:
         return ()
 
-    def family_sections(self, draft: G) -> Sections:
+    def family_sections(self, draft: Game[W]) -> Sections:
         world = self.world_of(draft)
         return (
             ("MAP SO FAR", world.map_so_far()),
@@ -86,7 +82,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
             ("THE PLAYER", world.line(world.player)),
         )
 
-    def master_sections(self, state: G) -> Sections:
+    def master_sections(self, state: Game[W]) -> Sections:
         world = self.world_of(state)
         place = world.current
         player = world.player
@@ -103,7 +99,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
             *(((ELSEWHERE, world.elsewhere_lines()),) if world.meanwhile_due else ()),
         )
 
-    def narrator_view(self, state: G) -> NarratorView:
+    def narrator_view(self, state: Game[W]) -> NarratorView:
         world = self.world_of(state)
         place = world.current
         here = tuple(entity for entity in world.here() if entity.known)
@@ -120,7 +116,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
             sheet=(*world.sheet_rows(), ("Carrying", carrying or "nothing")),
         )
 
-    def player_view(self, state: G) -> PlayerView:
+    def player_view(self, state: Game[W]) -> PlayerView:
         world = self.world_of(state)
         player = world.player
         ways = world.ways.get(world.current.id, ())
@@ -159,7 +155,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: PackSelection | None,
+        packs: tuple[Slug, ...],
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
@@ -179,21 +175,23 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
-    def act(self, draft: G, action: Slug, words: str) -> None:
+    def act(self, draft: Game[W], action: Slug, words: str) -> None:
         if action != EXTEND or self.world_of(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
         draft.generation = Generation(operation=EXTEND, detail=words)
 
-    async def extend(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
+    async def extend(
+        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
         self.install(draft, await self.write_next(draft, request.detail, worldsmith))
         return Written((), None)
 
-    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
+    def worldsmith_requests(self) -> dict[Slug, Request[Game[W]]]:
         return {**super().worldsmith_requests(), EXTEND: Request(MAP_UNWRITTEN, self.extend)}
 
-    def master_tools(self) -> tuple[MasterTool[G], ...]:
+    def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
         world_of = self.world_of
         return (
             *super().master_tools(),
@@ -202,25 +200,33 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
                 "unlock_way", UNLOCK_WAY, UnlockWay, lambda d, a, _: world_of(d).unlock_way(a.to_id)
             ),
             master_tool("move", MOVE, Move, lambda d, a, _: world_of(d).move(a.to_id, a.with_ids)),
-            master_tool(
-                "meanwhile", MEANWHILE, Meanwhile, lambda d, a, _: world_of(d).meanwhile(a)
-            ),
+            master_tool("meanwhile", MEANWHILE, Meanwhile, self.meanwhile),
         )
 
-    def move_item(self, draft: G, args: MoveItem, _rng: Random) -> list[Fact]:
+    def move_item(self, draft: Game[W], args: MoveItem, _rng: Random) -> list[Fact]:
         return self.world_of(draft).move_item(args.item_id, args.to)
 
-    def tick(self, draft: G, *, counted: bool) -> None:
+    def meanwhile(self, draft: Game[W], args: Meanwhile, _rng: Random) -> list[Fact]:
+        """The ids resolve here; the world is handed what they name and changes its fields."""
         world = self.world_of(draft)
-        was_armed = world.meanwhile_due
-        if not was_armed and not world.can_move_offscreen():
-            return
-        super().tick(draft, counted=counted)
-        if was_armed and counted:
-            world.disarm()  # the armed turn is spent; one chance, not several
+        if not world.meanwhile_due:
+            raise Refusal(NOTHING_OFFSCREEN)
+        facts: list[Fact] = []
+        if args.dweller_id is not None and args.dweller_to is not None:
+            npc = world.require_dweller(args.dweller_id)
+            facts.append(world.walk_offscreen(npc, world.offscreen_place(args.dweller_to)))
+        if args.item_id is not None and args.item_to is not None:
+            item = world.require_prop(args.item_id)
+            facts.append(world.drift_item(item, world.offscreen_place(args.item_to)))
+        if args.shut_from is not None and args.shut_to is not None:
+            start = world.require_place(args.shut_from)
+            facts.append(world.shut_way(start, world.require_place(args.shut_to)))
+        facts.append(Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD))
+        world.disarm()
+        return facts
 
     async def write_next(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
     ) -> RegionDraft[N]:
         world = self.world_of(draft)
         model = RegionDraft[self.member]
@@ -229,7 +235,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K
         )
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
-    def install(self, draft: G, extension: RegionDraft[N]) -> None:
+    def install(self, draft: Game[W], extension: RegionDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
         self.world_of(draft).attach(extension, extension.start)
         draft.log[-1].recap = extension.recap

@@ -116,6 +116,7 @@ def small_world() -> TunnelGoonsGame:
             title="Test", premise="A test dungeon.", scope="One dungeon, played to its end."
         ),
         engine=EngineId("tunnelgoons"),
+        packs=("srd",),
         log=[Chapter(title="Start", focus="Where you begin")],
         payload=world,
     )

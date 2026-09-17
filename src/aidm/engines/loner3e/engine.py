@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
@@ -42,18 +41,9 @@ from aidm.engines.loner3e.world import (
 )
 from aidm.engines.loner3e.worldsmith import (
     AUTHORING,
-    Loner3eBlock,
     Loner3eBody,
     Loner3eHead,
     Loner3ePack,
-)
-from aidm.engines.packs import (
-    LIST_ROWS,
-    EditField,
-    block_fields,
-    block_values,
-    parse_table,
-    table_text,
 )
 from aidm.engines.scenes.engine import SceneEngine
 
@@ -70,7 +60,7 @@ DEFEAT_NOTE = (
 )
 
 
-class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
+class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     authoring = AUTHORING
@@ -87,10 +77,10 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
 
     def __init__(self, written: Path) -> None:
         super().__init__(written)
-        self.twist_table()  # fails at start, not mid-scene
-
-    def world_of(self, state: Loner3eGame) -> Loner3eWorld:
-        return state.payload
+        srd = self.packs.srd()  # always the SRD's own table: no other pack publishes one
+        if srd.twist_subjects is None or srd.twist_actions is None:
+            raise ValueError("the SRD table set has no twist columns")
+        self.twists: Rows = tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
         return (
@@ -102,48 +92,13 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
             master_tool("spend_luck", SPEND_LUCK, SpendLuck, self.spend_luck),
         )
 
-    def engine_fields(self, pack: Loner3ePack) -> tuple[EditField, ...]:
-        return (
-            *(
-                EditField(id=field_id, label=label, text=table_text(entries), rows=LIST_ROWS)
-                for field_id, label, entries in (
-                    ("concepts", "Concepts", pack.concepts),
-                    ("skills", "Skills", pack.skills),
-                    ("frailties", "Frailties", pack.frailties),
-                    ("gear", "Gear", pack.gear),
-                )
-            ),
-            *block_fields(
-                (
-                    ("factions", "Factions", pack.factions),
-                    ("npcs", "People", pack.npcs),
-                    ("monsters", "Monsters", pack.monsters),
-                )
-            ),
-        )
-
-    def engine_values(self, pack: Loner3ePack, values: Mapping[str, str]) -> dict[str, object]:
-        tables = ("concepts", "skills", "frailties", "gear")
-        return {
-            **{key: parse_table(values[key]) for key in tables},
-            # Not a text field: what `rules` prices in Luck is the pack's own, as written.
-            "spends_luck": pack.spends_luck,
-            **block_values(Loner3eBlock, values, ("factions", "npcs", "monsters")),
-        }
-
-    def edited(self, pack: Loner3ePack, values: Mapping[str, str]) -> Loner3ePack:
-        # The twist columns are the pack's own too, like `spends_luck`: no text field carries them.
-        columns = {"twist_subjects": pack.twist_subjects, "twist_actions": pack.twist_actions}
-        return super().edited(pack, values).model_copy(update=columns)
-
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        chosen = self.chosen_packs(picks)
+    def creation_steps(self, packs: tuple[Slug, ...], picks: Picks) -> tuple[CreationStep, ...]:
+        chosen = self.packs.chosen(packs)
         concepts = tuple(entry for pack in chosen for entry in pack.concepts)
         skills = tuple(option for pack in chosen for option in pack.skills)
         frailties = tuple(option for pack in chosen for option in pack.frailties)
         gear = tuple(option for pack in chosen for option in pack.gear)
         return (
-            *self.supplement_steps(),
             CreationStep(
                 id="concept",
                 label="Write a one-line concept",
@@ -166,10 +121,11 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
             ),
         )
 
-    def build_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
-        steps = self.creation_steps(picks)
-        packs = self.picked_packs(picks)
-        # The steps already carry the options pooled across the picked packs.
+    def build_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+    ) -> Loner3eCharacter:
+        steps = self.creation_steps(packs, picks)
+        # The steps already carry the options pooled across the chosen packs.
         by_id = {step.id: step for step in steps}
 
         def taken(step_id: Slug) -> str:
@@ -211,13 +167,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
             *super().master_sections(state),
             *glossary,
         )
-
-    def twist_table(self) -> Rows:
-        """Always the SRD's own table: no other pack publishes one."""
-        srd = self.packs.srd()
-        if srd.twist_subjects is None or srd.twist_actions is None:
-            raise ValueError("the SRD table set has no twist columns")
-        return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
@@ -292,7 +241,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
         rolled = roll((DIE_FACE, DIE_FACE), "twist — subject, action", rng, label="Twist")
         subject_face, action_face = rolled.event.rolled
-        subject, action = twist_pairing(subject_face, action_face, self.twist_table())
+        subject, action = twist_pairing(subject_face, action_face, self.twists)
         draft.note(TWIST_NOTE.format(subject=subject.upper(), action=action.upper()))
         # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
         due = actor.fact(

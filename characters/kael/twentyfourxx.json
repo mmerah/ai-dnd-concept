@@ -1,11 +1,9 @@
 {
   "id": "kael",
   "engine": "twentyfourxx",
-  "packs": {
-    "ids": [
-      "srd"
-    ]
-  },
+  "packs": [
+    "srd"
+  ],
   "payload": {
     "id": "player",
     "name": "Kael",

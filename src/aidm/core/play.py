@@ -69,7 +69,7 @@ class DecisionOption(Frozen):
 
 
 class PendingOption(DecisionOption):
-    """The frozen call an engine plays this option by; not every name is a tool."""
+    """The frozen call an engine plays this option by: one of its tools, and the arguments."""
 
     name: str = Field(min_length=1)
     args: dict[str, JsonValue] = Field(default_factory=dict)

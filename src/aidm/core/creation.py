@@ -5,17 +5,15 @@ from aidm.core.play import DecisionOption
 
 type Picks = Mapping[Slug, str]
 ANSWER_MAX = 100
-MANY = ","  # how a page joins several answers to one step into one pick
 
 
 class CreationStep(Frozen):
-    """No options means the player writes the answer; `multiple` takes several of them."""
+    """No options means the player writes the answer."""
 
     id: Slug
     label: str
     options: tuple[DecisionOption, ...] = ()
     hint: str = ""
-    multiple: bool = False
     allows_text: bool = False
 
     @property
@@ -27,10 +25,6 @@ def picked(picks: Picks, step_id: Slug) -> str:
     return picks.get(step_id, "")
 
 
-def picked_many(picks: Picks, step_id: Slug) -> tuple[str, ...]:
-    return tuple(part for part in picked(picks, step_id).split(MANY) if part)
-
-
 def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
     """One legality rule for the page and for `create`, so neither can drift."""
     known = {step.id for step in steps}
@@ -38,18 +32,14 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
         raise Refusal(f"no creation step is called {unknown}")
     for step in steps:
         answer = picked(picks, step.id)
-        if not answer.strip() and not step.multiple:
+        if not answer.strip():
             raise Refusal(f"{step.id!r} is unanswered")
-        given = picked_many(picks, step.id) if step.multiple else (answer,)
-        for part in given:
-            if len(part) > ANSWER_MAX:
-                raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
+        if len(answer) > ANSWER_MAX:
+            raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
         if not step.constrains:
             continue
-        offered = {option.id for option in step.options}
-        for part in given:
-            if part not in offered:
-                raise Refusal(f"{step.id!r} offers no {part!r}")
+        if answer not in {option.id for option in step.options}:
+            raise Refusal(f"{step.id!r} offers no {answer!r}")
 
 
 def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:

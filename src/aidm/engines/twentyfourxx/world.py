@@ -100,6 +100,14 @@ class CrewSheet(Sheet):
             ("Hindrances", ", ".join(self.hindrances)),
         )
 
+    def gear_text(self, *, ids: bool = False) -> str:
+        return ", ".join(
+            item.name
+            + (f"[{key}]" if ids else "")
+            + (f" ({notes})" if (notes := item.notes()) else "")
+            for key, item in self.items.items()
+        )
+
     def require(self, item_id: Slug, owner: str) -> Gear:
         item = self.items.get(item_id)
         if item is None:
@@ -204,12 +212,7 @@ class Crewmate(Sheeted[CrewSheet]):
         ]
 
     def carried(self) -> str:
-        if self.sheet is None:
-            return ""
-        return ", ".join(
-            f"{item.name}[{key}]" + (f" ({notes})" if (notes := item.notes()) else "")
-            for key, item in self.sheet.items.items()
-        )
+        return "" if self.sheet is None else self.sheet.gear_text(ids=True)
 
 
 class TwentyfourxxWorld(SceneWorld[Crewmate]):
@@ -223,10 +226,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
 
     def sheet_rows(self) -> Rows:
         """The narrator and the page read the kit here; the master has its GEAR section."""
-        gear = ", ".join(
-            item.name + (f" ({notes})" if (notes := item.notes()) else "")
-            for item in self.player.require_sheet().items.values()
-        )
+        gear = self.player.require_sheet().gear_text()
         rows = self.player.rows()
         return (*rows, ("Gear", gear)) if gear else rows
 

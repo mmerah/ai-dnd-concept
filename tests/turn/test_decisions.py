@@ -202,7 +202,7 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
 
     assert engine.restore(suspended.model_dump_json()).pending == DECISION
 
-    with pytest.raises(Refusal, match="no tool 'spend_momentum' to play option 'lantern'"):
+    with pytest.raises(Refusal, match="'spend_momentum' is not a tool of the"):
         _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
     with pytest.raises(Refusal, match="Extra inputs are not permitted"):
         _ = engine.answer(draft, _option(args={"nothing": "of theirs"}), Random(0))

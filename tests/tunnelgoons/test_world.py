@@ -15,7 +15,7 @@ def test_begin_refuses_a_draft_whose_npc_stands_in_no_place(world: TunnelGoonsWo
     )
     map_draft.npcs[MIRA].place = GHOST
     with pytest.raises(Refusal, match="in no place"):
-        _ = TunnelGoonsWorld.opening(map_draft, world.player, (), "")
+        _ = TunnelGoonsWorld.opening(map_draft, world.player, ())
 
 
 def test_an_item_on_nothing_is_refused(draft: TunnelGoonsGame) -> None:
@@ -79,6 +79,14 @@ def test_a_goons_rows_put_health_before_the_sheets_rows(world: TunnelGoonsWorld)
     labels = [label for label, _ in world.player.rows()]
 
     assert labels == ["Health", "Brute", "Skulker", "Erudite", "Inventory", "Level"]
+
+
+def test_the_inventory_row_counts_what_the_player_carries(world: TunnelGoonsWorld) -> None:
+    held = len(list(world.carried(PLAYER_ID)))
+    total = world.player.require_sheet().inventory
+
+    assert dict(world.sheet_rows())["Inventory"] == f"{held}/{total}"
+    assert dict(world.player.rows())["Inventory"] == str(total)
 
 
 def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:

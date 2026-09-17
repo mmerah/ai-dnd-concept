@@ -7,6 +7,7 @@ from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, SABLE, hired, small
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.tools import AskWorld
 from aidm.engines.twentyfourxx.engine import items_from_kits
@@ -789,7 +790,7 @@ def test_android_case_is_an_item_on_creation_and_defend_breaks_it_harmlessly() -
         "increase-1": "climbing",
         "body": "case",
     }
-    character = ENGINE.create_character("Unit-9", "A tireless drone", picks)
+    character = ENGINE.create_character("Unit-9", "A tireless drone", (SRD_PACK,), picks)
     android = character.payload
     sheet = android.require_sheet()
     case_id = next(item_id for item_id, item in sheet.items.items() if item.name == "Case")

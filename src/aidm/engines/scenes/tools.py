@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Mutable, Slug
+from aidm.core.entities import Frozen, Slug
 from aidm.engines.base import Person
 
 NEXT_SCENE = (
@@ -39,7 +39,7 @@ class NextScene(Frozen):
         return self
 
 
-class SceneDraft[C: Person](Mutable):
+class SceneDraft[C: Person](Frozen):
     place: Slug = Field(description="Slug naming the place. Reuse it when the player returns here.")
     title: str = Field(description="The scene's title, read by the player. Name nothing hidden.")
     focus: str = Field(

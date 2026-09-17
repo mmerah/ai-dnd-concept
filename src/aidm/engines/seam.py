@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from copy import deepcopy
@@ -6,9 +7,9 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
-from aidm.core.creation import CreationStep, Picks, check_picks, picked_many
+from aidm.core.creation import CreationStep, Picks, check_picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json, slug
 from aidm.core.facts import Fact
 from aidm.core.io import decode, read_cached_text, read_model
@@ -18,7 +19,6 @@ from aidm.core.model import (
     EngineHeader,
     Game,
     Generation,
-    PackSelection,
     ScenarioMeta,
     WorldsmithAnswer,
 )
@@ -30,13 +30,12 @@ from aidm.engines.base import PLAYER_ID, Person, World
 from aidm.engines.packs import (
     BODY_ASK,
     HEAD_ASK,
-    EditField,
+    PROVENANCE,
+    SRD_PACK,
     Pack,
     PackBody,
     PackHead,
     PackSet,
-    body_values,
-    head_values,
     read_packs,
 )
 from aidm.engines.tools import (
@@ -58,8 +57,6 @@ from aidm.engines.tools import (
 SOURCELESS = "(none — write from what is below)"
 SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
 PACK_SO_FAR = "THE PACK SO FAR"
-SUPPLEMENTS: Slug = "supplements"
-SUPPLEMENTS_LABEL = "Packs"
 
 type AnyEngine = Engine[Any, Any, Any, Any]
 
@@ -76,17 +73,17 @@ class Request[G: Game[Any]]:
     write: Callable[[G, Generation, WorldsmithAnswer], Awaitable[Written]]
 
 
-class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
-    # Declared, not `ClassVar`: `type[G]` cannot be one, and a test sets them on its own instance.
+class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
+    # Declared, not `ClassVar`: `type[W]` cannot be one, and a test sets them on its own instance.
     id: EngineId
     title: str
     authoring: str
     art_style: str
-    meanwhile_turns: int = 6
     hires: bool = False
     directory: Path  # rules.md, look.json and a shipped packs/
     family_dir: Path
-    game: type[G]
+    world: type[W]
+    game: type[Game[W]]
     member: type[M]
     pack: type[K]
     head: type[PackHead] = PackHead
@@ -97,11 +94,12 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
     packs: PackSet[K]
     instructions: str
     look: Look
-    tools: dict[str, MasterTool[G]]
-    requests: dict[Slug, Request[G]]
+    tools: dict[str, MasterTool[Game[W]]]
+    requests: dict[Slug, Request[Game[W]]]
 
     def __init__(self, written: Path) -> None:
         self.packs = read_packs(self.id, self.directory / "packs", written, self.pack)
+        self.packs.srd()  # an engine that ships no srd pack is a bug, not a refusal
         self.instructions = (
             f"{read_cached_text(self.directory / 'rules.md')}\n"
             f"{read_cached_text(self.family_dir / 'rules.md')}"
@@ -111,12 +109,12 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
         names = [tool.name for tool in tools]
         if len(set(names)) != len(names):
             raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
-        if self.meanwhile_turns < 2:
-            raise ValueError(f"the {self.id!r} engine ticks every {self.meanwhile_turns} turns")
+        if self.world.tempo < 2:
+            raise ValueError(f"the {self.id!r} engine ticks every {self.world.tempo} turns")
         self.tools = {tool.name: tool for tool in tools}
         self.requests = self.worldsmith_requests()
 
-    def master_tools(self) -> tuple[MasterTool[G], ...]:
+    def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
         """Each layer adds its own after `super()`'s: the seam, then the family, then the engine."""
         world_of = self.world_of
         return (
@@ -129,26 +127,26 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
             *((master_tool("hire", HIRE_TOOL, Hire, self.hire),) if self.hires else ()),
         )
 
-    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
+    def worldsmith_requests(self) -> dict[Slug, Request[Game[W]]]:
         if not self.hires:
             return {}
         return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
 
-    def kill(self, draft: G, args: Kill, _rng: Random) -> list[Fact]:
+    def kill(self, draft: Game[W], args: Kill, _rng: Random) -> list[Fact]:
         return self.world_of(draft).kill(args.entity_id)
 
-    def join_party(self, draft: G, args: JoinParty, _rng: Random) -> list[Fact]:
+    def join_party(self, draft: Game[W], args: JoinParty, _rng: Random) -> list[Fact]:
         return self.world_of(draft).join_party(args.entity_id)
 
-    def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
+    def leave_party(self, draft: Game[W], args: LeaveParty, _rng: Random) -> list[Fact]:
         return self.world_of(draft).leave_party(args.entity_id)
 
     async def write_sheet(
-        self, _draft: G, _member: M, _terms: str, _worldsmith: WorldsmithAnswer, /
+        self, _draft: Game[W], _member: M, _terms: str, _worldsmith: WorldsmithAnswer, /
     ) -> str:
         raise ValueError(f"the {self.id!r} engine hires nobody")
 
-    def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
+    def hire(self, draft: Game[W], args: Hire, _rng: Random) -> list[Fact]:
         member = self.world_of(draft).require_hireable(args.entity_id)
         draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
         trace = (
@@ -158,7 +156,7 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
         return [Fact(trace=trace)]
 
     async def write_hire(
-        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.target is None:
             raise Refusal("a hire request names no target")
@@ -170,7 +168,9 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
         facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
         return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
-    async def advance(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
+    async def advance(
+        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
         return await self.requests[request.operation].write(draft, request, worldsmith)
 
     def install_pack(self, pack_id: Slug, pack: K) -> None:
@@ -226,80 +226,45 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
         )
         return built(head, body)
 
-    def edit_fields(self, pack: K) -> tuple[EditField, ...]:
-        """Every field of this pack as text, in the order the page shows them."""
-        return (*pack.head_fields(), *self.engine_fields(pack), *pack.body_fields())
-
-    def engine_fields(self, _pack: K) -> tuple[EditField, ...]:
-        """The engine's own creation tables, then its cast block lists."""
-        return ()
-
-    def engine_values(self, _pack: K, _values: Mapping[str, str]) -> dict[str, object]:
-        """What those fields parse back to, under the pack field names they fill."""
-        return {}
-
     def edited(self, pack: K, values: Mapping[str, str]) -> K:
-        """Every field parsed, the pack rebuilt as `author_pack` builds it, its provenance kept."""
-        engine = self.engine_values(pack, values)
-        head = parse(self.head, head_values(values) | _asked(self.head, engine))
-        body = parse(self.body, body_values(values) | _asked(self.body, engine))
-        return self.pack_of(head, body, name=pack.name, source=pack.source, license=pack.license)
+        """The boxes decoded over the pack's own dump; a field no box holds keeps its value."""
+        dumped: dict[str, JsonValue] = pack.model_dump(mode="json")
+        for field_id, box in values.items():
+            if field_id in PROVENANCE:
+                raise Refusal(f"{field_id} is the pack's own and is not edited here")
+            try:
+                dumped[field_id] = decode(box)
+            except Refusal as refused:
+                raise Refusal(f"{field_id}: {refused}") from refused
+        # Through JSON, not `parse`: strict mode reads a tuple field from a JSON array alone.
+        return parse_json(self.pack, json.dumps(dumped))
 
     def supplement_options(self) -> tuple[DecisionOption, ...]:
         return tuple(
             DecisionOption(id=key, label=pack.name) for key, pack in self.packs.supplements()
         )
 
-    def supplement_steps(self) -> tuple[CreationStep, ...]:
-        options = self.supplement_options()
-        if not options:
-            return ()
-        return (
-            CreationStep(
-                id=SUPPLEMENTS,
-                label=SUPPLEMENTS_LABEL,
-                options=options,
-                multiple=True,
-            ),
-        )
+    def select_packs(self, supplements: Sequence[Slug]) -> tuple[Slug, ...]:
+        """The packs a choice selects, in order: every game plays its engine's SRD."""
+        return self.packs.select((SRD_PACK, *supplements))
 
-    def pack_ids(self, supplements: Sequence[Slug]) -> tuple[Slug, ...]:
-        """The packs a creation pick selects, in order; a scene family prepends the SRD's."""
-        return tuple(supplements)
-
-    def select_packs(self, supplements: Sequence[Slug]) -> PackSelection | None:
-        ids = self.pack_ids(supplements)
-        if not ids:
-            return None
-        return self.packs.select(parse(PackSelection, {"ids": ids}))
-
-    def picked_packs(self, picks: Picks) -> PackSelection | None:
-        return self.select_packs(picked_many(picks, SUPPLEMENTS))
-
-    def chosen_packs(self, picks: Picks) -> tuple[K, ...]:
-        """An uninstalled id is skipped: the page calls this on every change and cannot raise."""
-        installed = self.packs.installed
-        wanted = self.pack_ids(picked_many(picks, SUPPLEMENTS))
-        return tuple(installed[pack_id] for pack_id in wanted if pack_id in installed)
-
-    def admit(self, packs: PackSelection | None, character: AnyCharacter) -> None:
-        """Refuse a character these packs cannot start: every pack it was made with is in play."""
-        made_with = () if character.packs is None else character.packs.ids
-        playing = () if packs is None else packs.ids
-        if not set(made_with) <= set(playing):
+    def admit(self, packs: tuple[Slug, ...], character: AnyCharacter) -> None:
+        """Refuse packs that cannot start a game and a character these packs cannot start."""
+        self.packs.select(packs)
+        if not set(character.packs) <= set(packs):
             raise Refusal(
-                f"{character.id!r} was made with {', '.join(made_with)}; "
-                f"this scenario plays {', '.join(playing) or 'no pack'}"
+                f"{character.id!r} was made with {', '.join(character.packs)}; "
+                f"this scenario plays {', '.join(packs) or 'no pack'}"
             )
 
-    def guidance(self, selection: PackSelection | None, /, *, opening: bool) -> str:
+    def guidance(self, selection: tuple[Slug, ...], /, *, opening: bool) -> str:
         packs = self.packs.guidance(selection, opening=opening)
         return f"{self.authoring}\n\n{packs}" if packs else self.authoring
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()
 
-    def companions(self, state: G) -> tuple[Companion, ...]:
+    def companions(self, state: Game[W]) -> tuple[Companion, ...]:
         return tuple(
             Companion(
                 id=member.id,
@@ -311,30 +276,31 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
             for member in self.world_of(state).members()
         )
 
-    def restore(self, raw: str) -> G:
+    def restore(self, raw: str) -> Game[W]:
         if (header := parse(EngineHeader, decode(raw))).engine != self.id:
             raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
         state = parse_json(self.game, raw)
         if state.generation is not None:
             raise Refusal("the save carries a pending generation request")
         self.validate(state)
+        self.packs.select(state.packs)
         return state
 
-    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        found = self.tools.get(chosen.name)
+    def tool(self, name: str) -> MasterTool[Game[W]]:
+        found = self.tools.get(name)
         if found is None:
-            raise Refusal(
-                f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
-            )
-        return found.call(draft, chosen.args, rng)
+            raise Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")
+        return found
+
+    def answer(self, draft: Game[W], chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+        return self.tool(chosen.name).call(draft, chosen.args, rng)
 
     def render_request(
-        self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
+        self, draft: Game[W], *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
-        world = self.world_of(draft)
         family = self.family_sections(draft)
         return self.render_worldsmith(
-            world.source, draft.scenario.scope, family, intent, guidance, answer
+            draft.source, draft.scenario.scope, family, intent, guidance, answer
         )
 
     def render_worldsmith(
@@ -359,14 +325,14 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
         )
 
     def sheet_character(
-        self, name: str, payload: BaseModel, packs: PackSelection | None
+        self, name: str, payload: BaseModel, packs: tuple[Slug, ...]
     ) -> AnyCharacter:
         return self.character(id=slug(name, ()), engine=self.id, packs=packs, payload=payload)
 
     def build_scenario(
         self,
         meta: ScenarioMeta,
-        packs: PackSelection | None,
+        packs: tuple[Slug, ...],
         draft: BaseModel,
         source: str,
         premise: str,
@@ -382,14 +348,14 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
 
     def close(
         self,
-        draft: G,
+        draft: Game[W],
         lines: tuple[SpokenLine, ...],
         facts: tuple[Fact, ...],
         *,
         words: str = "",
         mark: Mark = "",
         proposal: str = "",
-    ) -> G:
+    ) -> Game[W]:
         exchange = Exchange(
             words=words,
             mark=mark,
@@ -401,26 +367,24 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
         draft.log[-1].exchanges.append(exchange)
         return self.land(draft)
 
-    def open_chapter(self, draft: G) -> None:
+    def open_chapter(self, draft: Game[W]) -> None:
         """The title and focus the narrator sees are the ones the history keeps."""
         if draft.log and not draft.log[-1].exchanges:
             draft.log.pop()
         view = self.narrator_view(draft)
         draft.log.append(Chapter(title=view.title, focus=view.focus))
 
-    def land(self, draft: G) -> G:
+    def land(self, draft: Game[W]) -> Game[W]:
         self.validate(draft)
         return draft.commit()
 
-    def tick(self, draft: G, *, counted: bool) -> None:
-        """One player turn against the clock; a family spends the flag by overriding this."""
-        if counted:
-            self.world_of(draft).count_turn(self.meanwhile_turns)
+    def tick(self, draft: Game[W], *, counted: bool) -> None:
+        self.world_of(draft).tick(counted=counted)
 
-    def disarm(self, state: G) -> None:
+    def disarm(self, state: Game[W]) -> None:
         self.world_of(state).disarm()
 
-    def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> G:
+    def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> Game[W]:
         if scenario.engine != self.id:
             raise Refusal(
                 f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
@@ -440,64 +404,67 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
                 "scenario": scenario.meta,
                 "engine": self.id,
                 "packs": scenario.packs,
+                "source": scenario.source,
                 "payload": self.new_game(scenario, character),
             },
         )
         self.open_chapter(state)
         return self.land(state)
 
+    def world_of(self, state: Game[W]) -> W:
+        return state.payload
+
     def player_of(self, character: AnyCharacter) -> P:
         if character.payload.id != PLAYER_ID or not character.payload.known:
             raise Refusal("a character sheet is the player's: id 'player', known")
         return deepcopy(character.payload)
 
-    def over(self, state: G) -> str | None:
+    def over(self, state: Game[W]) -> str | None:
         return "You died." if not self.world_of(state).player.alive else None
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
-        check_picks(self.creation_steps(picks), picks)
-        return self.build_character(name, brief, picks)
+    def create_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+    ) -> AnyCharacter:
+        check_picks(self.creation_steps(packs, picks), picks)
+        return self.build_character(name, brief, packs, picks)
 
-    def validate(self, state: G) -> None:
+    def validate(self, state: Game[W]) -> None:
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
         if not state.log:
             raise Refusal(f"a {self.id!r} game has no chapter open")
         request = state.generation
         if request is not None and request.operation not in self.requests:
             raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
-        if state.packs is not None:
-            self.packs.select(state.packs)
+        if SRD_PACK not in state.packs:
+            raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")
 
     @abstractmethod
-    def creation_steps(self, picks: Picks, /) -> tuple[CreationStep, ...]: ...
+    def creation_steps(
+        self, packs: tuple[Slug, ...], picks: Picks, /
+    ) -> tuple[CreationStep, ...]: ...
     @abstractmethod
-    def build_character(self, name: str, brief: str, picks: Picks, /) -> AnyCharacter: ...
+    def build_character(
+        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks, /
+    ) -> AnyCharacter: ...
     @abstractmethod
-    def world_of(self, state: G) -> World[P, M]: ...
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W: ...
     @abstractmethod
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[P, M]: ...
+    def master_sections(self, state: Game[W]) -> Sections: ...
     @abstractmethod
-    def master_sections(self, state: G) -> Sections: ...
+    def family_sections(self, draft: Game[W], /) -> Sections: ...
     @abstractmethod
-    def family_sections(self, draft: G, /) -> Sections: ...
+    def narrator_view(self, state: Game[W]) -> NarratorView: ...
     @abstractmethod
-    def narrator_view(self, state: G) -> NarratorView: ...
-    @abstractmethod
-    def player_view(self, state: G) -> PlayerView: ...
+    def player_view(self, state: Game[W]) -> PlayerView: ...
     @abstractmethod
     async def author(
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: PackSelection | None,
+        packs: tuple[Slug, ...],
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario: ...
     @abstractmethod
-    def act(self, draft: G, action: Slug, words: str, /) -> None:
+    def act(self, draft: Game[W], action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
-
-
-def _asked(model: type[BaseModel], values: Mapping[str, object]) -> dict[str, object]:
-    """The engine's own values this ask carries: the head and the body are parsed apart."""
-    return {key: value for key, value in values.items() if key in model.model_fields}
