@@ -182,7 +182,7 @@ async def test_a_turn_whose_narrator_never_answers_still_lands_and_saves_the_fac
     table = open_game(tmp_path)
     table.spawner.turns.append(
         table.plays(
-            (tool_call("change_tags", entity_id="player", kind="condition", gained=["Listening"]),)
+            (tool_call("change_tags", actor_id="player", kind="condition", gained=["Listening"]),)
         )
     )
 
@@ -297,7 +297,7 @@ async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> Non
     state = await play_turn(
         table,
         "I ask Vessa to guide us through the relay.",
-        tool_call("hire", entity_id="vessa-rune", terms="Guide us through the relay."),
+        tool_call("hire", target_id="vessa-rune", terms="Guide us through the relay."),
     )
 
     exchange = state.exchanges()[-1]
@@ -370,7 +370,7 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
     state = await play_turn(
         table,
         "I keep watch, whatever comes.",
-        tool_call("kill", entity_id=PLAYER_ID),
+        tool_call("kill", target_id=PLAYER_ID),
         tool_call("next_scene", complication="A second crew breaches the study door."),
     )
 
@@ -419,7 +419,7 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
         )
     ]
 
-    await table.service.interject()
+    await table.service.let_party_speak()
 
     prompt = table.spawner.prompt("narrator")
     assert f"YOUR ROLE:\nYou are {member.name}. {member.brief}" in prompt
@@ -435,7 +435,7 @@ async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None
     table.service.chatter = Random(0)
     _party_of_one(table.service)
 
-    await table.service.interject()
+    await table.service.let_party_speak()
 
     assert table.spawner.prompts == []
     assert table.service.state.exchanges() == ()
@@ -456,7 +456,7 @@ async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) ->
 
     table.spawner.hooks.append(land_turn_first)
 
-    await table.service.interject()
+    await table.service.let_party_speak()
 
     assert table.service.state.exchanges()[-1].mark == "story"
 
@@ -468,7 +468,7 @@ async def test_an_answer_with_no_lines_records_nothing(tmp_path: Path) -> None:
     before = table.service.state.exchanges()
     table.spawner.answers["narrator"] = [json.dumps({"lines": []})]
 
-    await table.service.interject()
+    await table.service.let_party_speak()
 
     assert table.service.state.exchanges() == before
 

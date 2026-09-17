@@ -36,7 +36,6 @@ class TunnelGoonsBlock(Frozen):
         check_lines("a block field", (self.name, self.brief))
         return self
 
-    @property
     def line(self) -> str:
         return f"{self.name} — {self.brief} (hp {self.hp})"
 
@@ -47,27 +46,26 @@ class TunnelGoonsPack(Pack):
     npcs: tuple[TunnelGoonsBlock, ...] = ()
     monsters: tuple[TunnelGoonsBlock, ...] = ()
 
-    @property
     def counts(self) -> tuple[tuple[str, int], ...]:
         return (
             ("items", len(self.items)),
             ("factions", len(self.factions)),
             ("people", len(self.npcs)),
             ("monsters", len(self.monsters)),
-            *super().counts,
+            *super().counts(),
         )
 
     def sections(self, *, opening: bool) -> Sections:
         return (
             *super().sections(opening=opening),
             *section_if("ITEMS", ", ".join(self.items)),
-            *bullets("FACTIONS", (block.line for block in self.factions)),
-            *bullets("PEOPLE", (block.line for block in self.npcs)),
-            *bullets("MONSTERS", (block.line for block in self.monsters)),
+            *bullets("FACTIONS", (block.line() for block in self.factions)),
+            *bullets("PEOPLE", (block.line() for block in self.npcs)),
+            *bullets("MONSTERS", (block.line() for block in self.monsters)),
         )
 
 
-class AbilitiesDraft(Frozen):
+class AbilitiesProposal(Frozen):
     abilities: AbilityScores = Field(
         min_length=3,
         max_length=3,

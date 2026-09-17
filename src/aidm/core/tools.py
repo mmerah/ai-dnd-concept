@@ -3,13 +3,13 @@ from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, JsonValue
 
 from aidm.core.entities import Frozen, parse_json
 from aidm.core.facts import Fact
-from aidm.core.model import Game
+from aidm.core.model import AnyGame, Game
 
 NOISE_KEYS = ("title", "pattern", "maxLength", "minLength")
 
@@ -25,6 +25,11 @@ class MasterTool[G: Game[Any]]:
     description: str
     args: type[BaseModel]
     call: Callable[[G, JsonValue, Random], tuple[Fact, ...]]
+
+
+class Tools(Protocol):
+    def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
+    def call(self, name: str, raw: JsonValue) -> str: ...
 
 
 def master_tool[G: Game[Any], A: BaseModel](

@@ -24,15 +24,16 @@ Tests run offline. They are deterministic.
   is one of our objects is a method; a free function is for what has no owner. A function stays
   free when its object's class lives in a lower layer, when it renders or builds at an edge, or
   when it is unit-tested on its own.
-- A property takes no argument, has no side effect and reads its own fields; anything else is a
-  method.
+- A property is a scalar, or a one-line reading of the object's own fields; anything that renders
+  a block, joins other objects or builds a collection is a method.
 - Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
   handed and rolls only the `Random` it is handed.
 - State models are mutable. Value models are frozen.
 - An engine tool method resolves ids and rolls dice; a world or entity method changes fields and
   writes the facts.
-- Names shown to a role, the player or the launcher are `id`, `label`, `detail`. Things saved to
-  disk keep `name` and `brief`.
+- `id`, `label`, `detail` for a pick, an option or a panel row, on disk too; `name` and `brief`
+  for an entity; `title` for a scene, a scenario, an engine. Tool arguments: `actor_id` for who
+  acts, `target_id` for who is acted on, `to_id` for a destination, `_id` on every id.
 - Do not use `Any`. Use exact types. The one exception: a class or function generic on the game
   state, where `Game[P]`'s invariance makes `Any` the only spelling of the bound.
 - Validate data at each boundary (file, model output, tool call) with strict Pydantic V2 models. Reject bad data at once.

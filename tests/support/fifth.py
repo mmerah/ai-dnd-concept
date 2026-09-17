@@ -8,8 +8,7 @@ from aidm.core.prompt import Sections
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.packs import Pack
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.world import SceneWorld
+from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 FIFTH = EngineId("fifth")
 KEEPER = "keeper"
@@ -25,7 +24,7 @@ class FifthState(SceneWorld[Person]):
 FifthGame = Game[FifthState]
 
 
-class FifthScenario(Scenario[SceneDraft[Person]]):
+class FifthScenario(Scenario[SceneProposal[Person]]):
     pass
 
 
@@ -94,7 +93,7 @@ def scenario() -> FifthScenario:
         ),
         engine=FIFTH,
         packs=("srd",),
-        payload=SceneDraft[Person](
+        payload=SceneProposal[Person](
             place="taproom",
             title="The Taproom",
             focus="Who is asking after Wren?",

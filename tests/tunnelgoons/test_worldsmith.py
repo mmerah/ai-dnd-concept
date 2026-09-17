@@ -7,10 +7,10 @@ from aidm.core.entities import Refusal
 from aidm.core.model import Check, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.rooms.world import MapDraft, Place, Prop, RegionDraft, Way
+from aidm.engines.rooms.world import MapProposal, Place, Prop, RegionProposal, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
-from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesDraft
+from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesProposal
 
 ONLY = "only"
 HIDDEN = "hidden"
@@ -19,7 +19,7 @@ FAR_VAULT = "far-vault"
 FAR_ITEM = "far-item"
 HALL = "hall"
 
-THIN = MapDraft[Npc](
+THIN = MapProposal[Npc](
     places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
     start=ONLY,
 )
@@ -30,8 +30,8 @@ def _tunnelgoons_game() -> TunnelGoonsGame:
     return narrowed(state, TunnelGoonsGame)
 
 
-def _region() -> RegionDraft[Npc]:
-    return RegionDraft[Npc](
+def _region() -> RegionProposal[Npc]:
+    return RegionProposal[Npc](
         places={
             FAR_HALL: Place(id=FAR_HALL, name="Far Hall", brief="b", known=False, description="d"),
             FAR_VAULT: Place(
@@ -45,9 +45,9 @@ def _region() -> RegionDraft[Npc]:
     )
 
 
-def _wide_region() -> MapDraft[Npc]:
+def _wide_region() -> MapProposal[Npc]:
     canon = _tunnelgoons_game().payload
-    return MapDraft[Npc](
+    return MapProposal[Npc](
         places=canon.places,
         ways=canon.ways,
         npcs=canon.npcs,
@@ -72,7 +72,7 @@ def test_a_one_place_map_with_no_ways_passes_the_map_bar_and_builds() -> None:
 
 def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None:
     draft = _tunnelgoons_game().draft()
-    extension = RegionDraft[Npc](
+    extension = RegionProposal[Npc](
         places={HIDDEN: Place(id=HIDDEN, name="Hidden", brief="b", known=False, description="d")},
         start=HIDDEN,
         recap="They found a hidden way and pushed through it.",
@@ -99,7 +99,7 @@ def test_check_map_refuses_a_dead_npc() -> None:
         alive=False,
         hp=Gauge(current=4, maximum=4),
     )
-    draft = MapDraft[Npc](
+    draft = MapProposal[Npc](
         places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
         npcs={corpse.id: corpse},
         start=ONLY,
@@ -117,7 +117,7 @@ def test_check_map_refuses_an_npc_at_zero_hp() -> None:
         known=True,
         hp=Gauge(current=0, maximum=4),
     )
-    draft = MapDraft[Npc](
+    draft = MapProposal[Npc](
         places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
         npcs={fallen.id: fallen},
         start=ONLY,
@@ -128,7 +128,7 @@ def test_check_map_refuses_an_npc_at_zero_hp() -> None:
 
 def test_check_extension_refuses_an_item_planted_on_the_player() -> None:
     world = _tunnelgoons_game().payload
-    extension = RegionDraft[Npc](
+    extension = RegionProposal[Npc](
         places={HIDDEN: Place(id=HIDDEN, name="Hidden", brief="b", known=False, description="d")},
         items={"planted": Prop(id="planted", name="Planted", brief="b", known=True, on=PLAYER_ID)},
         start=HIDDEN,
@@ -154,7 +154,9 @@ def test_check_extension_accepts_an_unknown_place_naming_itself() -> None:
     check_extension(extension, _tunnelgoons_game().payload)
 
 
-def _hiding_gremlin(place_id: str, *, known: bool, brief: str, description: str) -> MapDraft[Npc]:
+def _hiding_gremlin(
+    place_id: str, *, known: bool, brief: str, description: str
+) -> MapProposal[Npc]:
     gremlin = Npc(
         id="gremlin",
         name="Gremlin",
@@ -166,7 +168,7 @@ def _hiding_gremlin(place_id: str, *, known: bool, brief: str, description: str)
     place = Place(
         id=place_id, name=place_id.title(), brief=brief, known=known, description=description
     )
-    return MapDraft[Npc](places={place_id: place}, npcs={gremlin.id: gremlin}, start=place_id)
+    return MapProposal[Npc](places={place_id: place}, npcs={gremlin.id: gremlin}, start=place_id)
 
 
 def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None:
@@ -203,7 +205,7 @@ def test_check_map_refuses_a_known_dwellers_brief_naming_a_hidden_dweller() -> N
         known=True,
         hp=Gauge(current=4, maximum=4),
     )
-    draft = MapDraft[Npc](
+    draft = MapProposal[Npc](
         places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
         npcs={gremlin.id: gremlin, sentry.id: sentry},
         start=ONLY,
@@ -230,7 +232,7 @@ def test_check_map_refuses_a_hidden_dwellers_own_brief_naming_another_hidden_dwe
         known=False,
         hp=Gauge(current=4, maximum=4),
     )
-    draft = MapDraft[Npc](
+    draft = MapProposal[Npc](
         places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
         npcs={gremlin.id: gremlin, sentry.id: sentry},
         start=ONLY,
@@ -251,7 +253,7 @@ def test_check_map_refuses_an_item_on_the_player_naming_a_hidden_dweller() -> No
     charm = Prop(
         id="charm", name="Charm", brief="A ward against the Gremlin.", known=True, on=PLAYER_ID
     )
-    draft = MapDraft[Npc](
+    draft = MapProposal[Npc](
         places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
         npcs={gremlin.id: gremlin},
         items={charm.id: charm},
@@ -339,7 +341,7 @@ async def test_write_next_asks_for_the_map_draft() -> None:
 
     _ = await ENGINE.write_next(small_world(), "Push north.", answer)
 
-    assert recorded == [RegionDraft[Npc]]
+    assert recorded == [RegionProposal[Npc]]
     # The `hp` rule reaches the worldsmith only through the engine's guidance.
     assert AUTHORING in prompts[0]
 
@@ -358,4 +360,4 @@ async def test_write_next_prompt_carries_scenes_so_far() -> None:
 
 def test_abilities_draft_refuses_a_wrong_point_total() -> None:
     with pytest.raises(ValidationError, match="share exactly 3 points"):
-        AbilitiesDraft(abilities={"brute": 2, "skulker": 2, "erudite": 0})
+        AbilitiesProposal(abilities={"brute": 2, "skulker": 2, "erudite": 0})

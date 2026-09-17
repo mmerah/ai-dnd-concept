@@ -16,9 +16,8 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.packs import SRD_PACK, Pack, PackSet
-from aidm.engines.rooms.engine import ELSEWHERE
-from aidm.engines.rooms.tools import MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN
-from aidm.engines.rooms.world import Dweller, MapDraft, Prop, Way
+from aidm.engines.rooms.tools import ELSEWHERE, MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN
+from aidm.engines.rooms.world import Dweller, MapProposal, Prop, Way
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 
@@ -39,11 +38,11 @@ def test_a_member_joins_and_leaves_the_party(
 ) -> None:
     draft = begun_room.draft()
 
-    _ = change(room_engine, draft, "join_party", entity_id=WARDEN)
+    _ = change(room_engine, draft, "join_party", target_id=WARDEN)
 
     assert WARDEN in draft.payload.party
 
-    _ = change(room_engine, draft, "leave_party", entity_id=WARDEN)
+    _ = change(room_engine, draft, "leave_party", target_id=WARDEN)
 
     assert draft.payload.party == []
 
@@ -53,7 +52,7 @@ def test_leave_party_on_a_non_member_is_refused(
 ) -> None:
     draft = begun_room.draft()
 
-    message = refused(room_engine, draft, "leave_party", entity_id=WARDEN)
+    message = refused(room_engine, draft, "leave_party", target_id=WARDEN)
 
     assert "does not travel with the player" in message
 
@@ -122,12 +121,12 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(
 ) -> None:
     draft = begun_room.draft()
 
-    facts = change(room_engine, draft, "kill", entity_id=PLAYER_ID)
+    facts = change(room_engine, draft, "kill", target_id=PLAYER_ID)
 
     assert not draft.payload.player.alive
     assert any(fact.card == "You are dead" for fact in facts)
 
-    message = refused(room_engine, draft, "kill", entity_id=PLAYER_ID)
+    message = refused(room_engine, draft, "kill", target_id=PLAYER_ID)
 
     assert "already dead" in message
 
@@ -188,11 +187,11 @@ def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
         draft,
         "meanwhile",
         dweller_id=WARDEN,
-        dweller_to=YARD,
+        dweller_to_id=YARD,
         item_id=LANTERN,
-        item_to=GATE,
-        shut_from=GATE,
-        shut_to=YARD,
+        item_to_id=GATE,
+        shut_from_id=GATE,
+        shut_to_id=YARD,
     )
 
 
@@ -235,68 +234,70 @@ def test_meanwhile_refusals(room_engine: SixthEngine, begun_room: SixthGame) -> 
     world = draft.payload
 
     assert NOTHING_OFFSCREEN in refused(
-        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=YARD
     )
 
     world.meanwhile_due = True
     assert "give a dweller, an item or a way to shut" in refused(room_engine, draft, "meanwhile")
     assert "both ends or neither" in refused(room_engine, draft, "meanwhile", dweller_id=WARDEN)
     assert "unknown id" in refused(
-        room_engine, draft, "meanwhile", dweller_id="nobody", dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id="nobody", dweller_to_id=YARD
     )
     assert "unknown id" in refused(
-        room_engine, draft, "meanwhile", dweller_id=GATE, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=GATE, dweller_to_id=YARD
     )
 
     world.npcs[WARDEN].place = CELLAR
     assert "stands with the player" in refused(
-        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=YARD
     )
     world.npcs[WARDEN].place = GATE
 
     world.items[LANTERN].on = CELLAR
     assert "is here with the player" in refused(
-        room_engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
+        room_engine, draft, "meanwhile", item_id=LANTERN, item_to_id=GATE
     )
 
     world.npcs[WARDEN].place = CELLAR
     world.items[LANTERN].on = WARDEN
     assert "is here with the player" in refused(
-        room_engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
+        room_engine, draft, "meanwhile", item_id=LANTERN, item_to_id=GATE
     )
     world.npcs[WARDEN].place = GATE
     world.items[LANTERN].on = YARD
 
     assert "is already there" in refused(
-        room_engine, draft, "meanwhile", item_id=LANTERN, item_to=YARD
+        room_engine, draft, "meanwhile", item_id=LANTERN, item_to_id=YARD
     )
 
     world.npcs[WARDEN].alive = False
     assert "takes no further part" in refused(
-        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=YARD
     )
     world.npcs[WARDEN].alive = True
 
     world.npcs[WARDEN].place = YARD
     assert "no unlocked way leads" in refused(
-        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=GATE
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=GATE
     )
     world.npcs[WARDEN].place = GATE
 
-    message = refused(room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=WELL)
+    message = refused(room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=WELL)
     assert "Gate" in message and "Yard" in message
 
-    message = refused(room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=CELLAR)
+    message = refused(room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=CELLAR)
     assert "Gate" in message and "Yard" in message
 
     way = world.way(GATE, YARD)
     assert way is not None
     way.known = False
-    assert "has not found" in refused(room_engine, draft, "meanwhile", shut_from=GATE, shut_to=YARD)
+    assert "has not found" in refused(
+        room_engine, draft, "meanwhile", shut_from_id=GATE, shut_to_id=YARD
+    )
     way.known = True
 
     assert "cannot shut offscreen" in refused(
-        room_engine, draft, "meanwhile", shut_from=YARD, shut_to=CELLAR
+        room_engine, draft, "meanwhile", shut_from_id=YARD, shut_to_id=CELLAR
     )
 
 
@@ -394,7 +395,7 @@ def test_the_arc_reaches_the_master_and_the_worldsmith_and_nobody_else(
     begun_room.payload.arc = arc
 
     written = room_engine.render_request(
-        begun_room, intent="More map.", guidance="", answer=MapDraft[Dweller]
+        begun_room, intent="More map.", guidance="", answer=MapProposal[Dweller]
     )
 
     assert arc in str(room_engine.master_sections(begun_room))

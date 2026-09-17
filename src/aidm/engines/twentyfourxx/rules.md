@@ -29,11 +29,11 @@ story: what the actor suffers in full on a disaster, landing on them as a hindra
 `deadly` when that harm is death. A disaster then kills the actor instead of leaving `risk` on
 them; a setback then maims them.
 
-Set `defend_with` when the player has said what shields them — an item they carry or a ship
+Set `defend_with_id` when the player has said what shields them — an item they carry or a ship
 function. Naming it spares the actor on either band: the gear breaks instead, and `hindrance`
 is the lesser thing the hit leaves behind once the gear absorbs it — not `risk` itself, which is
 only the danger disclosed before the roll. Leave `hindrance` empty for gear that breaks
-harmlessly. Naming no `defend_with` lets the consequence above land in full.
+harmlessly. Naming no `defend_with_id` lets the consequence above land in full.
 
 ## Gear and credits
 
@@ -75,7 +75,7 @@ for the player and one for each living hired member. A job the player never take
 
 A member without a sheet helps through `helped` only. A hired member's help is `helped_by`: set
 their own `risk` when helping shares the danger with them, their own `deadly` when that risk is
-death, their own `defend_with` when their own gear can shield them, and their own `hindrance`
+death, their own `defend_with_id` when their own gear can shield them, and their own `hindrance`
 for what that gear leaves behind. A hindered helper rolls d4.
 
 ## Hiring

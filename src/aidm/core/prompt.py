@@ -66,7 +66,7 @@ def _told(exchanges: Sequence[Exchange]) -> str:
 
 def _entry(exchange: Exchange) -> str:
     if exchange.mark == "interjection":
-        return f"{INTERJECTED}\n{exchange.transcript}"
+        return f"{INTERJECTED}\n{exchange.transcript()}"
     if exchange.mark:
-        return exchange.transcript
-    return f"> {exchange.words}\n{exchange.transcript}"
+        return exchange.transcript()
+    return f"> {exchange.words}\n{exchange.transcript()}"

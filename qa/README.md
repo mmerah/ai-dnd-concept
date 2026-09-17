@@ -30,7 +30,7 @@ The master reads PLAYER ACTION from its prompt. Lines starting with `!` are scri
 
 | Script | Effect |
 | --- | --- |
-| `!roll what="Try the door" actor_id=player question="Does it give?"` | calls that tool (values parse as JSON, else strings; quote lists: `items='["torch"]'`) |
+| `!roll what="Try the door" actor_id=player question="Does it give?"` | calls that tool (values parse as JSON, else strings; quote lists: `item_ids='["torch"]'`) |
 | `!none` | no tool call |
 | `!crash` / `!refuse` | the master fails with `OSError` / `Refusal` |
 | `!fail narrator`, `!bad worldsmith`, `!slow narrator` | the next spawn of that role fails, answers garbage once, or stalls 6 s |

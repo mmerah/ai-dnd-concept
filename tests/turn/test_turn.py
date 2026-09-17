@@ -17,8 +17,8 @@ from aidm.engines.scenes.engine import WAY_UNWRITTEN
 from aidm.turn.run import REQUEST_WAIT, Turn
 
 MAP = "vault-map"
-FOUND = tool_call("reveal", entity_id="vault-map")
-TAKEN = tool_call("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
+FOUND = tool_call("reveal", target_id="vault-map")
+TAKEN = tool_call("change_tags", actor_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll", what="Try the door", actor_id=PLAYER_ID, question="Does the door give?")
 
 
@@ -70,7 +70,7 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
         "I take the map and listen.",
         FOUND,
         TAKEN,
-        tool_call("change_tags", entity_id="player", kind="condition", gained=["Listening"]),
+        tool_call("change_tags", actor_id="player", kind="condition", gained=["Listening"]),
     )
 
     expected = ["The vault map discovered", "Took the vault map", "Now: Listening"]
@@ -137,8 +137,8 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
     state = await play_turn(
         table,
         "I call the old porter over.",
-        tool_call("enter", entity_id="tomas"),
-        tool_call("join_party", entity_id="tomas"),
+        tool_call("enter", target_id="tomas"),
+        tool_call("join_party", target_id="tomas"),
     )
 
     assert state.payload.party == ["tomas"]
@@ -147,7 +147,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
     table = open_game(tmp_path)
 
-    state = await play_turn(table, "I wait.", tool_call("reveal", entity_id="nowhere"), FOUND)
+    state = await play_turn(table, "I wait.", tool_call("reveal", target_id="nowhere"), FOUND)
 
     assert state.payload.require(MAP).known
     assert any("unknown id 'nowhere'" in refusal for refusal in table.refusals)
@@ -159,8 +159,8 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
     state = await play_turn(
         table,
         "I press on.",
-        tool_call("drive", entity_id=PLAYER_ID),
-        tool_call("drive", entity_id=PLAYER_ID, goal="Find the way down."),
+        tool_call("drive", actor_id=PLAYER_ID),
+        tool_call("drive", actor_id=PLAYER_ID, goal="Find the way down."),
     )
 
     assert state.payload.player.goal == "Find the way down."
@@ -207,7 +207,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     await table.service.play(Answer(text="I wait."))
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
-    assert table.service.state.exchanges()[-1].narration == "The door settles."
+    assert table.service.state.exchanges()[-1].narration() == "The door settles."
 
 
 def _exploding_after_the_find(table: Table[Loner3eGame]) -> Callable[[], None]:
@@ -297,7 +297,7 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     state = await play_turn(
         table,
         "Out into the cloister walk.",
-        tool_call("drive", entity_id=PLAYER_ID, goal="Get out of the ruin safely"),
+        tool_call("drive", actor_id=PLAYER_ID, goal="Get out of the ruin safely"),
         tool_call("next_scene", pursuit="Out into the cloister walk."),
         arrival="Rain takes the arcade.",
     )

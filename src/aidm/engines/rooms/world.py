@@ -117,11 +117,11 @@ class Dungeon[N: Dweller](Mutable):
         self.ways.setdefault(from_id, []).append(Way(to=to_id, known=known))
 
 
-class MapDraft[N: Dweller](Dungeon[N]):
+class MapProposal[N: Dweller](Dungeon[N]):
     start: Slug = Field(description="Exact id of the place this map starts from.")
 
 
-class RegionDraft[N: Dweller](MapDraft[N]):
+class RegionProposal[N: Dweller](MapProposal[N]):
     recap: str = Field(
         min_length=1,
         description="One paragraph on the part of the map the player leaves behind: what they "
@@ -149,7 +149,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         return self
 
     @classmethod
-    def opening(cls, draft: MapDraft[N], player: P, items: Iterable[Prop]) -> Self:
+    def opening(cls, draft: MapProposal[N], player: P, items: Iterable[Prop]) -> Self:
         return parse(
             cls,
             {
@@ -184,7 +184,6 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         yield self.player
         yield from self.at(self.current.id)
 
-    @property
     def holders_here(self) -> set[Slug]:
         """The player, whoever stands with them, and the place itself."""
         return {self.current.id, *(entity.id for entity in self.here())}
@@ -214,7 +213,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         item = self.require(item_id)
         if not isinstance(item, Prop):
             raise Refusal(f"{item_id!r} is not an item")
-        if item.on not in self.holders_here:
+        if item.on not in self.holders_here():
             raise Refusal(f"{item.name} is not here with the player")
         return item
 
@@ -306,7 +305,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
             if isinstance(entity, Prop)
             else None
         )
-        if location not in self.holders_here:
+        if location not in self.holders_here():
             raise Refusal(f"{entity.name} is not here with the player")
         found = "found" if isinstance(entity, Prop) else "discovered"
         if entity.known:
@@ -352,7 +351,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         return Fact(trace=f"{npc.name} walks to {place.name}")
 
     def drift_item(self, item: Prop, place: Place) -> Fact:
-        if item.on in self.holders_here:
+        if item.on in self.holders_here():
             raise Refusal(f"{item.name} is here with the player")
         if item.on == place.id:
             raise Refusal(f"{item.name} is already there")

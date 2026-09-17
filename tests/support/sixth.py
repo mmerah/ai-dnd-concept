@@ -7,7 +7,7 @@ from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMet
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.packs import Pack
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Way
+from aidm.engines.rooms.world import Dweller, MapProposal, Place, Prop, RoomWorld, Way
 
 SIXTH = EngineId("sixth")
 GATE = "gate"
@@ -25,7 +25,7 @@ class SixthWorld(RoomWorld[Person, Dweller]):
 SixthGame = Game[SixthWorld]
 
 
-class SixthScenario(Scenario[MapDraft[Dweller]]):
+class SixthScenario(Scenario[MapProposal[Dweller]]):
     pass
 
 
@@ -89,7 +89,7 @@ def scenario() -> SixthScenario:
         ),
         engine=SIXTH,
         packs=("srd",),
-        payload=MapDraft[Dweller](
+        payload=MapProposal[Dweller](
             places={
                 GATE: _place(GATE, "Gate", known=True),
                 YARD: _place(YARD, "Yard", known=False),

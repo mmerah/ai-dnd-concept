@@ -36,7 +36,7 @@ from aidm.engines.tunnelgoons.worldsmith import (
     AUTHORING,
     HIRE_GUIDANCE,
     HIRING,
-    AbilitiesDraft,
+    AbilitiesProposal,
     TunnelGoonsBody,
     TunnelGoonsHead,
     TunnelGoonsPack,
@@ -70,9 +70,9 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
             draft,
             intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             guidance=HIRE_GUIDANCE,
-            answer=AbilitiesDraft,
+            answer=AbilitiesProposal,
         )
-        answer = await worldsmith(prompt, AbilitiesDraft, lambda _answer: None)
+        answer = await worldsmith(prompt, AbilitiesProposal, lambda _answer: None)
         return member.sign_on(answer.abilities)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
@@ -132,8 +132,8 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
         world.check_unnamed(args.what)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
-        items = world.carried_items(actor, args.items)
-        npc = world.require_member_here(args.against) if args.against is not None else None
+        items = world.carried_items(actor, args.item_ids)
+        npc = world.require_member_here(args.target_id) if args.target_id is not None else None
         if npc is actor:
             raise Refusal(f"{actor.name} cannot roll against themselves")
         ds = npc.hp.current if npc is not None else args.difficulty

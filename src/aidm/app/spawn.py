@@ -4,24 +4,21 @@ from asyncio import shield, subprocess, timeout
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
-from functools import partial
 from os import environ, killpg
 from signal import SIGKILL
 from tempfile import TemporaryDirectory
 from time import monotonic
 from typing import Annotated, Protocol
 
-from pydantic import BaseModel, Field, JsonValue, ValidationError
+from pydantic import Field, ValidationError
 
-from aidm.config import CliProvider, Role, RoleConfig
+from aidm.app.builtin import run_builtin
+from aidm.config import CliProvider, Role, RoleConfig, Settings
 from aidm.core.entities import Loose, Refusal, parse_json
-from aidm.core.io import parse_unique
-from aidm.core.model import AnyGame, Check, WorldsmithAnswer
-from aidm.core.tools import MasterTool
+from aidm.core.tools import Tools
 
 LOGGER = logging.getLogger(__name__)
 
-RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
 PROMPT_MAX_BYTES = 131_072  # Linux MAX_ARG_STRLEN: the prompt is one argv element
@@ -45,6 +42,12 @@ class Driver(Protocol):
         self, role: Role, config: RoleConfig, session: str | None, url: str
     ) -> Sequence[str]: ...
     def read_result(self, output: str) -> RunResult: ...
+
+
+class Spawner(Protocol):
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult: ...
 
 
 class _ClaudeResult(Loose):
@@ -149,15 +152,40 @@ class CodexDriver:
 DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
 
 
-class Tools(Protocol):
-    def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
-    def call(self, name: str, raw: JsonValue) -> str: ...
+@dataclass(frozen=True, slots=True)
+class RoleRunner:
+    settings: Settings
 
-
-class Spawner(Protocol):
     async def run(
         self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-    ) -> RunResult: ...
+    ) -> RunResult:
+        config = self.settings.roles.for_name(role)
+        started = monotonic()
+        try:
+            async with timeout(config.timeout):
+                match config.provider:
+                    case "claude" | "codex":
+                        driver = DRIVERS[config.provider]
+                        port = self.settings.server_port
+                        result = await run_cli(role, config, driver, port, prompt, session)
+                        detail = "resumed" if session is not None else "cold"
+                    case "openrouter" | "local":
+                        provider = self.settings.providers.for_name(config.provider)
+                        text, rounds = await run_builtin(role, config, provider, prompt, tools)
+                        result = RunResult(final_message(text), None)
+                        detail = f"over {rounds} rounds"
+        except TimeoutError:
+            raise Refusal(f"the {role} answered nothing in {config.timeout:.0f}s") from None
+        LOGGER.info(
+            "%s answered: provider=%s model=%s effort=%s %s in %.1fs",
+            role,
+            config.provider,
+            config.model,
+            config.effort,
+            detail,
+            monotonic() - started,
+        )
+        return result
 
 
 async def run_cli(
@@ -171,21 +199,10 @@ async def run_cli(
         )
     url = f"http://localhost:{port}/mcp/"
     argv = driver.command(role, config, session, url)
-    started = monotonic()
     # An empty working directory, so a role cannot read this repository even if it tries.
     with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
-        output = await _spawn(role, argv, prompt, config.timeout, driver.secrets, empty)
-    result = driver.read_result(output)
-    LOGGER.info(
-        "%s spawned: provider=%s model=%s effort=%s %s in %.1fs",
-        role,
-        config.provider,
-        config.model,
-        config.effort,
-        "resumed" if session is not None else "cold",
-        monotonic() - started,
-    )
-    return result
+        output = await _spawn(role, argv, prompt, driver.secrets, empty)
+    return driver.read_result(output)
 
 
 def final_message(output: str) -> str:
@@ -214,42 +231,12 @@ def final_message(output: str) -> str:
     return output
 
 
-async def ask[T: BaseModel](
-    spawner: Spawner, role: Role, prompt: str, model: type[T], check: Check[T]
-) -> T:
-    asked, refused, session = prompt, "", None
-    for _ in range(RETRIES + 1):
-        try:
-            spoken = await spawner.run(role, asked, session)
-            session = spoken.session
-            answer = parse_unique(model, spoken.text)
-            check(answer)
-        except Refusal as invalid:
-            refused = str(invalid)
-        else:
-            return answer
-        correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
-        # The retry carries on the refused attempt, which has read the prompt already.
-        asked = correction if session is not None else f"{prompt}\n\n{correction}"
-    LOGGER.warning("the %s answered nothing usable: %s", role, refused)
-    raise Refusal(f"the {role} answered nothing usable")
-
-
-def worldsmith(spawner: Spawner) -> WorldsmithAnswer:
-    return partial(ask, spawner, "worldsmith")
-
-
 def child_environment(secrets: Sequence[str]) -> dict[str, str]:
     return {name: environ[name] for name in (*KEPT_ENV, *secrets) if name in environ}
 
 
 async def _spawn(
-    role: Role,
-    argv: Sequence[str],
-    prompt: str,
-    seconds: float,
-    secrets: Sequence[str],
-    cwd: str,
+    role: Role, argv: Sequence[str], prompt: str, secrets: Sequence[str], cwd: str
 ) -> str:
     try:
         process = await subprocess.create_subprocess_exec(
@@ -266,10 +253,7 @@ async def _spawn(
     except OSError as failed:
         raise Refusal(f"the {role} could not be started: {failed}") from failed
     try:
-        async with timeout(seconds):
-            streamed = await process.communicate()
-    except TimeoutError:
-        raise Refusal(f"the {role} answered nothing in {seconds:.0f}s") from None
+        streamed = await process.communicate()
     finally:
         # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
         await _kill(process)

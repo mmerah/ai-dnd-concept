@@ -29,15 +29,22 @@ from aidm.engines.packs import Pack
 from aidm.engines.scenes.tools import (
     ENTER,
     LEAVE,
+    MOVING_ON,
     NEXT_SCENE,
+    SCENE_LEFT,
     Enter,
     Leave,
-    NextDraft,
     NextScene,
-    SceneDraft,
 )
-from aidm.engines.scenes.world import SCENE_LEFT, SceneWorld
-from aidm.engines.scenes.worldsmith import COMPLICATING, CROSSING, TURNING, check_scene
+from aidm.engines.scenes.world import NextProposal, SceneProposal, SceneWorld
+from aidm.engines.scenes.worldsmith import (
+    COMPLICATING,
+    CROSSING,
+    MEANWHILE_NUDGE,
+    OPENING,
+    TURNING,
+    check_scene,
+)
 from aidm.engines.seam import Engine, Request, Written
 
 DEPARTURE: Slug = "departure"
@@ -55,23 +62,6 @@ COMPLICATION_UNWRITTEN = Fact(
     trace="the complication could not be written",
     card="Nothing new came down on this place after all. You are still where you were.",
 )
-OPENING = (
-    "Write the opening scene of this adventure. Name the one place the player starts in and "
-    "who is there. A scene ends when the player leaves it, so a `focus` on somewhere farther "
-    "on belongs to a later scene. `cast` is the adventure's people and things, not the "
-    "scene's. Write who is met here and who the player will meet farther in. List under "
-    "`present` and `hidden` only who is here now. The opening also writes `arc`, in a few "
-    "lines or in none."
-)
-MOVING_ON = (
-    "The player takes the way on this scene offered. PLAYER ACTION is where they mean to go. "
-    "Play their leaving if nothing stops them. Then call `next_scene` with `pursuit` in their "
-    "own words. The crossing is written after this turn."
-)
-MEANWHILE_NUDGE = (
-    "Time has passed since the player last saw the people they are not with. Let one of "
-    "them have moved on without the player, if the scene has room for it."
-)
 
 
 class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
@@ -84,7 +74,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
         # Copied: a restart reopens the same scenario file.
-        draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
+        draft: SceneProposal[C] = scenario.payload.model_copy(deep=True)
         check_scene(draft)
         return self.world.opening(draft, self.player_of(character))
 
@@ -154,8 +144,8 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         world_of = self.world_of
         return (
             *super().master_tools(),
-            master_tool("enter", ENTER, Enter, lambda d, a, _: world_of(d).enter(a.entity_id)),
-            master_tool("leave", LEAVE, Leave, lambda d, a, _: world_of(d).leave(a.entity_id)),
+            master_tool("enter", ENTER, Enter, lambda d, a, _: world_of(d).enter(a.target_id)),
+            master_tool("leave", LEAVE, Leave, lambda d, a, _: world_of(d).leave(a.target_id)),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
         )
 
@@ -191,21 +181,21 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
             draft,
             guidance=self.guidance(draft.packs, opening=False),
             intent=intent,
-            answer=NextDraft[self.member],
+            answer=NextProposal[self.member],
         )
 
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
-    ) -> NextDraft[C]:
+    ) -> NextProposal[C]:
         world = self.world_of(draft)
         prompt = self.render_next(draft, intent)
         return await worldsmith(
-            prompt, NextDraft[self.member], lambda answer: check_scene(answer, world)
+            prompt, NextProposal[self.member], lambda answer: check_scene(answer, world)
         )
 
-    def install(self, draft: Game[W], scene: SceneDraft[C]) -> list[Fact]:
+    def install(self, draft: Game[W], scene: SceneProposal[C]) -> list[Fact]:
         world = self.world_of(draft)
-        if isinstance(scene, NextDraft):
+        if isinstance(scene, NextProposal):
             draft.log[-1].recap = scene.recap
         world.apply_scene(scene)
         world.disarm()
@@ -224,11 +214,11 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        def built(draft: SceneDraft[C]) -> AnyScenario:
+        def built(draft: SceneProposal[C]) -> AnyScenario:
             return self.build_scenario(meta, packs, draft, source, draft.situation)
 
         guidance = self.guidance(packs, opening=True)
-        model = SceneDraft[self.member]
+        model = SceneProposal[self.member]
         prompt = self.render_worldsmith(
             source, meta.scope, self.opening_sections, OPENING, guidance, model
         )

@@ -68,7 +68,7 @@ def _case_id(case: HireCase) -> str:
 
 
 def _hire(case: HireCase, draft: AnyGame) -> None:
-    args: dict[str, JsonValue] = {"entity_id": case.member, "terms": TERMS}
+    args: dict[str, JsonValue] = {"target_id": case.member, "terms": TERMS}
     _ = case.engine.tools["hire"].call(draft, args, Random(0))
 
 

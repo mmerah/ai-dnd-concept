@@ -17,8 +17,7 @@ from support.table import (
 )
 
 import aidm.app.spawn as spawn_module
-from aidm.app.roles import RoleRunner
-from aidm.app.spawn import CodexDriver, final_message
+from aidm.app.spawn import CodexDriver, RoleRunner, final_message
 from aidm.config import Role
 from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.model import AnyScenario, Check, ScenarioMeta
@@ -27,7 +26,7 @@ from aidm.core.tools import schema_of
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eCast
 from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN
-from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.scenes.world import SceneProposal
 from aidm.engines.tools import ACTOR
 
 
@@ -58,7 +57,7 @@ A_CONFLICT: dict[str, JsonValue] = {
     "what": "Wrest the ledger from her",
     "actor_id": PLAYER_ID,
     "question": "Does he wrest the ledger out of her hands?",
-    "opponent_id": MARA,
+    "target_id": MARA,
 }
 ARC = "Farther in, the chapter house still holds what Mara came for, and has not yet been found."
 A_SCENE = {
@@ -82,7 +81,7 @@ def _scene(**changes: object) -> str:
 
 
 def _bare_scene(**changes: object) -> str:
-    """An authored opening validates against `SceneDraft`, which carries no recap."""
+    """An authored opening validates against `SceneProposal`, which carries no recap."""
     return json.dumps(A_SCENE | changes)
 
 
@@ -94,8 +93,8 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
     table = open_game(tmp_path)
 
     def script() -> None:
-        _ = table.call("reveal", {"entity_id": VAULT_MAP, "junk": 1})
-        _ = table.call("reveal", {"entity_id": VAULT_MAP})
+        _ = table.call("reveal", {"target_id": VAULT_MAP, "junk": 1})
+        _ = table.call("reveal", {"target_id": VAULT_MAP})
         turn = table.service.turn
         assert turn is not None
         counts.append(len(turn.facts))
@@ -121,7 +120,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers
         table,
         "I grab for the ledger in her hands.",
         ("roll", A_CONFLICT),
-        tool_call("reveal", entity_id=VAULT_MAP),
+        tool_call("reveal", target_id=VAULT_MAP),
         narration="She holds on.",
     )
 
@@ -173,7 +172,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     state = await play_turn(
         table,
         "I go back to the shelves and read the spines.",
-        tool_call("reveal", entity_id=VAULT_MAP),
+        tool_call("reveal", target_id=VAULT_MAP),
         narration="Dust comes away on your sleeve.",
     )
 
@@ -240,7 +239,7 @@ async def test_a_turn_that_suspends_tells_the_narrator_where_play_pauses(tmp_pat
 
 async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    thin = SceneDraft[Loner3eCast].model_validate_json(_bare_scene(present=["nobody-here"]))
+    thin = SceneProposal[Loner3eCast].model_validate_json(_bare_scene(present=["nobody-here"]))
 
     async def answer[M: BaseModel](_prompt: str, model: type[M], check: Check[M]) -> M:
         answer = model.model_validate_json(thin.model_dump_json())
@@ -298,7 +297,7 @@ async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
     state = await play_turn(table, "I go.", LEFT)
 
     assert state.payload.run.title == "The Cloister Walk"
-    assert state.exchanges()[-1].narration == ""
+    assert state.exchanges()[-1].narration() == ""
 
 
 async def test_the_players_own_words_are_the_brief_and_the_crossing_is_its_own_entry(
@@ -321,7 +320,7 @@ async def test_the_players_own_words_are_the_brief_and_the_crossing_is_its_own_e
     # Lands as the new run's own exchange, not tacked onto the scene the player just left.
     assert len(state.log[-1].exchanges) == 1
     assert state.log[-1].exchanges[-1].mark == "story"
-    assert "Rain finds you" in state.log[-1].exchanges[-1].narration
+    assert "Rain finds you" in state.log[-1].exchanges[-1].narration()
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
     # `prompt` hands back the first match; the crossing's brief is the narrator's last spawn.
     crossing_prompt = next(
@@ -362,7 +361,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     table.spawner.answers["worldsmith"] = [_scene(), _scene()]
 
     _ = await play_turn(table, "I have what I came for.", the_way_on())
-    state = await play_turn(table, PURSUIT, tool_call("enter", entity_id="tomas"), LEFT)
+    state = await play_turn(table, PURSUIT, tool_call("enter", target_id="tomas"), LEFT)
 
     assert "already met" in caplog.text
     unwritten = state.exchanges()[-1]
@@ -427,7 +426,7 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
     assert f"The arc as last written:\n{ARC}\nRevise" in prompt
-    schema = SceneDraft[Loner3eCast].model_json_schema()
+    schema = SceneProposal[Loner3eCast].model_json_schema()
     assert json.dumps(schema["properties"]["place"]["title"]) not in prompt
 
 

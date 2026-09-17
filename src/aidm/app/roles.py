@@ -1,16 +1,16 @@
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-from aidm.app.builtin import run_builtin
-from aidm.app.spawn import DRIVERS, RunResult, Spawner, Tools, ask, run_cli
-from aidm.config import Role, Settings
+from pydantic import BaseModel
+
+from aidm.app.spawn import Spawner
+from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
-from aidm.core.io import read_cached_text
-from aidm.core.model import AnyGame
+from aidm.core.io import parse_text, read_cached_text
+from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
 from aidm.core.prompt import Sections, lines_of, recent_history, section_if, sections
 from aidm.core.tools import schema_text
@@ -20,6 +20,7 @@ from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
 
+RETRIES = 1
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 PAUSED = (
     'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
@@ -29,25 +30,14 @@ REQUESTED = (
     "play stops here while the world is written on; end on this moment and settle nothing "
     "beyond what happened."
 )
-
-
-@dataclass(frozen=True, slots=True)
-class RoleRunner:
-    settings: Settings
-
-    async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-    ) -> RunResult:
-        config = self.settings.roles.for_name(role)
-        match config.provider:
-            case "claude" | "codex":
-                driver = DRIVERS[config.provider]
-                return await run_cli(
-                    role, config, driver, self.settings.server_port, prompt, session
-                )
-            case "openrouter" | "local":
-                provider = self.settings.providers.for_name(config.provider)
-                return await run_builtin(role, config, provider, prompt, tools)
+OPENING_NARRATION = (
+    "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
+    "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
+    "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
+    "SCENE IS ABOUT where it is given, said as the thing pulling at them; and two or three "
+    "things they could plainly do first, offered by the place and the people, in prose, never "
+    "as a list. Six to eight sentences. They have not acted, so settle nothing."
+)
 
 
 async def master(spawner: Spawner, turn: Turn) -> None:
@@ -95,6 +85,31 @@ async def interject(
         partial(view.check_interjection, member.id),
     )
     return view.spoken(answer.lines), answer.proposal
+
+
+async def ask[T: BaseModel](
+    spawner: Spawner, role: Role, prompt: str, model: type[T], check: Check[T]
+) -> T:
+    asked, refused, session = prompt, "", None
+    for _ in range(RETRIES + 1):
+        try:
+            spoken = await spawner.run(role, asked, session)
+            session = spoken.session
+            answer = parse_text(model, spoken.text)
+            check(answer)
+        except Refusal as invalid:
+            refused = str(invalid)
+        else:
+            return answer
+        correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
+        # The retry carries on the refused attempt, which has read the prompt already.
+        asked = correction if session is not None else f"{prompt}\n\n{correction}"
+    LOGGER.warning("the %s answered nothing usable: %s", role, refused)
+    raise Refusal(f"the {role} answered nothing usable")
+
+
+def worldsmith(spawner: Spawner) -> WorldsmithAnswer:
+    return partial(ask, spawner, "worldsmith")
 
 
 def render_narrator(

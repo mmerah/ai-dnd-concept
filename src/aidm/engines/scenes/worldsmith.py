@@ -2,9 +2,16 @@ from collections.abc import Mapping
 
 from aidm.core.entities import Refusal, Slug
 from aidm.engines.base import Person, Thing, leaked_names, named_unmet, required_unmet
-from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.world import SceneWorld, resolved_id
+from aidm.engines.scenes.world import SceneProposal, SceneWorld, resolved_id
 
+OPENING = (
+    "Write the opening scene of this adventure. Name the one place the player starts in and "
+    "who is there. A scene ends when the player leaves it, so a `focus` on somewhere farther "
+    "on belongs to a later scene. `cast` is the adventure's people and things, not the "
+    "scene's. Write who is met here and who the player will meet farther in. List under "
+    "`present` and `hidden` only who is here now. The opening also writes `arc`, in a few "
+    "lines or in none."
+)
 CROSSING = (
     "The player is leaving {left} for the place in SCENE. They asked for this: "
     '"{asked}"\n\n'
@@ -24,15 +31,19 @@ TURNING = (
     "what arrives or turns, as they see it, from SCENE and WHAT HAPPENED. End on what it asks "
     "of them. They have not answered it, so settle nothing."
 )
+MEANWHILE_NUDGE = (
+    "Time has passed since the player last saw the people they are not with. Let one of "
+    "them have moved on without the player, if the scene has room for it."
+)
 
 
-def check_scene[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None = None) -> None:
-    """The drafts may not import the world, and the authoring call has no world."""
+def check_scene[C: Person](draft: SceneProposal[C], world: SceneWorld[C] | None = None) -> None:
+    """The world is optional: the authoring call has no world yet."""
     if unmet := _scene_unmet(draft, world):
         raise Refusal("the scene needs " + "; ".join(unmet))
 
 
-def _scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) -> list[str]:
+def _scene_unmet[C: Person](draft: SceneProposal[C], world: SceneWorld[C] | None) -> list[str]:
     """Every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[Slug, C] = {} if world is None else world.cast
     everyone: Mapping[Slug, Thing] = (

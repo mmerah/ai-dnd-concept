@@ -20,11 +20,12 @@ from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.tools import DROP_ITEM, AskWorld, DropItem, Kill
+from aidm.engines.tools import Kill
 from aidm.engines.twentyfourxx.tools import (
     ASK_WORLD,
     CHANGE_HINDRANCES,
     DEFEND,
+    DROP_ITEM,
     GAIN_ITEM,
     JOB,
     REPAIR_ITEM,
@@ -32,8 +33,10 @@ from aidm.engines.twentyfourxx.tools import (
     SHIP_UPGRADE,
     SPEND,
     TAKE_LEAD,
+    AskWorld,
     ChangeHindrances,
     Defend,
+    DropItem,
     GainItem,
     Helper,
     Job,
@@ -66,7 +69,7 @@ from aidm.engines.twentyfourxx.worldsmith import (
     HIRING,
     SKILL_COUNT,
     Origin,
-    SheetDraft,
+    SheetProposal,
     Specialty,
     TwentyfourxxBody,
     TwentyfourxxHead,
@@ -126,9 +129,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             draft,
             guidance="\n".join(lines),
             intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
-            answer=SheetDraft,
+            answer=SheetProposal,
         )
-        answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet.check(packs))
+        answer = await worldsmith(prompt, SheetProposal, lambda sheet: sheet.check(packs))
         return member.sign_on(
             answer.specialty,
             answer.skills,
@@ -148,7 +151,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             master_tool("repair_item", REPAIR_ITEM, RepairItem, self.repair_item),
             master_tool("spend", SPEND, Spend, self.spend),
             master_tool(
-                "take_lead", TAKE_LEAD, TakeLead, lambda d, a, _: world_of(d).take_lead(a.entity_id)
+                "take_lead", TAKE_LEAD, TakeLead, lambda d, a, _: world_of(d).take_lead(a.actor_id)
             ),
             master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
             master_tool("defend", DEFEND, Defend, self.defend),
@@ -364,7 +367,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                     label=member.name,
                     detail=member.brief,
                     name="take_lead",
-                    args={"entity_id": member.id},
+                    args={"actor_id": member.id},
                 )
                 for member in members
             ),
@@ -395,9 +398,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             staked.append(helping)
 
         claims: list[tuple[Crewmate, Slug, str]] = [
-            (who, terms.defend_with, terms.hindrance)
+            (who, terms.defend_with_id, terms.hindrance)
             for who, terms in staked
-            if terms.defend_with is not None
+            if terms.defend_with_id is not None
         ]
         world.check_defenses(claims)
 
@@ -430,7 +433,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                 facts.extend(
                     world.take_hit(
                         who,
-                        stake.defend_with,
+                        stake.defend_with_id,
                         stake.risk,
                         stake.hindrance,
                         disaster=disaster,

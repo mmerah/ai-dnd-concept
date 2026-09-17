@@ -9,8 +9,6 @@ from aidm.app.spawn import (
     ClaudeDriver,
     CodexDriver,
     RunResult,
-    Tools,
-    ask,
     child_environment,
     final_message,
     run_cli,
@@ -18,7 +16,6 @@ from aidm.app.spawn import (
 from aidm.config import Role, RoleConfig
 from aidm.core.entities import Refusal
 from aidm.core.io import decode
-from aidm.core.play import Narration
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,60 +186,6 @@ def test_a_driver_reads_the_session_its_cli_reported(
     driver: ClaudeDriver | CodexDriver, output: str, session: str
 ) -> None:
     assert driver.read_result(output).session == session
-
-
-async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error() -> None:
-    asked: list[tuple[str, str | None]] = []
-
-    class _Spawner:
-        async def run(
-            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-        ) -> RunResult:
-            del role, tools
-            asked.append((prompt, session))
-            return RunResult('{"lines": []}' if session else "not json", "abc-123")
-
-    _ = await ask(_Spawner(), "narrator", "THE WHOLE BRIEF", Narration, lambda _: None)
-
-    assert asked[0] == ("THE WHOLE BRIEF", None)
-    assert asked[1][1] == "abc-123"
-    assert "THE WHOLE BRIEF" not in asked[1][0]
-
-
-async def test_a_spawn_that_refuses_once_still_gets_its_one_retry() -> None:
-    attempts: list[str | None] = []
-
-    class _Spawner:
-        async def run(
-            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-        ) -> RunResult:
-            del role, prompt, tools
-            attempts.append(session)
-            if len(attempts) == 1:
-                raise Refusal("the narrator exited 1")
-            return RunResult('{"lines": []}', "abc-123")
-
-    answer = await ask(_Spawner(), "narrator", "PROMPT", Narration, lambda _: None)
-
-    assert answer == Narration(lines=())
-    assert attempts == [None, None]
-
-
-async def test_answered_nothing_usable_does_not_quote_the_checks_message() -> None:
-    class _Spawner:
-        async def run(
-            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-        ) -> RunResult:
-            del role, prompt, tools
-            return RunResult('{"lines": []}', session or "abc-123")
-
-    def _check(_: Narration) -> None:
-        raise Refusal("a scene that does not name what is hidden: ['Bell']")
-
-    with pytest.raises(Refusal, match="the narrator answered nothing usable") as failed:
-        _ = await ask(_Spawner(), "narrator", "PROMPT", Narration, _check)
-
-    assert "Bell" not in str(failed.value)
 
 
 def test_final_message_tries_only_the_first_brace_not_every_one() -> None:

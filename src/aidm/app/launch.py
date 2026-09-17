@@ -30,7 +30,7 @@ class PackEntry:
     label: str
     rules: str
     written: bool
-    tables: str  # `Pack.summary`: what the pack holds, counted
+    tables: str  # `Pack.summary()`: what the pack holds, counted
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,7 +114,7 @@ class LauncherCatalog:
                 label=pack.name,
                 rules=engine.title,
                 written=written,
-                tables=pack.summary,
+                tables=pack.summary(),
             )
             for engine in engines.values()
             for written, shelf in ((False, engine.packs.shipped), (True, engine.packs.written))

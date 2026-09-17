@@ -3,7 +3,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines.base import Person
+from aidm.core.facts import Fact
 
 NEXT_SCENE = (
     "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead "
@@ -12,14 +12,36 @@ NEXT_SCENE = (
 )
 ENTER = "A cast member comes into the scene."
 LEAVE = "A cast member goes out of the scene."
+MOVING_ON = (
+    "The player takes the way on this scene offered. PLAYER ACTION is where they mean to go. "
+    "Play their leaving if nothing stops them. Then call `next_scene` with `pursuit` in their "
+    "own words. The crossing is written after this turn."
+)
+
+WAY_OFFERED = Fact(
+    trace=(
+        "this scene offers a way on. Ask the player what they want to pursue next — in the "
+        "fiction, naming what the scene left open, never as a list of choices. They may also "
+        "stay and keep playing here, so ask; do not push them out"
+    ),
+    told=True,
+)
+
+SCENE_LEFT = Fact(
+    trace=(
+        "the player has left this place; close the scene on their going and describe nothing "
+        "of where they arrive: the crossing is written next"
+    ),
+    told=True,
+)
 
 
 class Enter(Frozen):
-    entity_id: Slug = Field(description="Exact id of a cast member not already here.")
+    target_id: Slug = Field(description="Exact id of a cast member not already here.")
 
 
 class Leave(Frozen):
-    entity_id: Slug = Field(description="Exact id of someone here.")
+    target_id: Slug = Field(description="Exact id of someone here.")
 
 
 class NextScene(Frozen):
@@ -37,39 +59,3 @@ class NextScene(Frozen):
         if self.pursuit and self.complication:
             raise ValueError("a pursuit or a complication, not both")
         return self
-
-
-class SceneDraft[C: Person](Frozen):
-    place: Slug = Field(description="Slug naming the place. Reuse it when the player returns here.")
-    title: str = Field(description="The scene's title, read by the player. Name nothing hidden.")
-    focus: str = Field(
-        default="",
-        description="What this scene is about, in one line the player reads. Name nothing "
-        "hidden. Empty when the situation says it all.",
-    )
-    situation: str = Field(
-        min_length=1,
-        description="What the player sees and knows on arrival. Hold nothing hidden here.",
-    )
-    present: tuple[str, ...] = Field(
-        default=(), description="Ids of who and what is in the scene now."
-    )
-    hidden: tuple[str, ...] = Field(default=(), description="Ids of what is hidden here.")
-    cast: dict[Slug, C] = Field(
-        default_factory=dict,
-        description="New people and things, each filed under its own id. A brief and a sheet "
-        "are read once the player meets that entry, so neither names what is still hidden.",
-    )
-    arc: str = Field(
-        default="",
-        description="The setup beyond this scene: pressures, motives, secrets, what can come. "
-        "The player never reads it, so what ties one hidden thing to another belongs here.",
-    )
-
-
-class NextDraft[C: Person](SceneDraft[C]):
-    recap: str = Field(
-        min_length=1,
-        description="One paragraph on the scene the player leaves: what they did, cost, "
-        "learned and missed.",
-    )

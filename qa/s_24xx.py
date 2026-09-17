@@ -14,7 +14,7 @@ def body(s: Session) -> None:
     page.goto(GAME)
     wait_idle(page)
 
-    submit(page, 'I hire Vessa.\n!hire entity_id=vessa-rune terms="Fly us out"')
+    submit(page, 'I hire Vessa.\n!hire target_id=vessa-rune terms="Fly us out"')
     wait_idle(page, timeout=40)
 
     # Risking death until the d4 disaster lands: succession is an option-only decision.

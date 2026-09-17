@@ -1,4 +1,5 @@
 import json
+import logging
 from asyncio import sleep
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -11,7 +12,7 @@ from pydantic import JsonValue
 from support.game import initialized
 from support.table import ENGINES_BUILT, LONER3E, offline_settings, updated
 
-from aidm.app.roles import RoleRunner
+from aidm.app.spawn import RoleRunner
 from aidm.config import RoleConfig, RoleSettings, Settings
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
@@ -99,7 +100,7 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     change = {
-        "entity_id": "player",
+        "actor_id": "player",
         "kind": "condition",
         "gained": ["Listening"],
     }
@@ -207,6 +208,20 @@ async def test_the_whole_run_is_held_to_the_roles_timeout(
         _ = await RoleRunner(_settings(narrator=narrator)).run(
             "narrator", "BRIEF", None, _Tools(STATE)
         )
+
+
+async def test_one_line_is_logged_for_the_run_and_it_counts_the_rounds(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _ = _post(monkeypatch, _said(None, _call("a", "change_tags", "{}")), _said("Done."))
+    master = RoleConfig(provider="local", model="m")
+
+    with caplog.at_level(logging.INFO, logger="aidm.app.spawn"):
+        _ = await RoleRunner(_settings(master=master)).run("master", "PLAY", None, _Tools(STATE))
+
+    logged = [record.getMessage() for record in caplog.records if record.name == "aidm.app.spawn"]
+    assert len(logged) == 1
+    assert "over 2 rounds" in logged[0]
 
 
 async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(

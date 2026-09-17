@@ -112,11 +112,9 @@ class Exchange(Frozen):
     decision: str = ""
     proposal: str = ""
 
-    @property
     def narration(self) -> str:
         return narration_text(self.lines)
 
-    @property
     def transcript(self) -> str:
         """What the roles read back; `narration` stays prose alone for art and speech."""
         return "\n".join(line.said for line in self.lines)

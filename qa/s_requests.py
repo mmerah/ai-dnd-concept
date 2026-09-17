@@ -90,7 +90,7 @@ def body(s: Session) -> None:
     wait_idle(page)
     submit(
         page,
-        'I hold position.\n!next_scene complication="Sirens open up"\n!reveal entity_id=vault-map',
+        'I hold position.\n!next_scene complication="Sirens open up"\n!reveal target_id=vault-map',
     )
     wait_idle(page, timeout=60)
     calls = last_calls()

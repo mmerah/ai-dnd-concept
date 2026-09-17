@@ -22,8 +22,7 @@ from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
 from aidm.engines.packs import SRD_PACK
 from aidm.engines.scenes.engine import DEPARTURE, SceneEngine
-from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.world import SceneWorld
+from aidm.engines.scenes.world import SceneProposal, SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.twentyfourxx.world import Crewmate, CrewSheet, TwentyfourxxWorld
 
@@ -52,7 +51,7 @@ class SceneCase:
 
 
 def _bar[C: Person](
-    draft_type: type[SceneDraft[C]],
+    draft_type: type[SceneProposal[C]],
     world: type[SceneWorld[C]],
     base: Mapping[str, object],
     game: Callable[[], AnyGame],
@@ -65,7 +64,7 @@ def _bar[C: Person](
 
 
 def _apply[C: Person](
-    draft_type: type[SceneDraft[C]], base: Mapping[str, object]
+    draft_type: type[SceneProposal[C]], base: Mapping[str, object]
 ) -> Callable[[AnyGame, Mapping[str, object]], None]:
     """`case.bar`'s counterpart: hands the same draft shape to a real world's `apply_scene`."""
 
@@ -75,9 +74,9 @@ def _apply[C: Person](
     return apply
 
 
-def _plain_scene(base: Mapping[str, object], fields: Mapping[str, object]) -> SceneDraft[Person]:
+def _plain_scene(base: Mapping[str, object], fields: Mapping[str, object]) -> SceneProposal[Person]:
     """A scene draft with no engine-specific cast, for the tests that only need the shape."""
-    return SceneDraft[Person].model_validate(dict(base) | dict(fields))
+    return SceneProposal[Person].model_validate(dict(base) | dict(fields))
 
 
 CASES = (
@@ -85,8 +84,8 @@ CASES = (
         engine=TWENTYFOURXX_ENGINE,
         game=twentyfourxx_world,
         base=TWENTYFOURXX_BASE,
-        bar=_bar(SceneDraft[Crewmate], TwentyfourxxWorld, TWENTYFOURXX_BASE, twentyfourxx_world),
-        apply=_apply(SceneDraft[Crewmate], TWENTYFOURXX_BASE),
+        bar=_bar(SceneProposal[Crewmate], TwentyfourxxWorld, TWENTYFOURXX_BASE, twentyfourxx_world),
+        apply=_apply(SceneProposal[Crewmate], TWENTYFOURXX_BASE),
         player="Rook",
         met=KESTREL,
         unmet=SABLE,
@@ -95,8 +94,8 @@ CASES = (
         engine=LONER3E_ENGINE,
         game=lambda: initialized()[1],
         base=LONER3E_BASE,
-        bar=_bar(SceneDraft[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
-        apply=_apply(SceneDraft[Loner3eCast], LONER3E_BASE),
+        bar=_bar(SceneProposal[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
+        apply=_apply(SceneProposal[Loner3eCast], LONER3E_BASE),
         player="Kael",
         met=MARA,
         unmet=MAP,
@@ -202,7 +201,7 @@ def test_a_sheeted_draft_cast_member_is_refused() -> None:
     """Only twentyfourxx carries a sheet at all; pinned once is enough."""
     world = twentyfourxx_world().payload
     stranger = "stranger"
-    draft = SceneDraft[Crewmate].model_validate(
+    draft = SceneProposal[Crewmate].model_validate(
         dict(TWENTYFOURXX_BASE)
         | {
             "present": ("kestrel", stranger),
@@ -221,7 +220,7 @@ def test_the_bar_refuses_a_scene_that_lists_a_party_member() -> None:
     world = twentyfourxx_world().payload
     world.party = [KESTREL]
     with pytest.raises(Refusal, match=re.escape("they are put there by code: ['kestrel']")):
-        draft = SceneDraft[Crewmate].model_validate(
+        draft = SceneProposal[Crewmate].model_validate(
             dict(TWENTYFOURXX_BASE) | {"present": ("kestrel", "sable")}
         )
         check_scene(draft, world)
@@ -231,7 +230,7 @@ def test_a_party_members_own_brief_naming_what_is_hidden_is_refused() -> None:
     """The party travels unlisted, but its members' briefs are read as closely as anyone's."""
     world = twentyfourxx_world().payload
     world.join_party(KESTREL)
-    draft = SceneDraft[Crewmate].model_validate(
+    draft = SceneProposal[Crewmate].model_validate(
         dict(TWENTYFOURXX_BASE)
         | {
             "hidden": (SABLE,),
@@ -253,7 +252,7 @@ def test_a_party_members_stored_brief_naming_an_absent_unmet_neighbour_is_accept
     world = twentyfourxx_world().payload
     world.cast[KESTREL].brief = "She is watching for Sable."
     world.join_party(KESTREL)
-    draft = SceneDraft[Crewmate].model_validate(dict(TWENTYFOURXX_BASE))
+    draft = SceneProposal[Crewmate].model_validate(dict(TWENTYFOURXX_BASE))
     check_scene(draft, world)
 
 
@@ -481,7 +480,7 @@ def test_check_filing_rejects_mis_filed_cast(case: SceneCase) -> None:
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_only_what_is_hidden_here_can_be_revealed(case: SceneCase) -> None:
     state = case.game()
-    assert "not hidden here" in refused(case.engine, state.draft(), "reveal", entity_id=case.met)
+    assert "not hidden here" in refused(case.engine, state.draft(), "reveal", target_id=case.met)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

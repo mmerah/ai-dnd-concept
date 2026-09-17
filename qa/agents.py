@@ -23,9 +23,10 @@ from typing import Literal
 from pydantic import JsonValue
 
 from aidm.app.runtime import Runtime
-from aidm.app.spawn import RunResult, Tools
+from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
+from aidm.core.tools import Tools
 
 LOGGER = logging.getLogger("qa.agents")
 

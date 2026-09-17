@@ -80,7 +80,6 @@ class TwentyfourxxBlock(Frozen):
         check_items("a block list", (*self.skills, *self.items, *self.hindrances))
         return self
 
-    @property
     def line(self) -> str:
         return block_line(
             self.name,
@@ -114,7 +113,6 @@ class TwentyfourxxPack(Pack):
     def defined_ids(self) -> tuple[Slug, ...]:
         return tuple(option.id for option in (*self.specialties, *self.origins))
 
-    @property
     def counts(self) -> tuple[tuple[str, int], ...]:
         return (
             ("specialties", len(self.specialties)),
@@ -122,7 +120,7 @@ class TwentyfourxxPack(Pack):
             ("factions", len(self.factions)),
             ("people", len(self.npcs)),
             ("hostiles", len(self.hostiles)),
-            *super().counts,
+            *super().counts(),
         )
 
     def sections(self, *, opening: bool) -> Sections:
@@ -130,13 +128,13 @@ class TwentyfourxxPack(Pack):
             *super().sections(opening=opening),
             *section_if("SPECIALTIES", self.specialty_lines()),
             *bullets("ORIGINS", (f"{origin.label} — {origin.detail}" for origin in self.origins)),
-            *bullets("FACTIONS", (block.line for block in self.factions)),
-            *bullets("PEOPLE", (block.line for block in self.npcs)),
-            *bullets("HOSTILES", (block.line for block in self.hostiles)),
+            *bullets("FACTIONS", (block.line() for block in self.factions)),
+            *bullets("PEOPLE", (block.line() for block in self.npcs)),
+            *bullets("HOSTILES", (block.line() for block in self.hostiles)),
         )
 
 
-class SheetDraft(Frozen):
+class SheetProposal(Frozen):
     """A hired member's sheet."""
 
     specialty: str = Field(description="One of the specialties in ENGINE GUIDANCE.")
@@ -162,7 +160,7 @@ class SheetDraft(Frozen):
             raise Refusal(f"{self.specialty!r} is not a specialty these packs list")
 
 
-class SpecialtyDraft(Labelled):
+class SpecialtyProposal(Labelled):
     """A written pack offers no picks-within-a-pick, so a specialty names its skills outright."""
 
     # `default=...` is pydantic for required: a pick's prompt text, which `Labelled` lets be empty.
@@ -193,7 +191,7 @@ class SpecialtyDraft(Labelled):
         return self
 
 
-class OriginDraft(Labelled):
+class OriginProposal(Labelled):
     """Where an operator comes from: what it hands them at creation, beyond the prose."""
 
     detail: str = Field(
@@ -220,10 +218,10 @@ class OriginDraft(Labelled):
 
 
 class TwentyfourxxHead(PackHead):
-    specialties: tuple[SpecialtyDraft, ...] = Field(
+    specialties: tuple[SpecialtyProposal, ...] = Field(
         min_length=1, max_length=6, description="The trades a player picks their operator from."
     )
-    origins: tuple[OriginDraft, ...] = Field(
+    origins: tuple[OriginProposal, ...] = Field(
         min_length=1, max_length=6, description="Where an operator can come from in this setting."
     )
 

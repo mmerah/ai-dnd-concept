@@ -8,8 +8,7 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Gauge
-from aidm.engines.loner3e.engine import DEFEAT_NOTE, TWIST_NOTE
-from aidm.engines.loner3e.tools import Roll
+from aidm.engines.loner3e.tools import DEFEAT_NOTE, TWIST_NOTE, Roll
 from aidm.engines.loner3e.world import (
     LUCK_MAX,
     TIES_PER_TWIST,
@@ -38,7 +37,7 @@ def _duel() -> Roll:
         what="Force her back from the door",
         actor_id=PLAYER_ID,
         question="Does he force her back from the door?",
-        opponent_id=FOE,
+        target_id=FOE,
     )
 
 
@@ -97,11 +96,11 @@ def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
     _, state = initialized()
 
-    elsewhere = _seal(opponent_id="cloister-rat")
+    elsewhere = _seal(target_id="cloister-rat")
     with pytest.raises(Refusal, match="is not here with the player"):
         _ = ENGINE.roll(state.draft(), elsewhere, Random(0))
     with pytest.raises(Refusal, match="their own opposition"):
-        _ = ENGINE.roll(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
+        _ = ENGINE.roll(state.draft(), _seal(target_id=PLAYER_ID), Random(0))
 
 
 def test_an_edge_naming_an_unmet_cast_member_is_refused() -> None:
@@ -227,7 +226,7 @@ def test_a_conflict_between_two_non_player_sides_never_asks_the_player() -> None
         what="Claw",
         actor_id="wight",
         question="Does the wight get past the hound?",
-        opponent_id="hound",
+        target_id="hound",
     )
     _ = ENGINE.roll(draft, action, Random(0))
 
@@ -243,11 +242,11 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 
     # The map is hidden in this scene, so nothing can be rolled against it yet.
     with pytest.raises(Refusal, match="is not here with the player"):
-        _ = ENGINE.roll(state.draft(), _seal(opponent_id=MAP), Random(0))
+        _ = ENGINE.roll(state.draft(), _seal(target_id=MAP), Random(0))
 
     draft = state.draft()
-    _ = change(ENGINE, draft, "reveal", entity_id=MAP)
-    _ = ENGINE.roll(draft, _seal(opponent_id=MAP), Random(0))
+    _ = change(ENGINE, draft, "reveal", target_id=MAP)
+    _ = ENGINE.roll(draft, _seal(target_id=MAP), Random(0))
 
     resisted = draft.payload.require(MAP).luck.current
     assert min(resisted, loner_sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
@@ -277,7 +276,7 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     _, state = initialized()
 
-    assert change(ENGINE, state.draft(), "restore_luck", entity_id=PLAYER_ID) == []
+    assert change(ENGINE, state.draft(), "restore_luck", actor_id=PLAYER_ID) == []
 
 
 def test_restoring_a_defeated_character_at_full_luck_clears_the_mark() -> None:
@@ -287,7 +286,7 @@ def test_restoring_a_defeated_character_at_full_luck_clears_the_mark() -> None:
     marked = draft.commit()
 
     draft = marked.draft()
-    facts = change(ENGINE, draft, "restore_luck", entity_id=FOE)
+    facts = change(ENGINE, draft, "restore_luck", actor_id=FOE)
 
     assert loner_sheet(draft, FOE).defeated is False
     (event,) = cards(facts)

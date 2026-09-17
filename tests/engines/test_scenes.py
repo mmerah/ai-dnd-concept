@@ -17,10 +17,10 @@ from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.scenes.engine import MEANWHILE_NUDGE, MOVE_ON
-from aidm.engines.scenes.tools import NextDraft, NextScene
-from aidm.engines.scenes.world import SceneRun, SceneWorld
-from aidm.engines.scenes.worldsmith import check_scene
+from aidm.engines.scenes.engine import MOVE_ON
+from aidm.engines.scenes.tools import NextScene
+from aidm.engines.scenes.world import NextProposal, SceneRun, SceneWorld
+from aidm.engines.scenes.worldsmith import MEANWHILE_NUDGE, check_scene
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
 MARA = "mara"
@@ -101,7 +101,7 @@ def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_cle
     draft.payload.meanwhile_due = True
     assert MEANWHILE_NUDGE in engine.render_next(draft, "Down the stair.")
 
-    scene = NextDraft[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+    scene = NextProposal[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
     engine.install(draft, scene)
 
     assert draft.payload.meanwhile_due is False
@@ -110,7 +110,7 @@ def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_cle
 def test_apply_scene_with_an_empty_arc_keeps_the_worlds_arc() -> None:
     world = _travelling()
     world.arc = ARC
-    draft = NextDraft[Person](
+    draft = NextProposal[Person](
         place="a2",
         title="A2",
         focus="What happens next here?",
@@ -135,7 +135,7 @@ def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:
 
 def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None:
     world = _world(_run("a1", "A1"))
-    draft = NextDraft[Person](
+    draft = NextProposal[Person](
         place="a2",
         title="A2",
         focus="What happens next here?",
@@ -211,7 +211,7 @@ def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
     engine, state = game(LONER3E)
     assert isinstance(engine, Loner3eEngine)
     draft = narrowed(state, Loner3eGame).draft()
-    scene = NextDraft[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+    scene = NextProposal[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
 
     _ = engine.install(draft, scene)
 

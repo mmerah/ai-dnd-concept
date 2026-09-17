@@ -22,8 +22,8 @@ from aidm.engines.loner3e.worldsmith import Loner3eBlock, Loner3ePack
 from aidm.engines.packs import MAX_SUPPLEMENTS, SRD_PACK, Names, Pack, PackSet, read_packs
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.worldsmith import (
-    OriginDraft,
-    SpecialtyDraft,
+    OriginProposal,
+    SpecialtyProposal,
     TwentyfourxxHead,
     TwentyfourxxPack,
 )
@@ -251,12 +251,12 @@ def test_a_twentyfourxx_head_never_gives_two_picks_the_same_id() -> None:
         setting="A belt station and the ships that dock there.",
         names=Names(),
         specialties=(
-            SpecialtyDraft(label="Face", detail="You talk the docks down.", skills=("Talk",)),
-            SpecialtyDraft(label="Face", detail="You wear another name.", skills=("Bluff",)),
+            SpecialtyProposal(label="Face", detail="You talk the docks down.", skills=("Talk",)),
+            SpecialtyProposal(label="Face", detail="You wear another name.", skills=("Bluff",)),
         ),
-        origins=(OriginDraft(label="Face", detail="Known on every deck."),),
+        origins=(OriginProposal(label="Face", detail="Known on every deck."),),
     )
 
-    made = engine.pack_of(head, None, name="Test", source="", license="")
+    made = engine.pack_of(head, None, name="Test", origin="", license="")
 
     assert made.defined_ids() == ("face", "face-2", "face-3")

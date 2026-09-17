@@ -69,9 +69,7 @@ def body(s: Session, device: Device) -> None:
     page.wait_for_timeout(600)
     s.check(not page.locator(".game-drawer").is_visible(), "drawer did not close")
     # A conflict decision and the way-on banner on a narrow footer.
-    submit(
-        page, 'I fight.\n!roll what="Strike" actor_id=player question="Land it?" opponent_id=mara'
-    )
+    submit(page, 'I fight.\n!roll what="Strike" actor_id=player question="Land it?" target_id=mara')
     wait_idle(page)
     s.shot(page, "decision")
     submit(page, "I break off.\n!none")
