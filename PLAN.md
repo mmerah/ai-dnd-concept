@@ -70,8 +70,8 @@ uv run basedpyright
 ## Phase 1: engines and packs
 
 Parts A, B, C, one after the other: all three touch `engines/seam.py`. Target: `src` about
-−395 (10,904 → about 10,510), `tests` about −140, content +10, one prompt golden, 783 tests
-collected.
+−395 (10,904 → about 10,510), `tests` about −140, content +10, one prompt golden, 774 tests
+collected (the codec file collects 23, not 13).
 
 ### Part A: the seam
 
@@ -109,16 +109,18 @@ collected.
    otherwise move them and make the world import the tools again). `rooms/world.py`: replace
    `RoomWorld.meanwhile(args: Meanwhile)` with `walk_offscreen(npc: N, place: Place) -> Fact`
    (keeps the "stands with the player; that is not offscreen" refusal and the unlocked-way
-   check), `drift_item(item: Prop, place: Place) -> Fact`, `shut_way(start: Place, end: Place)
-   -> Fact`, and `spend_meanwhile() -> None` which only `disarm()`s; `_offscreen_place` becomes
+   check), `drift_item(item: Prop, place: Place) -> Fact` (keeps the "is here with the player"
+   and "is already there" refusals: both read world state), `shut_way(start: Place, end: Place)
+   -> Fact`; no `spend_meanwhile`, the engine calls `world.disarm()`; `_offscreen_place` becomes
    public `offscreen_place`. Each keeps its refusals in the order the tests expect (resolve the
    destination before the state check that follows it). `rooms/engine.py`: `RoomEngine.
    meanwhile(self, draft, args: Meanwhile, _rng) -> list[Fact]` refuses `NOTHING_OFFSCREEN` when
    not `meanwhile_due`, resolves the three pairs (`npcs.get` → `UNKNOWN_ID`, then `IS_DEAD`;
-   `items.get` → `UNKNOWN_ID`, then "is here with the player"; `require_place` twice), calls the
-   three world methods, appends `Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD)` and
-   calls `spend_meanwhile()`. `rooms/world.py` no longer imports `rooms/tools.py`. Tests: every
-   refusal in `tests/engines/test_rooms.py` passes unchanged.
+   `items.get` → `UNKNOWN_ID`; `require_place` twice), calls the three world methods, appends
+   `Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD)` and calls `world.disarm()`.
+   `rooms/world.py` no longer imports `rooms/tools.py`. Tests: `tests/engines/test_rooms.py`
+   imports `MOVED_CARD`, `MOVES_OFFSCREEN`, `NOTHING_OFFSCREEN` from `rooms.tools` now; every
+   refusal in it passes unchanged.
 4. **`World.leave_party` is concrete; the proposals are frozen.** `engines/base.py`: delete the
    abstract `leave_party`; add a concrete one below the abstract block: `member =
    self.member_of(entity_id)`, refuse `UNKNOWN_ID` when `None`, `return self.part(member)`.
@@ -177,12 +179,16 @@ collected.
    in the measured run; the sites the type checker does not see: raw `{"ids": [...]}` literals in
    `tests/engines/test_integrity_boundaries.py` and `tests/app/test_launcher.py`; `tests/
    tunnelgoons/test_engine.py` builds a `PackSet` without an SRD (add `SRD_PACK: engine.packs.
-   srd()`) and asserts `state.packs is None` twice (now `== ("srd",)`). `test_select_refuses_a_
+   srd()`) and asserts `state.packs is None` twice (now `== ("srd",)`); `tests/engines/
+   test_rooms.py::test_a_room_game_validates_the_packs_it_plays` builds a `PackSet` without an
+   SRD too (add `SRD_PACK: room_engine.packs.srd()`, drop its `None` case, and its tuples become
+   `("srd", "mine")` / `("srd", "gone")`, since `validate` refuses the missing SRD before
+   `restore` reaches the overlap scan). `test_select_refuses_a_
    selection_without_the_srd` moves to `tests/engines/test_seam.py` parametrized over
    `ENGINE_IDS` and matches the base message; `tests/engines/test_scene_bar.py::test_a_
    scenario_with_no_packs_is_refused_by_check_packs` uses `packs=()` instead of `None` and
-   matches the base message. Three tests that called `validate` directly for the overlap rule go
-   through `restore`. Golden: `tests/core/fixtures/prompts/tunnelgoons/worldsmith.txt` gains a
+   matches the base message and imports `updated`. Three tests that called `validate` directly
+   for the overlap rule go through `restore`. Golden: `tests/core/fixtures/prompts/tunnelgoons/worldsmith.txt` gains a
    `PACK: Tunnel Goons SRD` block; regenerate it and nothing else.
 9. **One pack select.** `core/creation.py`: delete `MANY`, `picked_many`, `CreationStep.multiple`
    and the `multiple` branch of `check_picks`; `tests/core/test_creation.py` loses its three
@@ -250,7 +256,8 @@ Parts A then B: both touch every `tools.py` and `worldsmith.py`. Target: `src` a
    `TWIST_NOTE`, `DEFEAT_NOTE` to `loner3e/tools.py`; `engines/tools.py` → `DROP_ITEM`,
    `DropItem`, `AskWorld` to `twentyfourxx/tools.py` (`ACTOR` stays: Tunnel Goons reads it).
    Text unchanged; no golden moves. Tests importing a moved name follow: `tests/engines/
-   test_rooms.py`, `tests/loner3e/test_engine.py`, `tests/twentyfourxx/test_tools.py`.
+   test_rooms.py` (`ELSEWHERE`), `tests/loner3e/test_engine.py`, `tests/twentyfourxx/
+   test_tools.py`.
 2. **App: the roles own the role logic.** `app/roles.py` gains `OPENING_NARRATION` (from
    `runtime.py`), `ask`, `RETRIES`, `worldsmith` (from `spawn.py`). `core/tools.py` gains the
    `Tools` protocol (it is a protocol over `MasterTool[AnyGame]`; `builtin.py` imports from
@@ -299,7 +306,9 @@ Parts A then B: both touch every `tools.py` and `worldsmith.py`. Target: `src` a
    method on `Loner3eBlock`, `TunnelGoonsBlock`, `TwentyfourxxBlock`; `Pack.counts()`,
    `Names.listed()`, `Exchange.narration()`, `Exchange.transcript()`, `RoomWorld.holders_here()`
    become methods with their call sites (`Pack.summary`, the three `counts` overrides, the
-   `Names` validator, `Pack.sections`, `core/prompt.py`, `runtime.py`, `rooms/world.py`);
+   `Names` validator, `Pack.sections`, `core/prompt.py`, `runtime.py`, `rooms/world.py`, and the
+   `.narration` reads in `tests/app/test_master_tools.py`, `tests/turn/test_turn.py`,
+   `tests/turn/test_decisions.py`);
    `Thing.tag`/`mention`/`headline`, `Subject.headline`, `SpokenLine.said`, `Pack.summary`,
    `Rolled.*`, `Gauge.shortfall` are one-line reads and stay. `Gear.broken_message`/
    `harmless_message` become module constants `ALREADY_BROKEN`/`BREAKS_HARMLESSLY` formatted at
@@ -313,14 +322,14 @@ Parts A then B: both touch every `tools.py` and `worldsmith.py`. Target: `src` a
    acts, `target_id` for who is acted on, `to_id` for a destination, `_id` on every id."
 
 Done when: the full check is green; `grep -rn "Draft" src/aidm` finds no worldsmith answer
-class; the only model-facing strings left in an `engine.py` or `world.py` under
-`src/aidm/engines` are the three `*_UNWRITTEN` facts; the counts land in the target.
+class; no module-level string constant a model reads is left in an `engine.py` or `world.py`
+under `src/aidm/engines`, except the three `*_UNWRITTEN` facts; the counts land in the target.
 
 ## Phase 3: app, UI and tests
 
 Parts A, B, C, one after the other: A and B share `ui/game.py`; B and C share `tests/ui`.
 Target: `src` about +25 (9d +17, UI trims +24, `Panel.portrait` +1, small cuts −17; judged by
-the full check), `tests` about −395, `scripts` −390, `tests/fixtures` −420, 756 tests collected.
+the full check), `tests` about −395, `scripts` −390, `tests/fixtures` −420, 748 tests collected.
 
 ### Part A: the app
 
