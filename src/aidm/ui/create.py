@@ -259,7 +259,25 @@ class ScenarioForm:
             options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
             value=characters[0].id if characters else None,
             label="Character",
+            on_change=self.follow_character,
         )
+        self.follow_character_id(self.character.value)
+
+    def follow_character(self, event: ValueChangeEventArguments[str | None]) -> None:
+        self.follow_character_id(event.value)
+
+    def follow_character_id(self, character_id: str | None) -> None:
+        """The scenario plays what the character was made with, until the player says otherwise."""
+        if self.supplements is None or character_id is None:
+            return
+        entry = next(
+            entry
+            for entry in self.catalog.characters_for(self.engine_id)
+            if entry.id == character_id
+        )
+        # The SRD is implicit and never offered, so this keeps only the named supplements.
+        offered = {pack.id for pack in self.runtime.engines[self.engine_id].supplement_options()}
+        self.supplements.value = [pack for pack in entry.packs if pack in offered]
 
     @ui.refreshable_method
     def button_row(self) -> None:

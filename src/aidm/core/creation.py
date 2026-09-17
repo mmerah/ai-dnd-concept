@@ -40,12 +40,13 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
         answer = picked(picks, step.id)
         if not answer.strip() and not step.multiple:
             raise Refusal(f"{step.id!r} is unanswered")
-        if len(answer) > ANSWER_MAX:
-            raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
+        given = picked_many(picks, step.id) if step.multiple else (answer,)
+        for part in given:
+            if len(part) > ANSWER_MAX:
+                raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
         if not step.constrains:
             continue
         offered = {option.id for option in step.options}
-        given = picked_many(picks, step.id) if step.multiple else (answer,)
         for part in given:
             if part not in offered:
                 raise Refusal(f"{step.id!r} offers no {part!r}")

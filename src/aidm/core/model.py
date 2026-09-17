@@ -40,6 +40,17 @@ class ScenarioMeta(Frozen):
             raise Refusal(f"save scenario differs from the one on disk in: {', '.join(drifted)}")
 
 
+class PackSelection(Frozen):
+    """The table sets a game or a character is made from, in order."""
+
+    ids: tuple[Slug, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _distinct(self) -> Self:
+        check_unique("selected pack ids", self.ids)
+        return self
+
+
 class EngineHeader(Loose):
     engine: EngineId
 
@@ -52,17 +63,7 @@ class SheetHeader(Loose):
 class CharacterHeader(EngineHeader):
     id: Slug
     payload: SheetHeader
-
-
-class PackSelection(Frozen):
-    """The table sets a game or a character is made from, in order."""
-
-    ids: tuple[Slug, ...] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def _distinct(self) -> Self:
-        check_unique("selected pack ids", self.ids)
-        return self
+    packs: PackSelection | None = None
 
 
 class Scenario[P: BaseModel](Frozen):

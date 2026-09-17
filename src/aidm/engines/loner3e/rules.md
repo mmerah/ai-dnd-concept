@@ -16,6 +16,9 @@ with 6 luck. Anyone else holds out for as long as their own pool says.
 Call `change_tags` when the story plainly writes a tag or lifts one. Call `drive`
 when play shows what a character wants, why, or who stands in their way.
 
+When a selected pack's SPECIAL RULES price something in luck, call `spend_luck` with the
+printed cost before the `roll` that decides it. Read that roll as those rules say.
+
 ## When to roll
 
 Call `roll` when the answer is uncertain and both yes and no would change the story. When in

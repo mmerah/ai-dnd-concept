@@ -41,12 +41,21 @@ S. John Ross for [Risus](https://www.risusrpg.com/); the Adventure Maker setup i
 - `packs/srd.json` — written for this repo; only its twist columns come from the core rules
   page above (deviation 4).
 - `packs/ap01-fantasy.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP01_fantasy.html>.
-- Eleven more adventure packs at
-  `https://lonersrd.zotiquestgames.com/adventure_packs/APnn_<name>.html`, `AP01_fantasy` through
-  `AP12_cyberpunk`; 2e copies live under `adventure_packs/legacy/`.
-- `scripts/srd_packs.py` builds an adventure pack's JSON from the SRD's own markdown page, run as
-  `uv run python scripts/srd_packs.py tests/fixtures/srd/AP01_fantasy.md`; `ap01-fantasy.json`
-  is its output.
+- `packs/ap02-space.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP02_space.html>.
+- `packs/ap03-superheroes.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP03_superheroes.html>.
+- `packs/ap04-crime.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP04_crime.html>.
+- `packs/ap05-mystery.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP05_mystery.html>.
+- `packs/ap06-horror.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP06_horror.html>.
+- `packs/ap07-action-adventure.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP07_action_adventure.html>.
+- `packs/ap08-spy.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP08_spy.html>.
+- `packs/ap09-postapoc.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP09_postapoc.html>.
+- `packs/ap10-pirates.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP10_pirates.html>.
+- `packs/ap11-western.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP11_western.html>.
+- `packs/ap12-cyberpunk.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP12_cyberpunk.html>.
+- `scripts/srd_packs.py` builds an adventure pack's JSON from the SRD's own markdown page,
+  `content/adventure_packs/APnn_<name>.md` in <https://github.com/zotiquestgames/lonersrd>, run as
+  `uv run python scripts/srd_packs.py tests/fixtures/srd/AP01_fantasy.md`; the twelve packs that
+  ship are its output over the twelve pages.
   `tests/fixtures/srd/AP01_fantasy.md` is that page, copied unchanged — CC BY-SA 4.0, (c) Roberto
   Bisceglie / Zotiquest Games.
 - The four trait tables' ids are stable across runs of the converter: the same page converts to
@@ -55,15 +64,18 @@ S. John Ross for [Risus](https://www.risusrpg.com/); the Adventure Maker setup i
 
 **Open question, carried from `README.md`:** the AP01 page carries no CC declaration at all — only
 the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0.
-It is treated as covered by the site's licence. One email to the publisher would settle it.
+It is treated as covered by the site's licence. All twelve pages read the same way: the site
+index declares CC BY-SA 4.0 and every pack page carries only the copyright footer. One email to
+the publisher would settle it.
 
 ## The tools
 
 Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 
 - `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
-  `change_tags` (an actor's gear or condition tags), `drive` (goal, motive, nemesis) and
-  `restore_luck` (refill an actor's Luck and clear their defeat once the conflict is behind them).
+  `change_tags` (an actor's gear or condition tags), `drive` (goal, motive, nemesis),
+  `restore_luck` (refill an actor's Luck and clear their defeat once the conflict is behind them)
+  and `spend_luck` (pay a cost a selected pack's special rules print, such as a spell).
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
   bring down on this place. The last two end the turn.

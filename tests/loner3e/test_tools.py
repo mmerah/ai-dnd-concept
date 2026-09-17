@@ -4,6 +4,7 @@ from support.game import ENGINE, initialized, loner_sheet, with_entity
 from support.table import change, refused
 
 from aidm.core.facts import cards
+from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import Roll
 from aidm.engines.loner3e.world import Loner3eCast, outcome_for
@@ -147,6 +148,40 @@ def test_drive_refuses_naming_someone_unmet_who_is_not_in_this_scene() -> None:
         ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Watcher hunts him"
     )
     assert kael.nemesis == ""
+
+
+def test_spend_luck_is_refused_when_no_selected_pack_spends_it() -> None:
+    _, state = initialized()
+
+    assert "no selected pack spends luck" in refused(
+        ENGINE, state.draft(), "spend_luck", entity_id=PLAYER_ID, amount=2, why="A ward"
+    )
+
+
+def test_spend_luck_above_the_pool_is_refused_naming_it() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    draft.packs = PackSelection(ids=("srd", "ap01-fantasy"))
+    fantasy = draft.commit()
+
+    assert "has 6 luck, not 10" in refused(
+        ENGINE, fantasy.draft(), "spend_luck", entity_id=PLAYER_ID, amount=10, why="A ward"
+    )
+
+
+def test_spend_luck_lands_one_fact_and_no_defeat() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    draft.packs = PackSelection(ids=("srd", "ap01-fantasy"))
+    fantasy = draft.commit()
+
+    facts = change(
+        ENGINE, fantasy.draft(), "spend_luck", entity_id=PLAYER_ID, amount=2, why="A ward"
+    )
+
+    (event,) = cards(facts)
+    assert event.card == "Luck -2 → 4/6"
+    assert not loner_sheet(fantasy, PLAYER_ID).defeated
 
 
 def test_change_tags_refuses_naming_a_hidden_entity_but_allows_a_revealed_one() -> None:

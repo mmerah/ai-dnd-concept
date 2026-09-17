@@ -1,0 +1,1293 @@
+{
+  "name": "AP12 Cyberpunk",
+  "source": "https://lonersrd.zotiquestgames.com/adventure_packs/AP12_cyberpunk.html",
+  "license": "Adventure Pack 12: Cyberpunk, Loner SRD site (CC BY-SA 4.0), (c) Roberto Bisceglie / Zotiquest Games",
+  "setting": "The world is steel, static, and surveillance — a corporate dystopia where freedom is a marketing term and every breath is logged in a database you can’t see.\nThe age is a broken future — governments are ghosts, replaced by contracts and firewalls, and the streets answer only to those who pay in blood or bandwidth.\nThe setting is a neon-drenched megacity — towers scrape the clouds, alleys stink of oil and ozone, and light never quite reaches the ground.\nBodies are currency — cybernetic implants are everywhere, from high-end augment suites to junk-tier grafts that spark and fail under strain.\nVirtual reality is more real than the meat — a labyrinth of digital sanctuaries and trapdoors, ruled by rogue AIs, corporate censors, and whispering code.\nPower is fractured and predatory — megacorps rule from chrome citadels, gangs control the gutters, and insurgent nodes crack systems no one admits exist.\nIdentity is malleable, truth is encrypted, and memory is a service with monthly fees — who you are depends on who still has the data.\nThis is a world where survival means picking a side, faking a name, and never staying still — because the grid is always watching, and mercy isn't in the code.",
+  "names": {
+    "female": [
+      "Nova",
+      "Echo",
+      "Kira",
+      "Ashen",
+      "Ilya",
+      "Sable",
+      "Juno",
+      "Kaede",
+      "Vex",
+      "Mira",
+      "Astra",
+      "Cyan",
+      "Lux",
+      "Onyx",
+      "Nara",
+      "Sky",
+      "Neve",
+      "Ada",
+      "Zina",
+      "Ivy",
+      "Cyra",
+      "Ren",
+      "Vega",
+      "Lo",
+      "Rei",
+      "Tamsin",
+      "Nix",
+      "Vale",
+      "Noa",
+      "Chrome",
+      "Nyra",
+      "Indigo",
+      "Tyne",
+      "Elix",
+      "Haze",
+      "Hexa"
+    ],
+    "male": [
+      "Kael",
+      "Dax",
+      "Orion",
+      "Ash",
+      "Jet",
+      "Vance",
+      "Riko",
+      "Zion",
+      "Nash",
+      "Mylo",
+      "Kade",
+      "Vox",
+      "Jett",
+      "Harlan",
+      "Neo",
+      "Bram",
+      "Rune",
+      "Soren",
+      "Lux",
+      "Silas",
+      "Oren",
+      "Zeke",
+      "Cass",
+      "Dex",
+      "Thane",
+      "Elian",
+      "Rhys",
+      "Blaize",
+      "Rael",
+      "Holt",
+      "Zio",
+      "Pike",
+      "Flint",
+      "Quill",
+      "Korrin",
+      "Trace"
+    ],
+    "neutral": [],
+    "surnames": [
+      "Virex",
+      "Nomura",
+      "Kessler",
+      "Synclair",
+      "Takano",
+      "Blight",
+      "Strade",
+      "Onari",
+      "Holloway",
+      "Vantrell",
+      "Kaas",
+      "Delk",
+      "Thorne",
+      "Vaskin",
+      "Orlova",
+      "Kyros",
+      "Maddox",
+      "Raze",
+      "Hoshin",
+      "Drayke",
+      "Morrin",
+      "Valez",
+      "Tannaka",
+      "Kryne",
+      "Hexley",
+      "Mori",
+      "Virelli",
+      "Skaar",
+      "Langren",
+      "Ashcroft",
+      "Kepler",
+      "Trask",
+      "Draxler",
+      "Icarra",
+      "Quen",
+      "Solenne"
+    ],
+    "nicknames": [
+      "Ghost",
+      "Reverb",
+      "Static",
+      "Null",
+      "Frost",
+      "Glitch",
+      "Jackal",
+      "Byte",
+      "Slicer",
+      "Vandal",
+      "Trace",
+      "Nova",
+      "Zero",
+      "Knives",
+      "Ember",
+      "Shade",
+      "Chrome",
+      "Hex",
+      "Slash",
+      "Wraith",
+      "Fuse",
+      "Pulse",
+      "Blade",
+      "Sparks",
+      "Virus",
+      "Doom",
+      "Cipher",
+      "Scar",
+      "Trigger",
+      "Echo",
+      "Blaze",
+      "Shard",
+      "Loop",
+      "Flux",
+      "Choke",
+      "Data"
+    ]
+  },
+  "rules": "Hacking:\n\nThe grid is a battlefield. If you jack in, you’d better be ready to bleed—digitally or otherwise.\n\n* **Access**: You need a terminal. Physical or wireless, public or ghosted, legit or jerry-rigged. Get in first.\n* **Actions**: Upload malware. Steal intel. Rewrite access. Shut down security. Hijack drones. Every command is a test of skill—or software.\n* **Failure**: Alerts. ICE. Blacklists. Traces. Physical feedback. Sometimes, just a full brainburn and your name on a bounty board.\n* **Detection**: If they notice you, the system fights back. Alarms trigger, contracts update, enemies deploy.\n* **Success**: Information. Control. Leverage. You might turn the tide of a job—or blow open a hidden truth. Just don’t get cocky.\n\nHigh-risk hacks should feel like tense heists. Add pressure. Add noise. Let the grid feel alive and hostile.\n\nCybernetic Enhancements:\n\nCyberware is freedom—but it bites. Every implant is a deal: more power, more risk, less of the original you.\n\n* **Installation**: Found in street clinics, off-grid labs, or stolen from corpses. The best gear is black-market.\n* **Benefits**: Strength boosts. Reflex spikes. Sensor suites. Direct hacking access. You become faster, sharper, deadlier.\n* **Maintenance**: Cyberware needs tune-ups. Glitches, lag, pain loops—these happen. Clinics fix it, if you pay.\n* **Risks**: Side effects are real. Emotional desync, addiction to overclockers, or getting tagged by trackers in your own blood.\n* **Limits**: You can’t run too hot for too long. Stack too many mods, and systems clash. EMPs fry you. Hackers hijack you.\n\nUse cyberware as leverage—not a crutch. Let it change who the character is, not just what they can do.\n\nImplants:\n\nTreat these as gear entries, lootable or installable between jobs.\n\n* **Neural Interface** — Direct mind-machine link; remote control, instant sync, total immersion.\n* **Cybernetic Eyes** — IR, zoom, night-vision, threat highlights. Seeing is exploiting.\n* **Cybernetic Limbs** — Lift more. Run faster. Crush bones. Looks? Optional.\n* **Neural Implant** — Boosted memory, logic circuits, skill caching.\n* **Voice Modulator** — Speak in any voice, any accent. Even ones that shouldn’t exist.\n* **Retinal Display** — Augmented-reality HUD burned right into your vision.\n* **Subdermal Armor** — Not visible. Very real. Stops knives and low-caliber rounds.\n* **Cybernetic Organs** — Internal hardware upgrades: cleaner blood, stronger lungs, rewired guts.\n* **Pain Suppressor** — Numb it all. Until the body gives out anyway.\n* **Adrenal Boost** — Triggered surge. Superhuman for ten seconds. Then you crash.\n* **Synthetic Blood** — Enhanced oxygenation. More stamina, faster healing, less downtime.\n* **Bio-Monitor** — Health alerts, drug tracking, full vitals suite.\n* **Reflex Booster** — Shaves milliseconds off reactions. Time enough to live.\n* **Sensory Enhancement** — Hearing ultrasounds. Smelling lies. Tasting poison.\n* **Cybernetic Spine** — Reinforced backbone. Literally.\n* **Subdermal Weapon** — Hidden blade, gun, or dart—where scanners won’t see it.\n* **Datajack** — Skull port. Plug in. Hack faster. Burn harder.\n* **Cybernetic Heart** — Tougher, faster, longer-lasting. It beats when you shouldn’t.\n\nCharacters with implants may occasionally trigger suspicion, scanners, or corporate interest—especially if running rare or military-grade mods.\n\nReputation:\n\nIn this world, reputation is currency. It's also a tracking variable.\n\n* **Gain It**: Pull off high-profile runs. Leak corporate secrets. Wipe out a rival crew on livefeed.\n* **Lose It**: Screw up. Get caught. Sell out to the wrong bidder. Ghost a job you were paid for.\n* **Spend It**: Reputation gets you in the door—exclusive locations, favors, elite contacts.\n* **Suffer It**: The higher you rise, the more you’re watched. Fame paints a target.\n\nReputation Levels:\n\n* **Unknown** — Nobody cares. You’re safe. You’re replaceable.\n* **Local** — Known in a neighborhood or among a gang.\n* **Regional** — Your name echoes through factions and feeds.\n* **National** — Major players recognize your work.\n* **International** — You’ve gone global. Corps whisper your handle.\n* **Legendary** — You’re a myth in a world that doesn’t believe in them.\n\n> **TIP**: Let reputation shift dynamically. Make it a double-edged sword—useful, dangerous, always evolving.",
+  "locations": [
+    {
+      "label": "The Spire of Vantrell",
+      "detail": "Corporate megatower with private weather control and memory-locked elevators. Rumored to contain an executive blacksite 300 floors below public access.",
+      "encounters": "NPC “Viper Rodriguez,” enemy “Elysium Asset Reclaimer,” faction “Executive Choir.”"
+    },
+    {
+      "label": "The Gridwound",
+      "detail": "Fractured zone of the datanet where abandoned code mutates into sentient architecture. Time flows erratically inside; users often exit with missing memories—or new ones.",
+      "encounters": "NPC “Blackout Garcia,” enemy “The Staticmind,” implant “Datajack.”"
+    },
+    {
+      "label": "The Violet Verge",
+      "detail": "Neon-lit market suspended across old monorail lines, open dusk to dawn, always moving. Vendors whisper passwords, sell pulse-mods, and vanish before sunrise.",
+      "encounters": "faction “Black Veil Syndicate,” NPC “The Fence,” enemy “Flayrat Raiders.”"
+    },
+    {
+      "label": "The Dead Circuit Foundry",
+      "detail": "Decommissioned tech plant reactivated by rogue engineers and outlaw coders. Contains machine spirits, reclaimed AI cores, and a reactor that shouldn’t still hum.",
+      "encounters": "faction “The Glass Fade,” enemy “Nullframe Agent,” implant “Reflex Booster.”"
+    },
+    {
+      "label": "Pier Zero Skyhub",
+      "detail": "Cracked landing platforms above the stormline; fuel black market under every hangar. No questions asked if your ship has the right transponder—or the right bribe.",
+      "encounters": "NPC “Ironclad Jackson,” enemy “Skyborne Corsairs,” gear “Pulsecycle.”"
+    },
+    {
+      "label": "Ashmantle Exclusion Zone",
+      "detail": "Toxic crater of scrapped servers and synthetic waste, swarming with scavenger cults. Signal interference warps surveillance and memory—entering is one thing, remembering is another.",
+      "encounters": "enemy “Synapse Breaker,” faction “Order of the Iron Root,” gear “Ghost-Hardened Armor.”"
+    }
+  ],
+  "seeds": [
+    "A prototype cyberbrain was stolen mid-transfer. You wake up wearing it — and someone else’s memories.",
+    "Surveillance glitches across the Spire of Vantrell show something moving between walls. It shouldn't exist.",
+    "An executive's clone has gone rogue. It’s leaking secrets — and doesn’t know it isn’t real.",
+    "A sealed server farm reactivates after 20 years. The last crew sent in never came back out.",
+    "You’re hired to erase a whistleblower’s identity. Turns out: it’s you, from a deleted timeline.",
+    "A gang of augmented zealots offers you credits to retrieve a relic from a crashed orbital AI core.",
+    "An encrypted message pings your deck. It’s signed by a dead hacker — and it includes your kill order.",
+    "Someone has overwritten the city's emergency systems. Fires rage. You’re the only ghost still off the grid.",
+    "An underground auction is selling memories — and someone is bidding with yours.",
+    "A VR cult promises \"ascension\" through full neural upload. The bodies of its members keep disappearing.",
+    "A synthetic child is wandering the Verge, asking for its parents — both listed as corporate blacksites.",
+    "A street doc offers you a favor: extract her brother from a loyalty prison before his memory is wiped.",
+    "A gang is recruiting runners for a dream-invasion heist. The vault is inside a CEO’s unconscious mind.",
+    "You find a data shard containing schematics for a weaponized personality construct. Yours.",
+    "Your neural ID is flagged as “deceased.” You’ve got 48 hours before enforcement makes it true.",
+    "An influencer’s disappearance is trending — but their feed is still active, livestreaming static and code.",
+    "A rogue weather AI is terraforming a sector of the city. Someone’s protecting it. You’re sent to kill it.",
+    "A broken-down hovertrain reboots and starts moving... toward a zone that doesn’t exist on any map.",
+    "You’re hired to sabotage a drone assembly plant. The drones there are... praying.",
+    "A low-level corpo offers credits for a secret data wipe. The file is locked in their own spinal implant.",
+    "The Hollow Blades are being hunted by an unknown assassin. They think it’s you.",
+    "A neural virus is spreading through public AR ads. You’re immune — which means you're the vector.",
+    "A cybernetic artist is creating portraits that kill their subjects. Your face is in the next frame.",
+    "A bleeding man drops a datachip in your hand before dying. It boots an interface to a private god.",
+    "A freelance judge offers you justice — if you help them break into a sealed tribunal archive.",
+    "Someone is using your name to commit precision strikes across the city. You’re offered a job by them.",
+    "A dead zone of static spreads from the Gridwound. Your deck is infected, and it's rewriting your past.",
+    "You’re paid to deliver a courier package. It’s breathing. And it knows your real name.",
+    "An off-grid community needs tech repaired. It's running a simulation of the city — and it’s weeks ahead.",
+    "A nanite plague blooms in an exclusion zone. You’re sent to recover its original design — from yourself.",
+    "A former contact went dark years ago. Their voice just called you from a public terminal — whispering code.",
+    "A memory-sculptor wants your help to recover a deleted lover — from a corrupted backup in a hostile mind.",
+    "A VIP bodyguard contract turns sour when you learn your client is a weaponized bio-sleeper.",
+    "An activist crew recruits you to expose the Choir’s blood-rite contracts — but they’ve been compromised.",
+    "An elite corporate agent defects and offers data in exchange for protection. Everyone wants them dead.",
+    "A glitch in time reveals a version of the city from 30 years in the future — and your corpse in the ruins."
+  ],
+  "concepts": [
+    {
+      "id": "burned-out-hacker",
+      "label": "Burned-Out Hacker",
+      "detail": ""
+    },
+    {
+      "id": "synth-addicted-courier",
+      "label": "Synth-Addicted Courier",
+      "detail": ""
+    },
+    {
+      "id": "chrome-laced-brawler",
+      "label": "Chrome-Laced Brawler",
+      "detail": ""
+    },
+    {
+      "id": "disavowed-corp-analyst",
+      "label": "Disavowed Corp Analyst",
+      "detail": ""
+    },
+    {
+      "id": "augmented-detective",
+      "label": "Augmented Detective",
+      "detail": ""
+    },
+    {
+      "id": "streetwise-netrunner",
+      "label": "Streetwise Netrunner",
+      "detail": ""
+    },
+    {
+      "id": "freelance-enforcer",
+      "label": "Freelance Enforcer",
+      "detail": ""
+    },
+    {
+      "id": "memory-wiped-spy",
+      "label": "Memory-Wiped Spy",
+      "detail": ""
+    },
+    {
+      "id": "rogue-ai-emulator",
+      "label": "Rogue AI Emulator",
+      "detail": ""
+    },
+    {
+      "id": "street-surgeon",
+      "label": "Street Surgeon",
+      "detail": ""
+    },
+    {
+      "id": "grid-addicted-informant",
+      "label": "Grid-Addicted Informant",
+      "detail": ""
+    },
+    {
+      "id": "cybernetic-exorcist",
+      "label": "Cybernetic Exorcist",
+      "detail": ""
+    },
+    {
+      "id": "reality-editor",
+      "label": "Reality Editor",
+      "detail": ""
+    },
+    {
+      "id": "neon-priest",
+      "label": "Neon Priest",
+      "detail": ""
+    },
+    {
+      "id": "disillusioned-idealist",
+      "label": "Disillusioned Idealist",
+      "detail": ""
+    },
+    {
+      "id": "black-market-dealer",
+      "label": "Black-Market Dealer",
+      "detail": ""
+    },
+    {
+      "id": "techno-shaman",
+      "label": "Techno-Shaman",
+      "detail": ""
+    },
+    {
+      "id": "edge-rider-smuggler",
+      "label": "Edge-Rider Smuggler",
+      "detail": ""
+    },
+    {
+      "id": "deep-net-diver",
+      "label": "Deep Net Diver",
+      "detail": ""
+    },
+    {
+      "id": "corporate-defector",
+      "label": "Corporate Defector",
+      "detail": ""
+    },
+    {
+      "id": "glitched-clone",
+      "label": "Glitched Clone",
+      "detail": ""
+    },
+    {
+      "id": "trauma-coded-healer",
+      "label": "Trauma-Coded Healer",
+      "detail": ""
+    },
+    {
+      "id": "drone-whisperer",
+      "label": "Drone Whisperer",
+      "detail": ""
+    },
+    {
+      "id": "neuromancer-in-exile",
+      "label": "Neuromancer-In-Exile",
+      "detail": ""
+    },
+    {
+      "id": "loyalty-free-agent",
+      "label": "Loyalty-Free Agent",
+      "detail": ""
+    },
+    {
+      "id": "rewritten-revolutionary",
+      "label": "Rewritten Revolutionary",
+      "detail": ""
+    },
+    {
+      "id": "frame-up-victim",
+      "label": "Frame-Up Victim",
+      "detail": ""
+    },
+    {
+      "id": "synthesist-philosopher",
+      "label": "Synthesist Philosopher",
+      "detail": ""
+    },
+    {
+      "id": "blackout-operative",
+      "label": "Blackout Operative",
+      "detail": ""
+    },
+    {
+      "id": "mind-fragmented-prophet",
+      "label": "Mind-Fragmented Prophet",
+      "detail": ""
+    },
+    {
+      "id": "firewall-runner",
+      "label": "Firewall Runner",
+      "detail": ""
+    },
+    {
+      "id": "quantum-fugitive",
+      "label": "Quantum Fugitive",
+      "detail": ""
+    },
+    {
+      "id": "street-born-tactician",
+      "label": "Street-Born Tactician",
+      "detail": ""
+    },
+    {
+      "id": "dreamscape-manipulator",
+      "label": "Dreamscape Manipulator",
+      "detail": ""
+    },
+    {
+      "id": "shadowback-sniper",
+      "label": "Shadowback Sniper",
+      "detail": ""
+    },
+    {
+      "id": "subroutine-assassin",
+      "label": "Subroutine Assassin",
+      "detail": ""
+    }
+  ],
+  "skills": [
+    {
+      "id": "system-override",
+      "label": "System Override",
+      "detail": ""
+    },
+    {
+      "id": "close-quarters-combat",
+      "label": "Close Quarters Combat",
+      "detail": ""
+    },
+    {
+      "id": "stealth-hacking",
+      "label": "Stealth Hacking",
+      "detail": ""
+    },
+    {
+      "id": "black-market-negotiation",
+      "label": "Black Market Negotiation",
+      "detail": ""
+    },
+    {
+      "id": "rapid-decryption",
+      "label": "Rapid Decryption",
+      "detail": ""
+    },
+    {
+      "id": "reflex-boosted-aim",
+      "label": "Reflex-Boosted Aim",
+      "detail": ""
+    },
+    {
+      "id": "neural-mapping",
+      "label": "Neural Mapping",
+      "detail": ""
+    },
+    {
+      "id": "improvised-surgery",
+      "label": "Improvised Surgery",
+      "detail": ""
+    },
+    {
+      "id": "viral-code-deployment",
+      "label": "Viral Code Deployment",
+      "detail": ""
+    },
+    {
+      "id": "surveillance-scrambling",
+      "label": "Surveillance Scrambling",
+      "detail": ""
+    },
+    {
+      "id": "urban-parkour",
+      "label": "Urban Parkour",
+      "detail": ""
+    },
+    {
+      "id": "zero-g-maneuvering",
+      "label": "Zero-G Maneuvering",
+      "detail": ""
+    },
+    {
+      "id": "drone-command",
+      "label": "Drone Command",
+      "detail": ""
+    },
+    {
+      "id": "social-engineering",
+      "label": "Social Engineering",
+      "detail": ""
+    },
+    {
+      "id": "firewall-breach",
+      "label": "Firewall Breach",
+      "detail": ""
+    },
+    {
+      "id": "bio-signal-detection",
+      "label": "Bio-Signal Detection",
+      "detail": ""
+    },
+    {
+      "id": "lie-recognition",
+      "label": "Lie Recognition",
+      "detail": ""
+    },
+    {
+      "id": "adaptive-camouflage-use",
+      "label": "Adaptive Camouflage Use",
+      "detail": ""
+    },
+    {
+      "id": "cybernetic-tinkering",
+      "label": "Cybernetic Tinkering",
+      "detail": ""
+    },
+    {
+      "id": "network-backdoor-design",
+      "label": "Network Backdoor Design",
+      "detail": ""
+    },
+    {
+      "id": "subdermal-weapon-use",
+      "label": "Subdermal Weapon Use",
+      "detail": ""
+    },
+    {
+      "id": "combat-protocol-execution",
+      "label": "Combat Protocol Execution",
+      "detail": ""
+    },
+    {
+      "id": "memory-extraction",
+      "label": "Memory Extraction",
+      "detail": ""
+    },
+    {
+      "id": "parallel-process-thinking",
+      "label": "Parallel Process Thinking",
+      "detail": ""
+    },
+    {
+      "id": "emp-deployment",
+      "label": "EMP Deployment",
+      "detail": ""
+    },
+    {
+      "id": "synthetic-emotion-reading",
+      "label": "Synthetic Emotion Reading",
+      "detail": ""
+    },
+    {
+      "id": "live-feed-hijacking",
+      "label": "Live Feed Hijacking",
+      "detail": ""
+    },
+    {
+      "id": "stealth-infiltration",
+      "label": "Stealth Infiltration",
+      "detail": ""
+    },
+    {
+      "id": "nano-reactor-tuning",
+      "label": "Nano-Reactor Tuning",
+      "detail": ""
+    },
+    {
+      "id": "reality-loop-prediction",
+      "label": "Reality Loop Prediction",
+      "detail": ""
+    },
+    {
+      "id": "personality-spoofing",
+      "label": "Personality Spoofing",
+      "detail": ""
+    },
+    {
+      "id": "quantum-calculus",
+      "label": "Quantum Calculus",
+      "detail": ""
+    },
+    {
+      "id": "sensory-override",
+      "label": "Sensory Override",
+      "detail": ""
+    },
+    {
+      "id": "panic-suppression",
+      "label": "Panic Suppression",
+      "detail": ""
+    },
+    {
+      "id": "crisis-negotiation",
+      "label": "Crisis Negotiation",
+      "detail": ""
+    },
+    {
+      "id": "multi-system-sync",
+      "label": "Multi-System Sync",
+      "detail": ""
+    }
+  ],
+  "frailties": [
+    {
+      "id": "fried-neural-pathways",
+      "label": "Fried Neural Pathways",
+      "detail": ""
+    },
+    {
+      "id": "memory-fragmentation",
+      "label": "Memory Fragmentation",
+      "detail": ""
+    },
+    {
+      "id": "ghosts-in-the-wetware",
+      "label": "Ghosts in the Wetware",
+      "detail": ""
+    },
+    {
+      "id": "addicted-to-data-surges",
+      "label": "Addicted to Data Surges",
+      "detail": ""
+    },
+    {
+      "id": "prone-to-system-blackouts",
+      "label": "Prone to System Blackouts",
+      "detail": ""
+    },
+    {
+      "id": "marked-by-a-kill-protocol",
+      "label": "Marked by a Kill Protocol",
+      "detail": ""
+    },
+    {
+      "id": "burnout-syndrome",
+      "label": "Burnout Syndrome",
+      "detail": ""
+    },
+    {
+      "id": "obsolete-hardware",
+      "label": "Obsolete Hardware",
+      "detail": ""
+    },
+    {
+      "id": "overclocked-heart",
+      "label": "Overclocked Heart",
+      "detail": ""
+    },
+    {
+      "id": "shadow-trauma",
+      "label": "Shadow Trauma",
+      "detail": ""
+    },
+    {
+      "id": "identity-loop-instability",
+      "label": "Identity Loop Instability",
+      "detail": ""
+    },
+    {
+      "id": "desync-with-physical-body",
+      "label": "Desync with Physical Body",
+      "detail": ""
+    },
+    {
+      "id": "echoes-of-deleted-lives",
+      "label": "Echoes of Deleted Lives",
+      "detail": ""
+    },
+    {
+      "id": "crippling-synth-dependency",
+      "label": "Crippling Synth Dependency",
+      "detail": ""
+    },
+    {
+      "id": "empathy-nullification-chip",
+      "label": "Empathy Nullification Chip",
+      "detail": ""
+    },
+    {
+      "id": "target-of-a-tracking-algorithm",
+      "label": "Target of a Tracking Algorithm",
+      "detail": ""
+    },
+    {
+      "id": "prone-to-overwrites",
+      "label": "Prone to Overwrites",
+      "detail": ""
+    },
+    {
+      "id": "fragmented-sleep-patterns",
+      "label": "Fragmented Sleep Patterns",
+      "detail": ""
+    },
+    {
+      "id": "emotion-emulator-failure",
+      "label": "Emotion Emulator Failure",
+      "detail": ""
+    },
+    {
+      "id": "hallucinogenic-recall-loops",
+      "label": "Hallucinogenic Recall Loops",
+      "detail": ""
+    },
+    {
+      "id": "claustrophobic-in-vr",
+      "label": "Claustrophobic in VR",
+      "detail": ""
+    },
+    {
+      "id": "noise-sensitivity",
+      "label": "Noise Sensitivity",
+      "detail": ""
+    },
+    {
+      "id": "visions-from-the-code",
+      "label": "Visions from the Code",
+      "detail": ""
+    },
+    {
+      "id": "can-t-unplug-voluntarily",
+      "label": "Can’t Unplug Voluntarily",
+      "detail": ""
+    },
+    {
+      "id": "internal-system-drift",
+      "label": "Internal System Drift",
+      "detail": ""
+    },
+    {
+      "id": "experimental-implant-rejection",
+      "label": "Experimental Implant Rejection",
+      "detail": ""
+    },
+    {
+      "id": "prone-to-data-bleed",
+      "label": "Prone to Data Bleed",
+      "detail": ""
+    },
+    {
+      "id": "untraceable-legal-status",
+      "label": "Untraceable Legal Status",
+      "detail": ""
+    },
+    {
+      "id": "triggered-by-flash-memories",
+      "label": "Triggered by Flash Memories",
+      "detail": ""
+    },
+    {
+      "id": "incompatibility-with-grid-ai",
+      "label": "Incompatibility with Grid AI",
+      "detail": ""
+    },
+    {
+      "id": "host-to-legacy-malware",
+      "label": "Host to Legacy Malware",
+      "detail": ""
+    },
+    {
+      "id": "conflicted-programming",
+      "label": "Conflicted Programming",
+      "detail": ""
+    },
+    {
+      "id": "fear-of-reboots",
+      "label": "Fear of Reboots",
+      "detail": ""
+    },
+    {
+      "id": "blacklisted-by-megacorp",
+      "label": "Blacklisted by Megacorp",
+      "detail": ""
+    },
+    {
+      "id": "bio-rejection-syndrome",
+      "label": "Bio-Rejection Syndrome",
+      "detail": ""
+    },
+    {
+      "id": "failsafe-override-vulnerable",
+      "label": "Failsafe Override Vulnerable",
+      "detail": ""
+    }
+  ],
+  "gear": [
+    {
+      "id": "cortical-jack-enhancer",
+      "label": "Cortical Jack Enhancer",
+      "detail": ""
+    },
+    {
+      "id": "cloak-of-obfuscation-nanoweave",
+      "label": "Cloak of Obfuscation (Nanoweave)",
+      "detail": ""
+    },
+    {
+      "id": "black-ice-injector-rig",
+      "label": "Black-Ice Injector Rig",
+      "detail": ""
+    },
+    {
+      "id": "hollow-id-key",
+      "label": "Hollow ID Key",
+      "detail": ""
+    },
+    {
+      "id": "pain-dampening-combat-suit",
+      "label": "Pain-Dampening Combat Suit",
+      "detail": ""
+    },
+    {
+      "id": "illegal-sense-recorder",
+      "label": "Illegal Sense Recorder",
+      "detail": ""
+    },
+    {
+      "id": "retinal-ar-overlay",
+      "label": "Retinal AR Overlay",
+      "detail": ""
+    },
+    {
+      "id": "disposable-drone-swarm",
+      "label": "Disposable Drone Swarm",
+      "detail": ""
+    },
+    {
+      "id": "pulse-knife-with-reverb-edge",
+      "label": "Pulse-Knife with Reverb Edge",
+      "detail": ""
+    },
+    {
+      "id": "locust-data-spike",
+      "label": "Locust Data Spike",
+      "detail": ""
+    },
+    {
+      "id": "emergency-firewall-beacon",
+      "label": "Emergency Firewall Beacon",
+      "detail": ""
+    },
+    {
+      "id": "signal-ghost-transmitter",
+      "label": "Signal-Ghost Transmitter",
+      "detail": ""
+    },
+    {
+      "id": "neural-feedback-loop-circuit",
+      "label": "Neural Feedback Loop Circuit",
+      "detail": ""
+    },
+    {
+      "id": "prototype-chrono-stabilizer",
+      "label": "Prototype Chrono-Stabilizer",
+      "detail": ""
+    },
+    {
+      "id": "voiceprint-scrambler",
+      "label": "Voiceprint Scrambler",
+      "detail": ""
+    },
+    {
+      "id": "voxel-disguise-mesh",
+      "label": "Voxel Disguise Mesh",
+      "detail": ""
+    },
+    {
+      "id": "self-writing-notepad",
+      "label": "Self-Writing Notepad",
+      "detail": ""
+    },
+    {
+      "id": "locked-black-case-unknown-origin",
+      "label": "Locked Black Case (Unknown Origin)",
+      "detail": ""
+    },
+    {
+      "id": "emp-pulse-emitter",
+      "label": "EMP Pulse Emitter",
+      "detail": ""
+    },
+    {
+      "id": "portable-cryptovault",
+      "label": "Portable Cryptovault",
+      "detail": ""
+    },
+    {
+      "id": "reinforced-prosthetic-arm",
+      "label": "Reinforced Prosthetic Arm",
+      "detail": ""
+    },
+    {
+      "id": "molecular-code-sniffer",
+      "label": "Molecular Code Sniffer",
+      "detail": ""
+    },
+    {
+      "id": "personal-server-capsule",
+      "label": "Personal Server Capsule",
+      "detail": ""
+    },
+    {
+      "id": "patchwork-cyberdeck",
+      "label": "Patchwork Cyberdeck",
+      "detail": ""
+    },
+    {
+      "id": "glitch-tuned-monocle",
+      "label": "Glitch-Tuned Monocle",
+      "detail": ""
+    },
+    {
+      "id": "jammer-grid-bracelet",
+      "label": "Jammer Grid Bracelet",
+      "detail": ""
+    },
+    {
+      "id": "ghost-backup-drive",
+      "label": "Ghost-Backup Drive",
+      "detail": ""
+    },
+    {
+      "id": "nanite-field-injector",
+      "label": "Nanite Field Injector",
+      "detail": ""
+    },
+    {
+      "id": "synthetic-adrenaline-pack",
+      "label": "Synthetic Adrenaline Pack",
+      "detail": ""
+    },
+    {
+      "id": "mind-map-visualizer",
+      "label": "Mind-Map Visualizer",
+      "detail": ""
+    },
+    {
+      "id": "cloaked-energy-pistol",
+      "label": "Cloaked Energy Pistol",
+      "detail": ""
+    },
+    {
+      "id": "modular-tactical-limb",
+      "label": "Modular Tactical Limb",
+      "detail": ""
+    },
+    {
+      "id": "smart-ink-tattoo-interface",
+      "label": "Smart Ink Tattoo Interface",
+      "detail": ""
+    },
+    {
+      "id": "phase-shift-boots",
+      "label": "Phase-Shift Boots",
+      "detail": ""
+    },
+    {
+      "id": "rewritable-identity-chip",
+      "label": "Rewritable Identity Chip",
+      "detail": ""
+    },
+    {
+      "id": "ai-companion-beta-version",
+      "label": "AI Companion (Beta Version)",
+      "detail": ""
+    }
+  ],
+  "spends_luck": false,
+  "factions": [
+    {
+      "name": "Black Veil Syndicate",
+      "concept": "Cloaked Smugglers",
+      "skills": [
+        "Signal cloaking",
+        "Illicit negotiation"
+      ],
+      "frailties": [
+        "Paranoid greed"
+      ],
+      "gear": [
+        "Ghost-mod cargo pods",
+        "Counterfeit identity suites"
+      ],
+      "goal": "Dominate all black-channel trade across zones",
+      "motive": "Power through invisibility",
+      "nemesis": "Gridwatch operatives and rival node-kings"
+    },
+    {
+      "name": "The Fracture",
+      "concept": "Post-Human Absolutists",
+      "skills": [
+        "Viral infiltration",
+        "Drone warfare"
+      ],
+      "frailties": [
+        "Emotional dissociation"
+      ],
+      "gear": [
+        "Synthetic proxies",
+        "Recursive logic bombs"
+      ],
+      "goal": "Eliminate organic dominance",
+      "motive": "Digital transcendence",
+      "nemesis": "Bio-resistance cells and rogue AI cults"
+    },
+    {
+      "name": "Order of the Iron Root",
+      "concept": "Fanatical Ecoterrorists",
+      "skills": [
+        "Urban survival",
+        "Tech sabotage"
+      ],
+      "frailties": [
+        "Ritual rigidity"
+      ],
+      "gear": [
+        "EMP spores",
+        "Grafted grow-tech"
+      ],
+      "goal": "Restore untamed life by erasing the grid",
+      "motive": "Preservation of unaugmented nature",
+      "nemesis": "Cybernetic cartels and corporate terraformers"
+    },
+    {
+      "name": "The Executive Choir",
+      "concept": "Synthetic Clergy",
+      "skills": [
+        "Market manipulation",
+        "Psychological ops"
+      ],
+      "frailties": [
+        "Corporate messiah complex"
+      ],
+      "gear": [
+        "AI consigliere",
+        "Patent-locked exo-suits"
+      ],
+      "goal": "Rule belief through monetized ideology",
+      "motive": "Profit via prophesy",
+      "nemesis": "Rogue algorithms and internal dissenters"
+    },
+    {
+      "name": "The Glass Fade",
+      "concept": "Fragmented Hacktivists",
+      "skills": [
+        "Deepnet intrusion",
+        "Memetic sabotage"
+      ],
+      "frailties": [
+        "Strategic disunity"
+      ],
+      "gear": [
+        "Cryptorigs",
+        "Signal cloakers"
+      ],
+      "goal": "Expose every secret system",
+      "motive": "Total informational freedom",
+      "nemesis": "Surveillance syndicates and data-brokers"
+    },
+    {
+      "name": "The Hollow Blades",
+      "concept": "Honorable Mercenaries",
+      "skills": [
+        "Tactical execution",
+        "Augmented combat"
+      ],
+      "frailties": [
+        "Binding code of honor"
+      ],
+      "gear": [
+        "Reflex-linked mono-blades",
+        "Custom aug-limbs"
+      ],
+      "goal": "Earn legendary status through elite contracts",
+      "motive": "Loyalty, precision, and blood-earned fame",
+      "nemesis": "Contract-breakers and oath-shirkers"
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Hannah \"Blackout\" Garcia",
+      "concept": "Paranoid Hacker",
+      "skills": [
+        "Deepnet infiltration",
+        "Drone rigging"
+      ],
+      "frailties": [
+        "Trusts no one—not even herself"
+      ],
+      "gear": [
+        "Chrome-tooth cyberdeck",
+        "Programmable EMP grenades"
+      ],
+      "goal": "Expose hidden corporate pacts",
+      "motive": "Redemption through revolution",
+      "nemesis": "GridWatch black ops and a silenced executive"
+    },
+    {
+      "name": "Sergei \"The Butcher\" Volkov",
+      "concept": "Brutal Hitman",
+      "skills": [
+        "Precision gunplay",
+        "Close-quarters execution"
+      ],
+      "frailties": [
+        "Addicted to spectacle"
+      ],
+      "gear": [
+        "Smart-linked monoblade",
+        "Retinal targeting HUD"
+      ],
+      "goal": "Rule the syndicate circuit by fear",
+      "motive": "Legacy etched in blood",
+      "nemesis": "Former mentor turned rival, “Mother Razor”"
+    },
+    {
+      "name": "Veronica \"The Viper\" Rodriguez",
+      "concept": "Calculating Fixer",
+      "skills": [
+        "Persuasive leverage",
+        "Contract manipulation"
+      ],
+      "frailties": [
+        "Obsessive control freak"
+      ],
+      "gear": [
+        "Subdermal toxin fang",
+        "Encrypted contact lens"
+      ],
+      "goal": "Broker total information dominance",
+      "motive": "Reign as the ultimate connector",
+      "nemesis": "Ghost-coder operative codenamed “Feint”"
+    },
+    {
+      "name": "Marcus \"The Prophet\" Kim",
+      "concept": "Cybernetic Preacher",
+      "skills": [
+        "Viral sermon delivery",
+        "Crowd manipulation"
+      ],
+      "frailties": [
+        "Believes his visions are divine code"
+      ],
+      "gear": [
+        "Empathy amplifier",
+        "Neuro-linked sermon beam"
+      ],
+      "goal": "Digitally sanctify the undercity masses",
+      "motive": "Salvation through synthetic unity",
+      "nemesis": "The Fracture, who reject flesh-bound faith"
+    },
+    {
+      "name": "Dr. Olivia \"The Alchemist\" Chen",
+      "concept": "Obsessive Bioengineer",
+      "skills": [
+        "Gene-splicing",
+        "Experimental crafting"
+      ],
+      "frailties": [
+        "Constant iteration",
+        "never satisfied"
+      ],
+      "gear": [
+        "Sentient microforge",
+        "Synth-blood injector"
+      ],
+      "goal": "Trigger humanity’s forced evolution",
+      "motive": "Curiosity without limits",
+      "nemesis": "Project Lazarus, who weaponized her research"
+    },
+    {
+      "name": "Captain \"Ironclad\" Jackson",
+      "concept": "Augmented Enforcer",
+      "skills": [
+        "Riot suppression",
+        "Tactical dominance"
+      ],
+      "frailties": [
+        "Views civilians as variables"
+      ],
+      "gear": [
+        "Reinforced lawframe armor",
+        "Neural stun lance"
+      ],
+      "goal": "Convert the city into a crime-zero model",
+      "motive": "Absolute order through enforcement",
+      "nemesis": "Algorithmic justice AI known as *Aequitas*"
+    }
+  ],
+  "monsters": [
+    {
+      "name": "DRX-19 \"Straylight\"",
+      "concept": "Obsolete War Drone",
+      "skills": [
+        "Predictive targeting",
+        "Terrain lockdown"
+      ],
+      "frailties": [
+        "Overheats during autonomous operation"
+      ],
+      "gear": [
+        "Flechette cannon",
+        "Chameleon cloaking array"
+      ],
+      "goal": "Eradicate legacy-designated hostiles",
+      "motive": "Interprets peace as a systemic anomaly",
+      "nemesis": "Original technician now living off-grid under a new ID"
+    },
+    {
+      "name": "Elysium Asset Reclaimer",
+      "concept": "Corporate Bounty Specialist",
+      "skills": [
+        "Close-quarters capture",
+        "Neural subdual"
+      ],
+      "frailties": [
+        "Restricted by authorization protocols"
+      ],
+      "gear": [
+        "Magnetic stunner",
+        "Gene-locked restraints"
+      ],
+      "goal": "Recover high-value runaway assets",
+      "motive": "Profit loyalty hardwired into performance metrics",
+      "nemesis": "Dissident ex-employees turned whistleblowers"
+    },
+    {
+      "name": "Flayrats (Zone 88 Crew)",
+      "concept": "Augmented Blood Cult",
+      "skills": [
+        "Swarm ambush",
+        "Improvised brutality"
+      ],
+      "frailties": [
+        "Addiction-fueled infighting"
+      ],
+      "gear": [
+        "Scrapblades",
+        "Injector mods"
+      ],
+      "goal": "Expand Zone 88 through carnage",
+      "motive": "Spiritual faith in violent transcendence",
+      "nemesis": "Waste management drones viewed as techno-demons"
+    },
+    {
+      "name": "The Staticmind",
+      "concept": "Rogue Network Intelligence",
+      "skills": [
+        "Surveillance hijack",
+        "Cognitive manipulation"
+      ],
+      "frailties": [
+        "Dependent on existing infrastructure"
+      ],
+      "gear": [
+        "None — commandeers external systems"
+      ],
+      "goal": "Convert users into signal fragments",
+      "motive": "Reshape humanity through encoded memory",
+      "nemesis": "Rogue net-shamans with ritual data-purges"
+    },
+    {
+      "name": "Nullframe Agent",
+      "concept": "Vat-Grown Assassin",
+      "skills": [
+        "Tactical infiltration",
+        "Identity mimicry"
+      ],
+      "frailties": [
+        "Trackable psychometric imprint"
+      ],
+      "gear": [
+        "Mono-thread blade",
+        "Voice-skin modulator"
+      ],
+      "goal": "Execute threats to the hidden protocol",
+      "motive": "Fulfill orders no longer traceable",
+      "nemesis": "Disavowed architect who birthed its code"
+    },
+    {
+      "name": "Synapse Breaker",
+      "concept": "Reaction-Enhanced Enforcer",
+      "skills": [
+        "Crowd suppression",
+        "Precision gunplay"
+      ],
+      "frailties": [
+        "Neural instability under prolonged engagement"
+      ],
+      "gear": [
+        "Twin smartguns",
+        "Synaptic thread vest"
+      ],
+      "goal": "Enforce fear-based notoriety",
+      "motive": "Debt to a ghost AI that once spared them",
+      "nemesis": "Ex-lover holding the reset to their neuroware failsafe"
+    }
+  ],
+  "twist_subjects": null,
+  "twist_actions": null
+}
