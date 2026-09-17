@@ -26,6 +26,7 @@ class CatalogEntry:
 @dataclass(frozen=True, slots=True)
 class PackEntry:
     id: Slug
+    engine: EngineId
     label: str
     rules: str
     written: bool
@@ -109,6 +110,7 @@ class LauncherCatalog:
         packs = tuple(
             PackEntry(
                 id=pack_id,
+                engine=engine.id,
                 label=pack.name,
                 rules=engine.title,
                 written=written,

@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from random import Random
 
@@ -10,6 +10,7 @@ from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.packs import LIST_ROWS, EditField, block_fields, block_values, parse_list
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
@@ -37,6 +38,9 @@ from aidm.engines.tunnelgoons.worldsmith import (
     HIRE_GUIDANCE,
     HIRING,
     AbilitiesDraft,
+    TunnelGoonsBlock,
+    TunnelGoonsBody,
+    TunnelGoonsHead,
     TunnelGoonsPack,
 )
 
@@ -76,6 +80,8 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack])
     scenario = TunnelGoonsScenario
     character = TunnelGoonsCharacter
     pack = TunnelGoonsPack
+    head = TunnelGoonsHead
+    body = TunnelGoonsBody
     world = TunnelGoonsWorld
     member = Npc
     hires = True
@@ -103,6 +109,24 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack])
             master_tool("roll", ROLL, Roll, self.roll),
             master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
         )
+
+    def engine_fields(self, pack: TunnelGoonsPack) -> tuple[EditField, ...]:
+        return (
+            EditField(id="items", label="Items", text="\n".join(pack.items), rows=LIST_ROWS),
+            *block_fields(
+                (
+                    ("factions", "Factions", pack.factions),
+                    ("npcs", "People", pack.npcs),
+                    ("monsters", "Monsters", pack.monsters),
+                )
+            ),
+        )
+
+    def engine_values(self, _pack: TunnelGoonsPack, values: Mapping[str, str]) -> dict[str, object]:
+        return {
+            "items": parse_list(values["items"]),
+            **block_values(TunnelGoonsBlock, values, ("factions", "npcs", "monsters")),
+        }
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(

@@ -140,6 +140,23 @@ class Library:
         write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
 
 
+@dataclass(frozen=True, slots=True)
+class PackStore:
+    """`packs/`; one folder per engine id, holding the packs written in this app."""
+
+    directory: Path
+
+    def ids(self, engine: EngineId) -> tuple[str, ...]:
+        """Every stem, slug or not: a new id must not overwrite a file the engine skipped."""
+        folder = self.directory / engine
+        if not folder.is_dir():
+            return ()
+        return tuple(path.stem for path in sorted(folder.glob("*.json")))
+
+    def write(self, engine: EngineId, pack_id: Slug, pack: BaseModel) -> None:
+        write_text(self.directory / engine / f"{pack_id}.json", pack.model_dump_json(indent=2))
+
+
 @cache
 def read_cached_text(path: Path) -> str:
     return path.read_text(encoding=ENCODING)

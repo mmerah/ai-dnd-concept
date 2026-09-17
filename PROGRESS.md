@@ -165,3 +165,61 @@ Known and accepted:
   developer's own `packs/` never reaches the suite.
 - **`tests/app/test_game_service.py` changed beyond part B's file list**: its engine subclass
   needed the `written` argument; nothing else moved there.
+
+## Phase 4: the worldsmith writes a pack, and the player edits it
+
+| count     | before | after  | plan target      |
+| --------- | ------ | ------ | ---------------- |
+| `src`     | 9,869  | 10,904 | 10,550 to 10,770 |
+| `tests`   | 11,990 | 12,403 | 12,220 to 12,400 |
+| `qa`      | 2,005  | 2,005  | unchanged        |
+| `scripts` | 396    | 390    | unchanged        |
+
+`src` lands 134 lines over its ceiling, inside the 20% band: the phase carries what phases 1
+and 3 deferred (`PackStore`, `install_pack`, `check_addable`, `installing`) plus the per-field
+`description` text the worldsmith reads on every draft, which the plan's estimate did not
+count. `scripts` loses the converter's own accent folding, now `slug`'s.
+
+Decisions taken off-plan:
+
+1. **No new type parameters on `Engine`.** The plan's `head: type[H]`, `body: type[B]` and an
+   abstract per-engine `pack_of` would have added two parameters to every engine class and to
+   the test engines. `pack_of` is concrete on the seam: it `parse`s `self.pack` from
+   `head.pack_fields()`, where an engine's head makes its ids, plus `body.model_dump()`. `head`
+   and `body` default to `PackHead` and `PackBody`.
+2. **`edited` rebuilds through the drafts.** The plan's "`pack_of`-style id making" is
+   `pack_of` itself: the editor parses its fields into the engine's head and body and calls
+   it, so authoring and editing share one id path and one validation. The round-trip test
+   covers the twelve AP packs; the SRD is not a kit (no setting, no locations, fewer than six
+   entries per table). A pack that carries the twist columns keeps them through an edit.
+3. **`slug` folds accents.** The converter folded `Naïve` to `naive` on its own; `edited`
+   rebuilt it as `na-ve`. The fold moved into `slug`, so every app-made id matches the
+   converter's, and the converter's copy is gone.
+4. **24XX draft specialties name skills at d8**, the SRD's own rate for fixed skills;
+   picks-within-a-pick (`choice`, `kit_choice`) stay the SRD's. The editor's projection of the
+   24XX SRD leaves them out; it is read-only.
+5. **`blocks_text` takes mappings, `parse_blocks` takes the model**, so 24XX projects its pack
+   models onto its draft shape without constructing a draft.
+6. **Two engine hooks, not four**: `engine_fields(pack)` and `engine_values(pack, values)`,
+   the seam splitting the values between the head and the body by field name. Three engines
+   share `block_fields` and `block_values`.
+7. **`spends_luck` and the twist columns are not edit fields**; both are copied from the pack.
+8. **`author_pack` takes the material and the provenance apart** (`source`, `origin`),
+   keyword-only: the plan's shape used one `source` for both.
+9. **`DocumentUpload`** is extracted from `ScenarioForm` so `PackForm` shares the upload.
+10. **`ui/packs.py` resolves the engine and the pack once, in `build`**: `ui` may import no
+    engine type to be handed one, by the package boundary test.
+
+Refuted findings (two Opus reviewers; no `codex` on the machine): one. Dropping `default=...`
+from `SpecialtyDraft.detail` and `OriginDraft.detail`: measured, basedpyright reports
+`"detail" overrides a field of the same name but is missing a default value` without it.
+Every other finding of both reviews was fixed, the cuts included (`list_text`, `_item_text`,
+the four hooks, the three copied cast bodies, the merged validator).
+
+Known and accepted:
+
+- **Every golden is byte-identical.** `ScenarioMeta.scope` is never empty, so the pack
+  prompt's `SCOPELESS` line reaches no scenario prompt.
+- **A written pack can be rewritten mid-game.** The set is replaced whole in the engine; a game
+  in flight reads the new pack at its next prompt. The pack is the player's own.
+- **The 24XX SRD's specialty choices show on the character page, not on its pack page.**

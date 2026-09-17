@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
@@ -39,7 +40,21 @@ from aidm.engines.loner3e.world import (
     pack_meanings,
     twist_pairing,
 )
-from aidm.engines.loner3e.worldsmith import AUTHORING, Loner3ePack
+from aidm.engines.loner3e.worldsmith import (
+    AUTHORING,
+    Loner3eBlock,
+    Loner3eBody,
+    Loner3eHead,
+    Loner3ePack,
+)
+from aidm.engines.packs import (
+    LIST_ROWS,
+    EditField,
+    block_fields,
+    block_values,
+    parse_table,
+    table_text,
+)
 from aidm.engines.scenes.engine import SceneEngine
 
 TWIST_NOTE = (
@@ -65,6 +80,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
     scenario = Loner3eScenario
     character = Loner3eCharacter
     pack = Loner3ePack
+    head = Loner3eHead
+    body = Loner3eBody
     world = Loner3eWorld
     member = Loner3eCast
 
@@ -84,6 +101,40 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
             master_tool("roll", ROLL, Roll, self.roll),
             master_tool("spend_luck", SPEND_LUCK, SpendLuck, self.spend_luck),
         )
+
+    def engine_fields(self, pack: Loner3ePack) -> tuple[EditField, ...]:
+        return (
+            *(
+                EditField(id=field_id, label=label, text=table_text(entries), rows=LIST_ROWS)
+                for field_id, label, entries in (
+                    ("concepts", "Concepts", pack.concepts),
+                    ("skills", "Skills", pack.skills),
+                    ("frailties", "Frailties", pack.frailties),
+                    ("gear", "Gear", pack.gear),
+                )
+            ),
+            *block_fields(
+                (
+                    ("factions", "Factions", pack.factions),
+                    ("npcs", "People", pack.npcs),
+                    ("monsters", "Monsters", pack.monsters),
+                )
+            ),
+        )
+
+    def engine_values(self, pack: Loner3ePack, values: Mapping[str, str]) -> dict[str, object]:
+        tables = ("concepts", "skills", "frailties", "gear")
+        return {
+            **{key: parse_table(values[key]) for key in tables},
+            # Not a text field: what `rules` prices in Luck is the pack's own, as written.
+            "spends_luck": pack.spends_luck,
+            **block_values(Loner3eBlock, values, ("factions", "npcs", "monsters")),
+        }
+
+    def edited(self, pack: Loner3ePack, values: Mapping[str, str]) -> Loner3ePack:
+        # The twist columns are the pack's own too, like `spends_luck`: no text field carries them.
+        columns = {"twist_subjects": pack.twist_subjects, "twist_actions": pack.twist_actions}
+        return super().edited(pack, values).model_copy(update=columns)
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         chosen = self.chosen_packs(picks)

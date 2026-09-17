@@ -1,6 +1,6 @@
 import logging
 from asyncio import CancelledError, Task, create_task, gather, to_thread
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable, Mapping
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,7 +15,7 @@ from aidm.app.speech import Reader
 from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact
-from aidm.core.io import FileStore, Library
+from aidm.core.io import FileStore, Library, PackStore
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, PackSelection, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
@@ -317,12 +317,14 @@ class Runtime:
     spawner: Spawner = field(init=False)
     library: Library = field(init=False)
     store: FileStore = field(init=False)
+    packs: PackStore = field(init=False)
 
     def __post_init__(self) -> None:
         self.engines = build_engines(self.settings.packs_dir)
         self.spawner = self.spawn(self.settings)
         self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
         self.store = FileStore(self.settings.saves_dir)
+        self.packs = PackStore(self.settings.packs_dir)
 
     @property
     def default_engine(self) -> EngineId:
@@ -375,6 +377,45 @@ class Runtime:
         self.library.write_scenario(name, scenario)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
+
+    async def new_pack(
+        self, engine_id: EngineId, name: str, premise: str, document: Path | None, license: str
+    ) -> Slug:
+        """Written and installed only once both asks land, so a failed pack leaves no file."""
+        engine = self.engines[engine_id]
+        source = await to_thread(given_text, premise, document, self.settings.source_max_bytes)
+        pack_id = slug(name, (*engine.packs.installed, *self.packs.ids(engine.id)))
+        origin = (
+            "written in this app from the premise"
+            if document is None
+            else f"written in this app from {document.name}"
+        )
+        pack = await engine.author_pack(
+            pack_id,
+            name=name,
+            source=source,
+            origin=origin,
+            license=license,
+            worldsmith=worldsmith(self.spawner),
+        )
+        self.packs.write(engine.id, pack_id, pack)
+        engine.install_pack(pack_id, pack)
+        LOGGER.info("pack written: engine=%s slug=%s name=%r", engine.id, pack_id, name)
+        return pack_id
+
+    def rewrite_pack(self, engine_id: EngineId, pack_id: Slug, values: Mapping[str, str]) -> None:
+        """The page's edits, parsed and rebuilt, on disk and in the running engine at once."""
+        engine = self.engines[engine_id]
+        if pack_id in engine.packs.shipped:
+            raise Refusal("shipped packs are read-only")
+        pack = engine.packs.written.get(pack_id)
+        if pack is None:
+            raise Refusal(f"no written pack {pack_id!r} for {engine_id!r}")
+        rebuilt = engine.edited(pack, values)
+        engine.packs.check_addable(pack_id, rebuilt)
+        self.packs.write(engine.id, pack_id, rebuilt)
+        engine.install_pack(pack_id, rebuilt)
+        LOGGER.info("pack rewritten: engine=%s slug=%s", engine.id, pack_id)
 
     def session(self, target: LaunchTarget) -> GameService:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""

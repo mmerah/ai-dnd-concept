@@ -23,7 +23,12 @@ from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.worldsmith import Loner3eBlock, Loner3ePack
 from aidm.engines.packs import MAX_SUPPLEMENTS, SRD_PACK, Names, Pack, PackSet, read_packs
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.worldsmith import TwentyfourxxPack
+from aidm.engines.twentyfourxx.worldsmith import (
+    OriginDraft,
+    SpecialtyDraft,
+    TwentyfourxxHead,
+    TwentyfourxxPack,
+)
 
 TEST_ENGINE = EngineId("test")
 
@@ -115,6 +120,28 @@ def test_select_refuses_two_packs_that_define_the_same_id() -> None:
 
     with pytest.raises(Refusal, match="both define"):
         packs.select(PackSelection(ids=(SRD_PACK, "twin")))
+
+
+def test_check_addable_refuses_a_pack_that_could_not_be_played_beside_the_srd() -> None:
+    packs = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine).packs
+    twin = packs.srd().model_copy(update={"name": "Twin"})
+
+    with pytest.raises(Refusal, match="is a shipped pack"):
+        packs.check_addable(SRD_PACK, _loner3e_pack("Fake SRD"))
+    with pytest.raises(Refusal, match="both define"):
+        packs.check_addable("twin", twin)
+    packs.check_addable("mine", _loner3e_pack("Mine"))
+
+
+def test_installing_leaves_the_set_it_was_called_on_unchanged() -> None:
+    packs = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine).packs
+
+    added = packs.installing("mine", _loner3e_pack("Mine"))
+
+    assert "mine" in added.written
+    assert "mine" in added.installed
+    assert "mine" not in packs.written
+    assert "mine" not in packs.installed
 
 
 def test_select_refuses_more_than_max_supplements_beside_the_srd() -> None:
@@ -225,3 +252,20 @@ def test_seeds_lists_the_selected_packs_seeds_in_order() -> None:
         "A debt come due.",
         "A vanished caravan.",
     )
+
+
+def test_a_twentyfourxx_head_never_gives_two_picks_the_same_id() -> None:
+    engine = narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine)
+    head = TwentyfourxxHead(
+        setting="A belt station and the ships that dock there.",
+        names=Names(),
+        specialties=(
+            SpecialtyDraft(label="Face", detail="You talk the docks down.", skills=("Talk",)),
+            SpecialtyDraft(label="Face", detail="You wear another name.", skills=("Bluff",)),
+        ),
+        origins=(OriginDraft(label="Face", detail="Known on every deck."),),
+    )
+
+    made = engine.pack_of(head, None, name="Test", source="", license="")
+
+    assert made.defined_ids() == ("face", "face-2", "face-3")

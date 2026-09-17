@@ -1,0 +1,134 @@
+import json
+from pathlib import Path
+
+import pytest
+from pydantic import JsonValue
+from support.table import LONER3E, ScriptedSpawner, narrowed, offline_settings
+
+from aidm.app.runtime import Runtime
+from aidm.core.entities import Refusal
+from aidm.engines.loner3e.worldsmith import Loner3ePack
+from aidm.engines.seam import SCOPELESS
+
+PREMISE = "A drowned coast where the lower town is under water and the bells still ring."
+SKILLS: list[JsonValue] = [
+    {"label": "Reads the tide"},
+    {"label": "Holds their breath"},
+    {"label": "Knots and splices"},
+    {"label": "Talks the docks"},
+    {"label": "Walks the rooftops"},
+    {"label": "Finds the way down"},
+]
+_HEAD: dict[str, JsonValue] = {
+    "setting": "The sea took the lower town and left the towers standing in it.",
+    "names": {"female": ["Elira"], "male": ["Toma"], "surnames": ["Vane"]},
+    "rules": "",
+    "spends_luck": False,
+    "concepts": [
+        {"label": "A salt diver", "detail": "Works the flooded streets for what is left."},
+        {"label": "A lamp keeper"},
+        {"label": "A tide reader"},
+        {"label": "A wreck broker"},
+        {"label": "A bell ringer"},
+        {"label": "A ferry hand"},
+    ],
+    "skills": SKILLS,
+    "frailties": [
+        {"label": "Owes the wrecking crew"},
+        {"label": "Afraid of the deep"},
+        {"label": "Coughs in cold air"},
+        {"label": "Cannot swim"},
+        {"label": "Too well known"},
+        {"label": "Sleeps badly"},
+    ],
+    "gear": [
+        {"label": "A drowned lantern"},
+        {"label": "A coil of wet rope"},
+        {"label": "A gutting knife"},
+        {"label": "A cork float"},
+        {"label": "A tin whistle"},
+        {"label": "A sealed tin of matches"},
+    ],
+}
+_LOCATIONS: list[JsonValue] = [
+    {"label": "The Bell Tower", "detail": "Standing in the water, still ringing the hour."},
+    {"label": "The Rope Walk", "detail": "A rooftop road the salvagers strung together."},
+    {"label": "The Dry Quarter", "detail": "The streets the sea has not reached yet."},
+]
+_BLOCK: dict[str, JsonValue] = {
+    "name": "The Wrecking Crew",
+    "concept": "They own what the water takes",
+    "skills": ["Knows every wreck"],
+    "frailties": ["Owed by everyone"],
+}
+_BODY: dict[str, JsonValue] = {
+    "locations": _LOCATIONS,
+    "seeds": [
+        "A salt barge comes in with no crew aboard.",
+        "The bell rings twice at the wrong hour.",
+        "A diver surfaces speaking a language nobody knows.",
+        "The rope walk is cut in the night.",
+        "A creditor buys every wreck at once.",
+        "The tide stops going out.",
+    ],
+    "factions": [_BLOCK],
+    "npcs": [{**_BLOCK, "name": "Hana", "concept": "A ferrywoman who knows the streets"}],
+    "monsters": [{**_BLOCK, "name": "The Thing Below", "concept": "It rings the bell"}],
+}
+
+
+async def test_a_written_pack_lands_on_disk_and_in_the_running_engine(tmp_path: Path) -> None:
+    runtime, _ = _runtime(tmp_path, [_head(), _body()])
+
+    pack_id = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")
+
+    assert pack_id == "salt-and-ash"
+    assert (tmp_path / "packs" / "loner3e" / "salt-and-ash.json").is_file()
+    pack = narrowed(runtime.engines[LONER3E].packs.written[pack_id], Loner3ePack)
+    assert [option.id for option in pack.skills[:2]] == ["reads-the-tide", "holds-their-breath"]
+    assert pack.source.startswith("written in this app")
+
+
+async def test_a_trait_that_collides_with_the_srd_is_re_prompted_with_the_collision(
+    tmp_path: Path,
+) -> None:
+    clashing = _head(skills=[{"label": "Quiet Hands"}, *SKILLS[1:]])
+    runtime, spawner = _runtime(tmp_path, [clashing, _head(), _body()])
+
+    pack_id = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")
+
+    assert "both define 'quiet-hands'" in spawner.prompts[1][1]
+    assert pack_id in runtime.engines[LONER3E].packs.written
+
+
+async def test_a_body_that_never_lands_leaves_no_pack_written(tmp_path: Path) -> None:
+    thin = json.dumps({"locations": _LOCATIONS})
+    runtime, _ = _runtime(tmp_path, [_head(), thin, thin])
+
+    with pytest.raises(Refusal, match="the worldsmith answered nothing usable"):
+        _ = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")
+
+    assert not (tmp_path / "packs").exists()
+    assert runtime.engines[LONER3E].packs.written == {}
+
+
+async def test_the_pack_prompt_says_it_has_no_scope_of_play(tmp_path: Path) -> None:
+    runtime, spawner = _runtime(tmp_path, [_head(), _body()])
+
+    _ = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")
+
+    assert SCOPELESS in spawner.prompt("worldsmith")
+
+
+def _runtime(tmp_path: Path, answers: list[str]) -> tuple[Runtime, ScriptedSpawner]:
+    settings = offline_settings(tmp_path).model_copy(update={"packs_dir": tmp_path / "packs"})
+    spawner = ScriptedSpawner(answers={"worldsmith": answers})
+    return Runtime(settings, lambda _: spawner), spawner
+
+
+def _head(**changes: JsonValue) -> str:
+    return json.dumps(_HEAD | changes)
+
+
+def _body(**changes: JsonValue) -> str:
+    return json.dumps(_BODY | changes)
