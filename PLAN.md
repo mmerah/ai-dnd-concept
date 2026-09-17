@@ -49,6 +49,10 @@ estimates for additive work, given as a range; a phase that lands outside its ra
 20% stops and says why. The plan was reviewed adversarially once before phase 1; the shapes and
 the phase split below are the reviewed ones.
 
+Four phases, each in two parts. A part is one implementer's work; the `/phase` skill runs the
+parts in the order each phase states, parallel where their files are disjoint. Every phase
+commits once, as one.
+
 ## How to work
 
 Run these four from the repository root, with `UV_CACHE_DIR` unset. "Full check" means all four
@@ -76,11 +80,11 @@ uv run basedpyright
    ```
 4. Every line target is a count after `uv run ruff format`.
 5. Golden files live in `tests/core/fixtures/`. Exactly these are regenerated, each once, in the
-   phase named, and read by a human before they are staged: phase 2,
-   `prompts/loner3e/worldsmith.txt` (the pack renders as sections); phase 3,
-   `schemas/loner3e/master_tools.json` (`spend_luck` joins the tools); phase 5,
+   part named, and read by a human before they are staged: phase 1 part B,
+   `prompts/loner3e/worldsmith.txt` (the pack renders as sections); phase 2 part A,
+   `schemas/loner3e/master_tools.json` (`spend_luck` joins the tools); phase 3 part A,
    `prompts/twentyfourxx/worldsmith.txt` and `prompts/tunnelgoons/worldsmith.txt` (the packs
-   reach both). Phase 1 leaves every golden byte-identical, which is its proof that the
+   reach both). Phase 1 part A leaves every golden byte-identical, which is its proof that the
    `srd`-only prompt did not move. A changed golden anywhere else is a bug in the step that
    changed it.
 6. One commit per phase, full check green, reviewed adversarially against the staged diff first.
@@ -90,9 +94,9 @@ uv run basedpyright
    phase: `uv run aidm`, open each shipped scenario, take a turn.
 7. Delete, do not preserve. No compatibility path reads an old pack, scenario or character file.
    The three shipped scenarios and `characters/kael` are re-checked at the end of phase 1 and
-   phase 5; a file the new shape refuses is rewritten by hand in that phase, never bridged.
+   phase 3; a file the new shape refuses is rewritten by hand in that phase, never bridged.
 8. The standing limits hold. Imports flow `core <- engines <- turn <- app <- ui` with no cycles,
-   and no family imports a sibling family. No `Any` beyond the `Game[P]` bound and, from phase 5,
+   and no family imports a sibling family. No `Any` beyond the `Game[P]` bound and, from phase 3,
    the `Pack` bound of `AnyEngine`, which is `Any` for the same reason: `PackSet[K]` is
    invariant. Every `__init__.py` stays empty. Tests never start a process and never reach the
    network; the converter is run by hand and tested on a checked-in fixture. `Refusal` stays the
@@ -223,7 +227,7 @@ section each for `FACTIONS`, `PEOPLE` and `MONSTERS` (blocks as `name — concep
 frailties: …; gear: …; goal: …; motive: …; nemesis: …`, empty fields dropped). The master reads
 `rules` through `rules_sections`, never the worldsmith.
 
-`src/aidm/engines/twentyfourxx/worldsmith.py`, phase 5:
+`src/aidm/engines/twentyfourxx/worldsmith.py`, phase 3:
 
 ```python
 class TwentyfourxxBlock(Frozen):
@@ -244,7 +248,7 @@ class TwentyfourxxPack(Pack):
     hostiles: tuple[TwentyfourxxBlock, ...] = ()
 ```
 
-`src/aidm/engines/tunnelgoons/worldsmith.py`, phase 5:
+`src/aidm/engines/tunnelgoons/worldsmith.py`, phase 3:
 
 ```python
 class TunnelGoonsBlock(Frozen):
@@ -260,7 +264,7 @@ class TunnelGoonsPack(Pack):
     monsters: tuple[TunnelGoonsBlock, ...] = ()
 ```
 
-Authoring drafts, phase 7, one pair per engine, no `id`, no `name`, no `source`, no `license`:
+Authoring drafts, phase 4, one pair per engine, no `id`, no `name`, no `source`, no `license`:
 
 ```python
 class Labelled(Frozen):  # engines/packs.py
@@ -285,19 +289,26 @@ class PackBody(Frozen):  # engines/packs.py; an engine subclasses it with its bl
 Tunnel Goons follow the same pattern with their own tables and blocks. `Engine.pack_of(head,
 body, *, name, source, license) -> K` builds the pack, making ids with `slug(label, taken)`.
 
-## Phase 1: the whole pack
+## Phase 1: the whole pack, and AP01 complete
 
-The base pack moves out of `engines/scenes/` and grows the setting kit. Loner's pack takes the
-kit, the cast blocks and the magic flag. The worldsmith prompt renders sections, not JSON, and
-never more than the cap allows. No pack file changes yet: `srd.json` and `ap01-fantasy.json`
-parse as they are, every field new to them defaulted, and every golden stays byte-identical.
+Part A: the base pack moves out of `engines/scenes/` and grows the setting kit; Loner's pack
+takes the kit, the cast blocks and the magic flag; the worldsmith prompt renders sections, not
+JSON, and never more than the cap allows. No pack file changes in part A: `srd.json` and
+`ap01-fantasy.json` parse as they are, every field new to them defaulted, and every golden stays
+byte-identical. Part B: a converter turns the SRD's markdown into a whole pack, AP01 is the
+first, and the ids of its four trait tables do not move.
+
+Split: A then B. B reads `Loner3ePack` from the shapes above, so it can start from text, but it
+lands on A's tree. A owns `src/` and `tests/engines/`, `tests/app/`; B owns `scripts/`,
+`tests/scripts/`, `tests/fixtures/srd/`, `tests/loner3e/test_prompt_budget.py`, the golden,
+`pyproject.toml`, the docs and the two sentences of `AUTHORING` (B step 6).
 
 Target: `src` about **9,700**, within 9,640 to 9,780 (`engines/packs.py` about 170,
 `scenes/packs.py` minus 69, `loner3e/worldsmith.py` plus 80, `seam.py` plus 10, three `guidance`
-methods minus 12, `spawn.py` plus 6). `tests` about **11,520**, within 11,470 to 11,580. About
-a day.
+methods minus 12, `spawn.py` plus 6). `tests` about **11,640**, within 11,590 to 11,700.
+`scripts` about **260**. About a day and a half.
 
-### Steps
+### Part A: the shape
 
 1. Create `src/aidm/engines/packs.py` with `MAX_SUPPLEMENTS`, `Names`, `Location`, `Pack`,
    `PackSet` and `read_packs` as in "The shapes, once". `SRD_PACK: Slug = "srd"` moves here from
@@ -308,7 +319,7 @@ a day.
    `male: …`, `surnames: …`, `nicknames: …`, empty ones dropped), `LOCATIONS` (`- label — detail`
    and `  encounters: …` when given) and, when `opening`, `ADVENTURE SEEDS` (`- seed` lines).
    Delete `src/aidm/engines/scenes/packs.py`. Repoint every importer of `ScenePack`:
-   `src/aidm/engines/twentyfourxx/worldsmith.py:8,59` (the class keeps its fields until phase 5;
+   `src/aidm/engines/twentyfourxx/worldsmith.py:8,59` (the class keeps its fields until phase 3;
    only its base changes to `Pack`) and `tests/support/fifth.py:10,37,47`.
 2. `src/aidm/engines/scenes/engine.py`: import from `aidm.engines.packs` (`:30`). `__init__`
    (`:91-93`) becomes `self.packs = read_packs(self.id, self.directory / "packs", None, self.pack)`
@@ -336,32 +347,18 @@ a day.
    `loner3e/engine.py:44,60,68`, `tests/support/`, `tests/loner3e/`.
 5. `src/aidm/engines/loner3e/engine.py` `master_sections` (`:147-163`) adds, before the
    glossary, `*self.packs.rules_sections(state.packs)`.
-6. `AUTHORING` (`loner3e/worldsmith.py:10-27`) gains two sentences at the end: the packs'
-   factions, people and monsters are written to be used; file one into `cast` under a new id with
-   its tags and drives copied and a `brief` for this scene, and size its luck by the rule above.
-   Names come from the pack's name lists when the setting has them. The `loner3e` worldsmith
-   golden holds `LONER 3E AUTHORING`, so this sentence lands in phase 2 with the regeneration,
-   not here: write it in phase 2 step 6.
-7. `src/aidm/app/spawn.py`: `PROMPT_MAX_BYTES = 131_072` after `KEPT_ENV` (`:26`), with the
+6. `src/aidm/app/spawn.py`: `PROMPT_MAX_BYTES = 131_072` after `KEPT_ENV` (`:26`), with the
    one-line reason (Linux `MAX_ARG_STRLEN`: one argv element). `run_cli` (`:162`) refuses before
    `_spawn` when `len(prompt.encode()) >= PROMPT_MAX_BYTES`:
    `Refusal(f"the {role} prompt is {size} bytes; the command line takes fewer than {PROMPT_MAX_BYTES}")`.
    An `E2BIG` `OSError` was a bug; now it is a message the player reads. One test in
    `tests/app/` with a `Driver` stub: a prompt of the cap is refused before any command is built.
-8. Tests: `tests/engines/test_packs.py` also covers `kit_sections` (seeds present at the opening,
+7. Tests: `tests/engines/test_packs.py` also covers `kit_sections` (seeds present at the opening,
    absent in play; empty name lists dropped) and `read_packs` skipping a written file that
    fails to parse and one whose stem is a shipped id, each with a warning. Full check; every
-   golden unchanged. `PROGRESS.md` entry with all four counts.
+   golden unchanged.
 
-## Phase 2: the converter, and AP01 complete
-
-A script turns the SRD's markdown into a whole pack. AP01 is the first, and the ids of its four
-trait tables do not move.
-
-Target: `src` within 20 lines of phase 1's count. `tests` about **11,640**, within 11,590 to
-11,700. `scripts` about **260**. About half a day.
-
-### Steps
+### Part B: the converter
 
 1. The converter, `scripts/srd_packs.py`, a module with a `main()`, outside `src`: given one or
    more `APnn_<name>.md` paths, it writes `src/aidm/engines/loner3e/packs/apnn-<name>.json`
@@ -413,25 +410,37 @@ Target: `src` within 20 lines of phase 1's count. `tests` about **11,640**, with
    `whispering-vault` with `packs = (srd, ap01-fantasy)`, a `source` of 48,000 bytes, a cast of
    30 members, and a log of 40 chapters whose last two hold 20 exchanges each of 400-character
    transcripts and the rest a recap, then assert
-   `len(ENGINE.render_next(state, "…").encode()) < PROMPT_MAX_BYTES`. When phase 4 lands the
+   `len(ENGINE.render_next(state, "…").encode()) < PROMPT_MAX_BYTES`. When phase 2 lands the
    other eleven, the test picks the two largest pack files instead of naming AP01.
-6. `AUTHORING` gains the two sentences phase 1 step 6 deferred. Regenerate
+6. `AUTHORING` (`loner3e/worldsmith.py:10-27`) gains two sentences at the end: the packs'
+   factions, people and monsters are written to be used; file one into `cast` under a new id with
+   its tags and drives copied and a `brief` for this scene, and size its luck by the rule above.
+   Names come from the pack's name lists when the setting has them. Then regenerate
    `tests/core/fixtures/prompts/loner3e/worldsmith.txt`, read it, and confirm it shows
    `PACK: Starter tables` sections and no JSON.
 7. `docs/LONER-3E.md` "Pack sources" (`:39-50`): the converter and its command, the fixture's
    attribution, and one line saying the four trait tables' ids are stable across runs and that
    `Naïve` folds to `naive`. Deviation 6: trait labels are the SRD's, bare; the glossary lists
    only entries with a detail. `README.md:54`: a pack is the whole SRD kit, one sentence.
-8. Full check. `PROGRESS.md` entry.
+8. Full check. `PROGRESS.md` entry with all four counts.
 
-## Phase 3: `spend_luck`, and the pack the character already chose
+## Phase 2: `spend_luck`, the character's own packs, and the other eleven
 
-Two small things the whole pack now allows. About half a day.
+Part A: the one tool a shipped pack needs, and the scenario page following the character's
+packs. Part B: the converter runs on AP02 through AP12, and the two caps a twelve-pack shelf
+needs.
 
-Target: `src` about **9,780**, within 9,740 to 9,830. `tests` about **11,720**, within 11,680
-to 11,780.
+Split: A and B in parallel. A owns `loner3e/`, `core/model.py`, `app/launch.py`,
+`ui/create.py`, the tool-schema golden, `docs/LONER-3E.md` "The tools"; B owns `scripts/`,
+`loner3e/packs/*.json`, `core/creation.py`, `tests/scripts/`, `tests/core/`,
+`tests/loner3e/test_prompt_budget.py`, `docs/LONER-3E.md` "Pack sources", `README.md`.
+`srd.json` is B's alone.
 
-### Steps
+Target: `src` about **9,800**, within 9,760 to 9,850. `tests` about **11,760**, within 11,720
+to 11,820. `scripts` about **290**; eleven new JSON files under
+`src/aidm/engines/loner3e/packs/`. About half a day plus review.
+
+### Part A: `spend_luck` and the character's packs
 
 1. `src/aidm/engines/loner3e/tools.py`: `SPEND_LUCK = "A character here spends luck on a cost the
    selected pack's SPECIAL RULES name, such as a spell."` and
@@ -459,22 +468,13 @@ to 11,780.
    render does the same for the preselected character. A test in the create-page test file:
    picking a character made with `ap01-fantasy` selects it.
 6. Tests: `spend_luck` refuses without the flag, refuses past the pool, and lands a `Luck -2`
-   fact with the flag; the tool schema golden shows it. Full check. `PROGRESS.md` entry.
+   fact with the flag; the tool schema golden shows it.
 
-## Phase 4: the other eleven packs
-
-The converter runs on AP02 through AP12. Where a page differs from the three already read, the
-converter grows; where the SRD's own text is broken, the page wins and the difference is
-recorded.
-
-Target: `src` about **9,800**, within 9,770 to 9,840; `scripts` about 290; eleven new JSON files
-under `src/aidm/engines/loner3e/packs/`. About two hours plus review.
-
-### Steps
+### Part B: the other eleven
 
 1. Download the eleven markdown files by hand (`curl` of the raw GitHub URLs; not in a test) to a
    scratch directory and run the converter on all twelve. Read every refusal it raises. The
-   differences phase 2 already handles are the bold-wrapped headings, the three monster section
+   differences phase 1 already handles are the bold-wrapped headings, the three monster section
    names, the three field-line spellings and the three fourth-name-list headings; a page that
    differs beyond these grows the converter in one place and adds one line to the fixture test.
 2. Every trait table across the twelve is checked for `defined_ids` collisions against `srd`:
@@ -489,24 +489,31 @@ under `src/aidm/engines/loner3e/packs/`. About two hours plus review.
 4. `tests/scripts/test_srd_packs.py` gains one test over the shipped JSON, not the network:
    every `loner3e/packs/ap*.json` parses as `Loner3ePack`, has 36 entries in each trait table
    and 6 blocks in each of the three cast lists, and no two of them share an id with `srd`.
-5. `docs/LONER-3E.md`: the twelve packs listed with their page URLs; the open licence question
+5. The prompt budget test of phase 1 now picks the two largest pack files. If it fails, the fix is
+   in `kit_sections` (drop `encounters` in play, then shorten block rendering), never in the cap.
+6. `docs/LONER-3E.md`: the twelve packs listed with their page URLs; the open licence question
    stays open with the note that the site index declares CC BY-SA 4.0 and every page carries only
    the copyright footer. `README.md`: "twelve adventure packs" where it says one.
-6. The prompt budget test of phase 2 now picks the two largest pack files. If it fails, the fix is
-   in `kit_sections` (drop `encounters` in play, then shorten block rendering), never in the cap.
 7. Full check. `PROGRESS.md` entry.
 
-## Phase 5: packs on the seam, for 24XX and Tunnel Goons
+## Phase 3: packs on the seam, and packs the player owns
 
-The pack set moves from the scene family to the engine seam, so a room engine has one. 24XX's
-pack becomes a supplement shape with the seventeen skills required of `srd` alone. Tunnel Goons
-gets a pack model with no shipped pack and no `srd`. A "Roll a seed" button on the scenario page
-reads the chosen packs. This is the phase that touches every engine; it is reviewed hardest.
+Part A: the pack set moves from the scene family to the engine seam, so a room engine has one;
+24XX's pack becomes a supplement shape with the seventeen skills required of `srd` alone; Tunnel
+Goons gets a pack model with no shipped pack and no `srd`; a "Roll a seed" button on the
+scenario page reads the chosen packs. Part B: a `packs/` directory beside `saves/`, read at
+start, hot-installed after a write, listed on the home page. A touches every engine; it is
+reviewed hardest.
 
-Target: `src` about **10,000**, within 9,930 to 10,090. `tests` about **11,900**, within 11,820
-to 12,000. About a day.
+Split: A then B. B needs A's `Engine.packs` on every engine. A owns `engines/`, `ui/create.py`
+and the two goldens; B owns `config.py`, `core/io.py`, `engines/registry.py`, `app/runtime.py`,
+`app/launch.py`, `ui/app.py`, `.gitignore`, `tests/support/table.py`. `Engine.install_pack`
+(B step 4) is the one method B adds to `seam.py`, after A is done.
 
-### Steps
+Target: `src` about **10,100**, within 10,030 to 10,190. `tests` about **11,980**, within 11,900
+to 12,060. About a day and a half.
+
+### Part A: the seam
 
 1. `src/aidm/engines/seam.py`: `Engine[P, M, G]` becomes `Engine[P, M, G, K: Pack]` with
    `pack: type[K]` and `packs: PackSet[K]` declared at `:63-80`; `AnyEngine` (`:48`) becomes
@@ -557,17 +564,8 @@ to 12,000. About a day.
 7. `docs/24XX.md` "Pack sources" and `docs/TUNNEL-GOONS.md` gain a "Packs" paragraph each: what
    a pack holds for this engine, that none ships, and that a written one is selected on the
    character and the scenario like Loner's.
-8. Full check. `PROGRESS.md` entry.
 
-## Phase 6: packs the player owns
-
-A `packs/` directory beside `saves/`, read at start, hot-installed after a write, listed on the
-home page.
-
-Target: `src` about **10,100**, within 10,050 to 10,170. `tests` about **11,980**, within 11,920
-to 12,060. About half a day.
-
-### Steps
+### Part B: the player's packs
 
 1. `.gitignore`: `packs/` under "Play data". `src/aidm/config.py:140-142`:
    `packs_dir: Path = Path("packs")`, the sibling of the three directories there.
@@ -589,21 +587,28 @@ to 12,060. About half a day.
    own fields, rendered by `Pack.summary()` on the base model, engine tables counted by the
    subclass). `src/aidm/ui/app.py` `home_page` (`:87-108`) adds a "Packs" section after
    "Saved games": one row per pack, engine badge, `Written` badge for the player's own. No
-   buttons yet; phase 8 adds View and Edit.
+   buttons yet; phase 4 adds View and Edit.
 6. Test: a written pack file under `tmp_path / "loner3e"` is installed at build and listed;
    a file whose stem is `srd` is skipped with a warning; `install_pack` of a colliding pack is
    refused and leaves the set unchanged; a game whose save names a written pack that was deleted
    is filed under `unresumable` by `LauncherCatalog.read`.
 7. Full check. `PROGRESS.md` entry.
 
-## Phase 7: the worldsmith writes a pack
+## Phase 4: the worldsmith writes a pack, and the player edits it
 
-Two typed asks, nothing saved until both pass, one page.
+Part A: two typed asks, nothing saved until both pass, one page. Part B: one page per written
+pack, one field per section, text in and a validated pack out.
 
-Target: `src` about **10,370**, within 10,290 to 10,470. `tests` about **12,140**, within 12,060
-to 12,240. About a day.
+Split: A then B. B's `edited` rebuilds a pack the way A's `pack_of` does, so it lands on A's
+tree. A owns `engines/packs.py` drafts and asks, each engine's `worldsmith.py` and `engine.py`,
+`app/runtime.py` `new_pack`, `ui/create.py` `PackForm`, `ui/app.py` `/pack`; B owns the text
+formats in `engines/packs.py`, `edit_fields`/`edited` on the engines, `app/runtime.py`
+`rewrite_pack`, the editor page and the home page buttons.
 
-### Steps
+Target: `src` about **10,650**, within 10,550 to 10,770. `tests` about **12,300**, within 12,220
+to 12,400. About two days.
+
+### Part A: authoring
 
 1. `src/aidm/engines/packs.py`: `Labelled`, `PackHead`, `PackBody` as in the shapes, and
    `HEAD_ASK`, `BODY_ASK` intents: the head asks for the setting, the creation tables as labels
@@ -641,17 +646,9 @@ to 12,240. About a day.
 6. Tests with `ScriptedSpawner`: a scripted head and body produce a pack on disk and in
    `engine.packs.written`; a head whose label slugs to an `srd` id is re-prompted once and the
    second answer lands; a body that fails twice leaves no file and no installed pack.
-7. `IDEAS.md` item 13 checked. `README.md`: one paragraph on writing a pack. Full check.
-   `PROGRESS.md` entry.
+7. `IDEAS.md` item 13 checked. `README.md`: one paragraph on writing a pack.
 
-## Phase 8: the editor
-
-One page per written pack, one field per section, text in and a validated pack out.
-
-Target: `src` about **10,650**, within 10,550 to 10,770. `tests` about **12,300**, within 12,220
-to 12,400. About a day.
-
-### Steps
+### Part B: the editor
 
 1. `src/aidm/engines/packs.py` text formats, free functions since the page and the tests call
    them on their own: `table_text(options) -> str` and `parse_table(text) -> tuple[Labelled, ...]`
