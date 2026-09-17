@@ -4,15 +4,16 @@ from functools import partial
 from nicegui import app, ui
 from nicegui.events import ValueChangeEventArguments
 
-from aidm.app.launch import LauncherCatalog, LaunchTarget, SaveOption
+from aidm.app.launch import LauncherCatalog, LaunchTarget, PackEntry, SaveOption
 from aidm.app.mcp import MOUNT_PATH, MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
 from aidm.config import SERVER_HOST, read_settings
-from aidm.core.entities import Refusal, Slug, content_id
+from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.ui import theme
-from aidm.ui.create import character_page, scenario_page
+from aidm.ui.create import character_page, new_pack_page, scenario_page
 from aidm.ui.dice import DICE_SOUND, DICE_SOUND_ROUTE
 from aidm.ui.game import game_page
+from aidm.ui.packs import PACK_ROUTE, pack_page, pack_path
 from aidm.ui.settings import settings_page
 from aidm.ui.widgets import (
     GAME_ROUTE,
@@ -135,6 +136,9 @@ def _new_content() -> None:
         ui.button(
             "New scenario", icon="auto_stories", on_click=lambda: ui.navigate.to("/scenario")
         ).props("outline dense")
+        ui.button("New pack", icon="auto_fix_high", on_click=lambda: ui.navigate.to("/pack")).props(
+            "outline dense"
+        )
 
 
 def _saved_games(catalog: LauncherCatalog) -> None:
@@ -157,6 +161,11 @@ def _packs(catalog: LauncherCatalog) -> None:
                 ui.badge(pack.rules)
                 if pack.written:
                     ui.badge("Written").props("color=secondary")
+                ui.button(
+                    "Edit" if pack.written else "View",
+                    icon="edit" if pack.written else "visibility",
+                    on_click=partial(_open_pack, pack),
+                ).props("outline dense")
 
 
 def _saved_card(saved: SaveOption) -> None:
@@ -182,6 +191,10 @@ def _saved_card(saved: SaveOption) -> None:
 def _open_game(target: LaunchTarget) -> None:
     LOGGER.info("launcher opening %r", target.slug)
     ui.navigate.to(game_path(target))
+
+
+def _open_pack(entry: PackEntry) -> None:
+    ui.navigate.to(pack_path(entry.engine, entry.id))
 
 
 def _refused_page(message: str) -> None:
@@ -228,6 +241,17 @@ def _register_pages(runtime: Runtime) -> None:
     @ui.page("/scenario")
     def _scenario() -> None:  # pyright: ignore[reportUnusedFunction]
         scenario_page(runtime)
+
+    @ui.page("/pack")
+    def _new_pack() -> None:  # pyright: ignore[reportUnusedFunction]
+        new_pack_page(runtime)
+
+    @ui.page(PACK_ROUTE)
+    def _pack(engine: str, pack: str) -> None:  # pyright: ignore[reportUnusedFunction]
+        try:
+            pack_page(runtime, EngineId(engine), content_id(pack))
+        except Refusal as refused:
+            _refused_page(str(refused))
 
     @ui.page("/settings")
     def _settings() -> None:  # pyright: ignore[reportUnusedFunction]

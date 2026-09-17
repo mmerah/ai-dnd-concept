@@ -5,7 +5,6 @@ Run as `uv run python scripts/srd_packs.py <APnn_name.md>...`.
 
 import re
 import sys
-import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -204,11 +203,6 @@ def _grid(body: Sequence[str], title: str) -> list[list[str]]:
     return grid
 
 
-def _folded(label: str) -> str:
-    decomposed = unicodedata.normalize("NFKD", label)
-    return "".join(char for char in decomposed if not unicodedata.combining(char))
-
-
 def _bullet(line: str) -> str:
     stripped = line.strip()
     return stripped[2:] if stripped[:2] in ("- ", "* ") else ""
@@ -233,7 +227,7 @@ def _trait_table(
     options: list[DecisionOption] = []
     for row in _grid(_body(headings, lines, index), headings[index].title):
         for cell in row:
-            option_id = slug(_folded(cell), taken)
+            option_id = slug(cell, taken)
             taken.append(option_id)
             options.append(DecisionOption(id=option_id, label=cell, detail=""))
     return tuple(options)

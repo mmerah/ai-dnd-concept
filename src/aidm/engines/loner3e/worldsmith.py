@@ -6,7 +6,17 @@ from aidm.core.entities import Frozen, Slug
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections
 from aidm.engines.loner3e.world import DIE_FACE
-from aidm.engines.packs import Pack, block_line, bullets
+from aidm.engines.packs import (
+    Labelled,
+    Pack,
+    PackBody,
+    PackHead,
+    block_line,
+    bullets,
+    check_items,
+    check_lines,
+    options,
+)
 
 AUTHORING = (
     "LONER 3E AUTHORING\n"
@@ -42,6 +52,14 @@ class Loner3eBlock(Frozen):
     goal: str = ""
     motive: str = ""
     nemesis: str = ""
+
+    @model_validator(mode="after")
+    def _reads_in_a_block(self) -> Self:
+        check_lines(
+            "a block field", (self.name, self.concept, self.goal, self.motive, self.nemesis)
+        )
+        check_items("a block list", (*self.skills, *self.frailties, *self.gear))
+        return self
 
     @property
     def line(self) -> str:
@@ -98,8 +116,8 @@ class Loner3ePack(Pack):
 
     def sections(self, *, opening: bool) -> Sections:
         tags = "\n".join(
-            f"{kind}: {', '.join(option.label for option in options)}"
-            for kind, options in (
+            f"{kind}: {', '.join(entry.label for entry in entries)}"
+            for kind, entries in (
                 ("concepts", self.concepts),
                 ("skills", self.skills),
                 ("frailties", self.frailties),
@@ -113,3 +131,59 @@ class Loner3ePack(Pack):
             *bullets("PEOPLE", (block.line for block in self.npcs)),
             *bullets("MONSTERS", (block.line for block in self.monsters)),
         )
+
+
+class Loner3eHead(PackHead):
+    concepts: tuple[Labelled, ...] = Field(
+        min_length=6,
+        max_length=36,
+        description="One-line concepts a player picks their character from, such as "
+        "'A salvager who works the drowned streets'.",
+    )
+    skills: tuple[Labelled, ...] = Field(
+        min_length=6,
+        max_length=36,
+        description="Freeform skill tags, each something a character is good at, such as "
+        "'Reads old stonework'.",
+    )
+    frailties: tuple[Labelled, ...] = Field(
+        min_length=6,
+        max_length=36,
+        description="Freeform frailty tags, each something that works against a character, such "
+        "as 'Owes the wrong people'.",
+    )
+    gear: tuple[Labelled, ...] = Field(
+        min_length=6,
+        max_length=36,
+        description="Freeform gear tags, each a thing a character carries, such as "
+        "'A lantern that will not drown'.",
+    )
+    spends_luck: bool = Field(description="True only when `rules` prices something in Luck.")
+
+    def pack_fields(self) -> dict[str, object]:
+        taken: list[Slug] = []
+        return {
+            **super().pack_fields(),
+            "concepts": options(self.concepts, taken),
+            "skills": options(self.skills, taken),
+            "frailties": options(self.frailties, taken),
+            "gear": options(self.gear, taken),
+        }
+
+
+class Loner3eBody(PackBody):
+    factions: tuple[Loner3eBlock, ...] = Field(
+        min_length=1,
+        max_length=6,
+        description="The powers that hold this setting, such as a guild, a cult or a city "
+        "watch, each written as the SRD prints one.",
+    )
+    npcs: tuple[Loner3eBlock, ...] = Field(
+        min_length=1, max_length=6, description="People a player could meet and deal with."
+    )
+    monsters: tuple[Loner3eBlock, ...] = Field(
+        min_length=1,
+        max_length=6,
+        description="What stands against the player and is not a person: a beast, a machine, a "
+        "storm, a curse.",
+    )

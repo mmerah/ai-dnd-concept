@@ -31,6 +31,34 @@ from aidm.ui.widgets import (
 LOGGER = logging.getLogger(__name__)
 
 
+class DocumentUpload:
+    """One uploaded source file, kept until the page is deleted."""
+
+    def __init__(self) -> None:
+        self.document: Path | None = None
+        self.uploads: Path | None = None
+
+    def build(self) -> None:
+        ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True).props(
+            f'accept="{",".join(SOURCE_SUFFIXES)}"'
+        )
+
+    async def uploaded(self, event: UploadEventArguments) -> None:
+        # The source reader opens a path, and a PDF cannot be parsed from bytes.
+        if self.uploads is None:
+            self.uploads = Path(mkdtemp())
+        if self.document is not None:
+            self.document.unlink(missing_ok=True)
+        path = self.uploads / Path(event.file.name).name
+        await event.file.save(path)
+        self.document = path
+        note(f"Read {event.file.name}.")
+
+    def discard(self) -> None:
+        if self.uploads is not None:
+            shutil.rmtree(self.uploads, ignore_errors=True)
+
+
 class CharacterForm:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
@@ -176,8 +204,7 @@ class ScenarioForm:
         self.runtime = runtime
         self.catalog = catalog
         self.engine_id = runtime.default_engine
-        self.document: Path | None = None
-        self.uploads: Path | None = None
+        self.upload = DocumentUpload()
         self.title: ui.input
         self.supplements: ui.select | None = None
         self.seed_button: ui.button
@@ -213,23 +240,10 @@ class ScenarioForm:
                     label="Narrator voice", placeholder="Leave empty for the default voice"
                 )
                 heading("Or upload the adventure")
-                ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True).props(
-                    f'accept="{",".join(SOURCE_SUFFIXES)}"'
-                )
+                self.upload.build()
                 self.button_row()
         # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
-        ui.context.client.on_delete(self._discard_uploads)  # pyright: ignore[reportUnknownMemberType]
-
-    async def uploaded(self, event: UploadEventArguments) -> None:
-        # The source reader opens a path, and a PDF cannot be parsed from bytes.
-        if self.uploads is None:
-            self.uploads = Path(mkdtemp())
-        if self.document is not None:
-            self.document.unlink(missing_ok=True)
-        path = self.uploads / Path(event.file.name).name
-        await event.file.save(path)
-        self.document = path
-        note(f"Read {event.file.name}.")
+        ui.context.client.on_delete(self.upload.discard)  # pyright: ignore[reportUnknownMemberType]
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
@@ -319,7 +333,8 @@ class ScenarioForm:
         premise = (self.premise.value or "").strip()
         scope = (self.scope.value or "").strip()
         character_id = self.character.value
-        if not title or not scope or not (premise or self.document) or character_id is None:
+        document = self.upload.document
+        if not title or not scope or not (premise or document) or character_id is None:
             warn("A title, a scope, a character, and a premise or a document.")
             return
         self.button.props("loading")
@@ -335,7 +350,7 @@ class ScenarioForm:
             packs = engine.select_packs(self.chosen_supplements())
             character_id = content_id(character_id)
             name = await self.runtime.new_scenario(
-                self.engine_id, meta, self.document, packs, character_id
+                self.engine_id, meta, document, packs, character_id
             )
             opened = LaunchTarget(scenario_id=name, character_id=character_id)
         except Refusal as refused:
@@ -346,9 +361,70 @@ class ScenarioForm:
         LOGGER.info("scenario created: slug=%s", name)
         ui.navigate.to(game_path(opened))
 
-    def _discard_uploads(self) -> None:
-        if self.uploads is not None:
-            shutil.rmtree(self.uploads, ignore_errors=True)
+
+class PackForm:
+    def __init__(self, runtime: Runtime) -> None:
+        self.runtime = runtime
+        self.engine_id = runtime.default_engine
+        self.upload = DocumentUpload()
+        self.name: ui.input
+        self.premise: ui.textarea
+        self.license: ui.input
+        self.button: ui.button
+
+    def build(self) -> None:
+        page_header("New pack", look=self.runtime.engines[self.engine_id].look)
+        with page_body():
+            page_intro(
+                "Pack",
+                "New pack",
+                "Name a genre, or upload a document, and the worldsmith writes the whole kit.",
+            )
+            with ui.card().classes("w-full"):
+                _engine_select(self.runtime, self.engine_id, self.choose_engine)
+                self.name = ui.input(label="Name")
+                self.premise = ui.textarea(
+                    label="Premise",
+                    placeholder="What genre is this, and what is a story in it about?",
+                )
+                heading("Or upload a document")
+                self.upload.build()
+                self.license = ui.input(
+                    label="Licence",
+                    placeholder="Optional: who wrote the source, under what terms",
+                )
+                with ui.row().classes("w-full items-center game-gap-xl"):
+                    self.button = ui.button(
+                        "Write the pack", icon="auto_fix_high", on_click=self.write
+                    ).props("color=primary")
+                    ui.label("Writing takes several minutes.").classes("text-xs opacity-60")
+        # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
+        ui.context.client.on_delete(self.upload.discard)  # pyright: ignore[reportUnknownMemberType]
+
+    def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
+        self.engine_id = EngineId(event.value)
+        theme.set_look(self.runtime.engines[self.engine_id].look)
+
+    async def write(self) -> None:
+        name = (self.name.value or "").strip()
+        premise = (self.premise.value or "").strip()
+        document = self.upload.document
+        if not name or not (premise or document):
+            warn("A name, and a premise or a document.")
+            return
+        self.button.props("loading")
+        try:
+            pack_id = await self.runtime.new_pack(
+                self.engine_id, name, premise, document, (self.license.value or "").strip()
+            )
+        except Refusal as refused:
+            alert(str(refused))
+            return
+        finally:
+            self.button.props(remove="loading")
+        LOGGER.info("pack created: engine=%s slug=%s", self.engine_id, pack_id)
+        note(f"Wrote {name}. Pick it on a character and on a scenario.", good=True)
+        ui.navigate.to("/")
 
 
 def character_page(runtime: Runtime) -> None:
@@ -358,6 +434,10 @@ def character_page(runtime: Runtime) -> None:
 def scenario_page(runtime: Runtime) -> None:
     catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
     ScenarioForm(runtime, catalog).build()
+
+
+def new_pack_page(runtime: Runtime) -> None:
+    PackForm(runtime).build()
 
 
 def _engine_select(

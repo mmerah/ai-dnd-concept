@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,7 +27,18 @@ from aidm.core.prompt import Sections, sections
 from aidm.core.tools import MasterTool, master_tool, schema_text
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import PLAYER_ID, Person, World
-from aidm.engines.packs import Pack, PackSet, read_packs
+from aidm.engines.packs import (
+    BODY_ASK,
+    HEAD_ASK,
+    EditField,
+    Pack,
+    PackBody,
+    PackHead,
+    PackSet,
+    body_values,
+    head_values,
+    read_packs,
+)
 from aidm.engines.tools import (
     HIRE,
     HIRE_TOOL,
@@ -45,6 +56,8 @@ from aidm.engines.tools import (
 )
 
 SOURCELESS = "(none — write from what is below)"
+SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
+PACK_SO_FAR = "THE PACK SO FAR"
 SUPPLEMENTS: Slug = "supplements"
 SUPPLEMENTS_LABEL = "Packs"
 
@@ -76,6 +89,8 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
     game: type[G]
     member: type[M]
     pack: type[K]
+    head: type[PackHead] = PackHead
+    body: type[PackBody] = PackBody
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
     # Derived by __init__ from the above.
@@ -157,6 +172,78 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
 
     async def advance(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
         return await self.requests[request.operation].write(draft, request, worldsmith)
+
+    def install_pack(self, pack_id: Slug, pack: K) -> None:
+        self.packs = self.packs.installing(pack_id, pack)
+
+    def pack_of(
+        self, head: PackHead, body: PackBody | None, *, name: str, source: str, license: str
+    ) -> K:
+        """Every id the pack carries is made here, by code, from the labels the worldsmith wrote."""
+        return parse(
+            self.pack,
+            {
+                "name": name,
+                "source": source,
+                "license": license,
+                **head.pack_fields(),
+                **({} if body is None else body.model_dump()),
+            },
+        )
+
+    async def author_pack(
+        self,
+        pack_id: Slug,
+        *,
+        name: str,
+        source: str,
+        origin: str,
+        license: str,
+        worldsmith: WorldsmithAnswer,
+    ) -> K:
+        """Head, then body; each checked by building the pack; nothing is written here."""
+
+        def built(from_head: PackHead, from_body: PackBody | None) -> K:
+            return self.pack_of(from_head, from_body, name=name, source=origin, license=license)
+
+        def check_head(answer: PackHead) -> None:
+            self.packs.check_addable(pack_id, built(answer, None))
+
+        head = await worldsmith(
+            self.render_worldsmith(source, "", (), HEAD_ASK, self.authoring, self.head),
+            self.head,
+            check_head,
+        )
+        so_far = ((PACK_SO_FAR, sections(built(head, None).sections(opening=True))),)
+
+        def check_body(answer: PackBody) -> None:
+            built(head, answer)
+
+        body = await worldsmith(
+            self.render_worldsmith(source, "", so_far, BODY_ASK, self.authoring, self.body),
+            self.body,
+            check_body,
+        )
+        return built(head, body)
+
+    def edit_fields(self, pack: K) -> tuple[EditField, ...]:
+        """Every field of this pack as text, in the order the page shows them."""
+        return (*pack.head_fields(), *self.engine_fields(pack), *pack.body_fields())
+
+    def engine_fields(self, _pack: K) -> tuple[EditField, ...]:
+        """The engine's own creation tables, then its cast block lists."""
+        return ()
+
+    def engine_values(self, _pack: K, _values: Mapping[str, str]) -> dict[str, object]:
+        """What those fields parse back to, under the pack field names they fill."""
+        return {}
+
+    def edited(self, pack: K, values: Mapping[str, str]) -> K:
+        """Every field parsed, the pack rebuilt as `author_pack` builds it, its provenance kept."""
+        engine = self.engine_values(pack, values)
+        head = parse(self.head, head_values(values) | _asked(self.head, engine))
+        body = parse(self.body, body_values(values) | _asked(self.body, engine))
+        return self.pack_of(head, body, name=pack.name, source=pack.source, license=pack.license)
 
     def supplement_options(self) -> tuple[DecisionOption, ...]:
         return tuple(
@@ -263,7 +350,7 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
             (
                 ("YOUR ROLE", read_cached_text(self.family_dir / "worldsmith.md")),
                 ("SOURCE MATERIAL", source or SOURCELESS),
-                ("THE SCOPE OF PLAY", scope),
+                ("THE SCOPE OF PLAY", scope or SCOPELESS),
                 *family,
                 ("WHAT COMES NEXT", intent),
                 ("ENGINE GUIDANCE", guidance),
@@ -409,3 +496,8 @@ class Engine[P: Person, M: Person, G: Game[Any], K: Pack](ABC):
     @abstractmethod
     def act(self, draft: G, action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
+
+
+def _asked(model: type[BaseModel], values: Mapping[str, object]) -> dict[str, object]:
+    """The engine's own values this ask carries: the head and the body are parsed apart."""
+    return {key: value for key, value in values.items() if key in model.model_fields}

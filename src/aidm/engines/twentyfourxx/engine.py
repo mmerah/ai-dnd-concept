@@ -19,6 +19,14 @@ from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.packs import (
+    LIST_ROWS,
+    EditField,
+    block_fields,
+    block_values,
+    blocks_text,
+    parse_blocks,
+)
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.tools import DROP_ITEM, AskWorld, DropItem, Kill
 from aidm.engines.twentyfourxx.tools import (
@@ -66,8 +74,13 @@ from aidm.engines.twentyfourxx.worldsmith import (
     HIRING,
     SKILL_COUNT,
     Origin,
+    OriginDraft,
     SheetDraft,
     Specialty,
+    SpecialtyDraft,
+    TwentyfourxxBlock,
+    TwentyfourxxBody,
+    TwentyfourxxHead,
     TwentyfourxxPack,
 )
 
@@ -98,6 +111,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
     scenario = TwentyfourxxScenario
     character = TwentyfourxxCharacter
     pack = TwentyfourxxPack
+    head = TwentyfourxxHead
+    body = TwentyfourxxBody
     world = TwentyfourxxWorld
     member = Crewmate
     hires = True
@@ -155,6 +170,55 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPac
             master_tool("ask_world", ASK_WORLD, AskWorld, self.ask_world),
             master_tool("job", JOB, Job, self.job),
         )
+
+    def engine_fields(self, pack: TwentyfourxxPack) -> tuple[EditField, ...]:
+        """The tables are written by hand: a draft holds no pick within a pick."""
+        return (
+            EditField(
+                id="specialties",
+                label="Specialties",
+                text=blocks_text(
+                    {
+                        "label": specialty.label,
+                        "detail": specialty.detail,
+                        "skills": tuple(specialty.skills),
+                        "kit": tuple(kit.name for kit in specialty.kit),
+                    }
+                    for specialty in pack.specialties
+                ),
+                rows=LIST_ROWS,
+            ),
+            EditField(
+                id="origins",
+                label="Origins",
+                text=blocks_text(
+                    {
+                        "label": origin.label,
+                        "detail": origin.detail,
+                        "increases": origin.increases,
+                        "invents": origin.invents,
+                    }
+                    for origin in pack.origins
+                ),
+                rows=LIST_ROWS,
+            ),
+            *block_fields(
+                (
+                    ("factions", "Factions", pack.factions),
+                    ("npcs", "People", pack.npcs),
+                    ("hostiles", "Hostiles", pack.hostiles),
+                )
+            ),
+        )
+
+    def engine_values(
+        self, _pack: TwentyfourxxPack, values: Mapping[str, str]
+    ) -> dict[str, object]:
+        return {
+            "specialties": parse_blocks(SpecialtyDraft, values["specialties"]),
+            "origins": parse_blocks(OriginDraft, values["origins"]),
+            **block_values(TwentyfourxxBlock, values, ("factions", "npcs", "hostiles")),
+        }
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         specialties, origins = self._offered(picks)

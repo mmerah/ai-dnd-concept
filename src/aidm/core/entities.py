@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Iterable
 from typing import Annotated, NewType
@@ -43,7 +44,7 @@ def content_id(value: str) -> Slug:
 
 
 def slug(text: str, taken: Iterable[str]) -> Slug:
-    words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    words = re.sub(r"[^a-z0-9]+", "-", _folded(text.lower())).strip("-")
     if not words:
         raise Refusal(f"{text!r} makes no id; give it a latin letter or a digit to be named by")
     return _unused(_capped(words, SLUG_MAX), taken)
@@ -73,6 +74,12 @@ def _refused(broken: ValidationError) -> Refusal:
     first = broken.errors()[0]
     where = ".".join(str(part) for part in first["loc"])
     return Refusal(f"{where}: {first['msg']}" if where else first["msg"])
+
+
+def _folded(text: str) -> str:
+    """An accent is dropped, not cut into a dash: `Naïve` is named `naive`, as the packs name it."""
+    stripped = unicodedata.normalize("NFKD", text)
+    return "".join(char for char in stripped if not unicodedata.combining(char))
 
 
 def _unused(base: str, taken: Iterable[str]) -> str:
