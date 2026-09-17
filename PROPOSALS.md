@@ -84,7 +84,9 @@ The `Loner3eGame = Game[Loner3eWorld]` aliases stay for tests and app typing.
 
 ## 3. Pack editor: JSON fields, not a home-made text format
 
-**Status.** Accepted, option (a): JSON per field. Ask models stay separate.
+**Status.** Accepted, option (a): JSON per field. Ask models stay separate. Measured: holds.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **−323**, tests −137, net **−460** (claimed −290). 5 min. `DASH`/`SEPARATOR` stay: the ask-model validators and `Pack.sections` use them. One consequence beyond "it shows JSON": table ids are edited directly, no longer re-minted from labels. `Runtime.rewrite_pack` did not shrink.
 
 **Plain words.** The pack edit page has its own mini-language (`Label — detail` lines, `Key: value`
 blocks) with a parser and a printer. One page reads it. Pydantic already knows how to read and
@@ -225,7 +227,9 @@ instead of "does not travel with the player".
 
 ## 7. Meanwhile: the world keeps the clock, the tool resolves the ids
 
-**Status.** Accepted, option (a): one `meanwhile` tool.
+**Status.** Accepted, option (a): one `meanwhile` tool. Measured at +12 lines; one behaviour question below.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+20**, tests −8, net **+12** (claimed −15). 4 min. The import from world to tools is gone and every `test_rooms.py` refusal passes unchanged. The growth is the split: one 48-line method becomes four world methods plus a 21-line engine method. **Question**: the tempo floor check in `Engine.__init__` ("ticks every N turns", refuses < 2) has nothing to read once the tempo is a world `ClassVar`; the verifier deleted it and its test. Keep it by doing proposal 2 first (the base then declares `world`), or accept the deletion.
 
 **Plain words.** The "time passes offscreen" clock is spread over six files, and the room world
 does the tool's id-lookup job itself.
@@ -290,7 +294,9 @@ parameter; `World.source` deleted.
 
 ## 9. Runtime and GameService: one job each, no back-reference
 
-**Status.** Accepted. Maintainer doubts the line saving; estimate to be verified by implementation.
+**Status.** Accepted with doubt; measured at **+66** lines. Awaiting re-decision.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+60**, tests +6, net **+66** (claimed −60). 7 min. Every extraction is paid in lines: `Presentation` costs ~35 to absorb ~20, `Gate` ~28 for ~22, `Busy` 7 to save 2, `check_resumes` 10 to save 6. `_tell` cannot cover `interject` (different role, must not illustrate) and a test pins that a failed save is not swallowed by `_grow`, so `_tell` returns the state and the caller saves. Structural wins are real: `mcp` no longer imports `Runtime`, the page no longer compares refusal text. **Re-decide**: (a) drop 9, (b) keep only `Gate` + `Busy` (the back-reference and the string compare, ~+10), (c) do it all for clarity at +66.
 
 **Plain words.** `Runtime` is five things (builder, spawner holder, one-writer gate, session cache,
 author). `GameService` is orchestration plus presentation plus persistence and points back at
