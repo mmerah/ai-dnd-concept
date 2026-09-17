@@ -19,15 +19,17 @@ LEVEL_UP = (
 
 class Roll(Attempt):
     ability: Ability = Field(description="Which ability the action calls on.")
-    items: tuple[Slug, ...] = Field(
+    item_ids: tuple[Slug, ...] = Field(
         default=(), description="Exact ids of items the actor carries that plainly help."
     )
     difficulty: int | None = Field(
         default=None,
         ge=1,
-        description=("Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `against` is set."),
+        description=(
+            "Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `target_id` is set."
+        ),
     )
-    against: Slug | None = Field(
+    target_id: Slug | None = Field(
         default=None,
         description="Exact id of an npc here the actor acts on, in a fight or in talk. Its "
         "Health is the Difficulty Score.",
@@ -40,7 +42,7 @@ class Roll(Attempt):
 
     @model_validator(mode="after")
     def _one_target(self) -> Self:
-        if (self.difficulty is None) == (self.against is None):
+        if (self.difficulty is None) == (self.target_id is None):
             raise ValueError("give a difficulty, or an npc to roll against, not both/neither")
         return self
 

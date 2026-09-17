@@ -3,14 +3,14 @@ from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.rooms.world import MapDraft, Prop, Way
+from aidm.engines.rooms.world import MapProposal, Prop, Way
 from aidm.engines.tunnelgoons.world import Goon, GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
 GHOST = "ghost"
 
 
 def test_begin_refuses_a_draft_whose_npc_stands_in_no_place(world: TunnelGoonsWorld) -> None:
-    map_draft = MapDraft[Npc](
+    map_draft = MapProposal[Npc](
         places=world.places, ways=world.ways, npcs=world.npcs, items=world.items, start=START
     )
     map_draft.npcs[MIRA].place = GHOST

@@ -123,7 +123,7 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
     state = table.service.state
     assert [role for role, _ in table.spawner.prompts] == ["master"]
     assert state.exchanges()[-1].lines == ()
-    assert state.exchanges()[-1].narration == ""
+    assert state.exchanges()[-1].narration() == ""
 
 
 async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continues(

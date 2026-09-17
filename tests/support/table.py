@@ -12,13 +12,14 @@ from pydantic_settings import SettingsConfigDict
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
-from aidm.app.spawn import RunResult, Tools
+from aidm.app.spawn import RunResult
 from aidm.config import ProviderConfig, Providers, Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import Library
 from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
+from aidm.core.tools import Tools
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 

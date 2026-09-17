@@ -36,3 +36,49 @@ Refuted review findings:
 Known and accepted: an in-play game whose written pack is later edited into an id collision
 with the other supplement in play is refused at the next `restore`, not mid-turn (before this
 phase it failed on the next tool call).
+
+## Phase 2: names and homes
+
+Counts, start → end: `src` 10,510 → 10,483 (target about 10,505; the `RoleRunner` fold and
+the `run_cli` log line took more than the plan measured); `tests` 12,365 → 12,387 (target about
+12,378: one test added for the single log line); `qa` 2,005 → 2,004; `scripts` 390 → 390;
+781 → 782 tests collected. Three goldens moved: `tests/core/fixtures/schemas/*/master_tools.json`.
+
+Decisions off-plan:
+
+- All four parts were implemented by opus, as in phase 1. Parts A1 (engine constants) and A2
+  (app roles) ran in parallel on disjoint files; B1 (renames) and B2 (methods and rules) ran
+  after them, one after the other.
+- `RoleRunner.run` holds the provider `match` inside its one `timeout`; there is no
+  `_answered`. `run_cli` still returns a `RunResult`; `run_builtin` returns `(text, rounds)`
+  and the log detail ("cold", "resumed", "over N rounds") is phrased in `run` alone.
+- `Thing.headline` keeps its own one-line format instead of reading `self.subject().headline`:
+  the new property rule reads the object's own fields, and building a `Subject` per read is not
+  that.
+- `Pack.summary()` is a method: it joins the counts.
+- `SceneWorld.offer()` returns `[WAY_OFFERED]` and `scenes/world.py` imports it from
+  `scenes/tools.py`: a world method changes fields and writes the facts.
+- The four tests of `ask` moved from `tests/app/test_spawn.py` to `tests/app/test_roles.py`
+  with the function.
+- `docs/24XX.md` and `qa/README.md` follow the `defend_with_id` / `item_ids` renames.
+- `ui/game.py` reads no `Exchange.transcript`: its `transcript` is a NiceGUI scroll area.
+
+Refuted review findings:
+
+- "`ALREADY_BROKEN` / `BREAKS_HARMLESSLY` are model-facing constants in a `world.py`": they are
+  refusal templates raised by world methods and sit beside their raise sites, as `UNKNOWN_ID`
+  and `IS_DEAD` do in `engines/base.py`; `tools.py` is for what the master reads as an
+  instruction. Known and accepted as the phase's exception beside the `*_UNWRITTEN` facts.
+- "`TOLD` in `loner3e/world.py` is model-facing": it is the SRD's oracle answer table, read by
+  the player on the roll card as much as by the master, and `loner3e/tools.py` imports
+  `loner3e/world.py`, so moving it would make a cycle.
+- "The `SceneProposal` field descriptions live in `scenes/world.py`": a description is the
+  model's schema, not a module constant, and `scenes/worldsmith.py` imports `SceneWorld`, so
+  the proposals cannot sit beside `check_scene`; `rooms/world.py` keeps `MapProposal` the same
+  way, as the plan decided.
+- "Rename `author_pack`'s `source` parameter to `document`": `source` is the source material in
+  `Engine.author`, `render_worldsmith`, `Game.source` and `Scenario.source`; only the pack
+  file's provenance field is spelled `source` on disk, and in code that is `origin` everywhere
+  now.
+
+Known and accepted: `Driver.secrets` stays a protocol property (a one-line read of a field).

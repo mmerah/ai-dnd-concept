@@ -11,6 +11,7 @@ MEANWHILE = (
     "Time has passed where the player is not. Move a dweller, move a loose item, and shut a "
     "way they know — any combination, in one call, while ELSEWHERE is shown."
 )
+ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
 MOVES_OFFSCREEN = "something moves where the player cannot see"
 MOVED_CARD = "Elsewhere, something moves."
@@ -18,7 +19,7 @@ MOVED_CARD = "Elsewhere, something moves."
 
 class MoveItem(Frozen):
     item_id: Slug = Field(description="Exact id of an item here or carried.")
-    to: Slug = Field(description="Exact id of the player, an npc here, or this place.")
+    to_id: Slug = Field(description="Exact id of the player, an npc here, or this place.")
 
 
 class Move(Frozen):
@@ -37,28 +38,28 @@ class Meanwhile(Frozen):
     dweller_id: Slug | None = Field(
         default=None, description="Exact id of a dweller elsewhere who walks to a new place."
     )
-    dweller_to: Slug | None = Field(
+    dweller_to_id: Slug | None = Field(
         default=None, description="Exact id of the place the dweller walks to."
     )
     item_id: Slug | None = Field(
         default=None, description="Exact id of a loose item elsewhere that moves to a new place."
     )
-    item_to: Slug | None = Field(
+    item_to_id: Slug | None = Field(
         default=None, description="Exact id of the place the item moves to."
     )
-    shut_from: Slug | None = Field(
+    shut_from_id: Slug | None = Field(
         default=None, description="Exact id of one end of the way that shuts."
     )
-    shut_to: Slug | None = Field(
+    shut_to_id: Slug | None = Field(
         default=None, description="Exact id of the other end of the way that shuts."
     )
 
     @model_validator(mode="after")
     def _paired(self) -> Self:
         pairs = (
-            (self.dweller_id, self.dweller_to),
-            (self.item_id, self.item_to),
-            (self.shut_from, self.shut_to),
+            (self.dweller_id, self.dweller_to_id),
+            (self.item_id, self.item_to_id),
+            (self.shut_from_id, self.shut_to_id),
         )
         for first, second in pairs:
             if (first is None) != (second is None):

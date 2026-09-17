@@ -20,7 +20,7 @@ from support.tunnelgoons import (
 from aidm.core.entities import Refusal, parse
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Gauge
-from aidm.engines.rooms.world import Place, Prop, RegionDraft
+from aidm.engines.rooms.world import Place, Prop, RegionProposal
 from aidm.engines.tunnelgoons.tools import LevelUp, Roll
 from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
@@ -44,7 +44,7 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
     world.player.require_sheet().inventory = 1  # carrying rope + torch (2) is 1 over
     facts = ENGINE.roll(
         draft,
-        Roll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10),
+        Roll(what="Sneak past", ability="skulker", item_ids=(ROPE,), difficulty=10),
         Random(1),
     )
     rolled = facts[1]
@@ -82,7 +82,7 @@ def test_a_roll_against_an_npc_that_hits_can_slay_it(draft: TunnelGoonsGame) -> 
     world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
-        Roll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Roll(what="Smash it", ability="brute", target_id=MANTIS, dangerous=True),
         Random(3),
     )
     mantis = world.npcs[MANTIS]
@@ -98,7 +98,7 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here(draft: TunnelGoonsGa
     world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
-        Roll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Roll(what="Smash it", ability="brute", target_id=MANTIS, dangerous=True),
         Random(3),
     )
     assert world.items[KEY].on == START
@@ -114,7 +114,7 @@ def test_a_miss_against_an_npc_can_kill_the_player(draft: TunnelGoonsGame) -> No
     world.player.hp.current = 1
     _ = ENGINE.roll(
         draft,
-        Roll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Roll(what="Smash it", ability="brute", target_id=MANTIS, dangerous=True),
         Random(4),
     )
     assert world.player.hp.current == 0
@@ -127,7 +127,9 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous(draft: Tunne
     world = draft.payload
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].known = True
-    _ = ENGINE.roll(draft, Roll(what="Talk it down", ability="erudite", against=MANTIS), Random(3))
+    _ = ENGINE.roll(
+        draft, Roll(what="Talk it down", ability="erudite", target_id=MANTIS), Random(3)
+    )
     assert world.npcs[MANTIS].hp.current == world.npcs[MANTIS].hp.maximum
     assert world.player.hp.current == world.player.hp.maximum
 
@@ -171,14 +173,14 @@ def test_neither_or_both_of_difficulty_and_against_is_refused() -> None:
     with pytest.raises(ValueError, match="not both/neither"):
         Roll(what="Push", ability="brute")
     with pytest.raises(ValueError, match="not both/neither"):
-        Roll(what="Push", ability="brute", difficulty=8, against=MANTIS)
+        Roll(what="Push", ability="brute", difficulty=8, target_id=MANTIS)
 
 
 def test_an_item_not_in_the_players_hands_is_refused(draft: TunnelGoonsGame) -> None:
     with pytest.raises(Refusal, match="not in Kael's hands"):
         _ = ENGINE.roll(
             draft,
-            Roll(what="Pick lock", ability="skulker", items=(KEY,), difficulty=8),
+            Roll(what="Pick lock", ability="skulker", item_ids=(KEY,), difficulty=8),
             Random(0),
         )
 
@@ -288,7 +290,7 @@ def test_two_moves_open_no_chapter_and_install_closes_with_the_recap(
     assert [chapter.title for chapter in draft.log] == ["Start"]
     draft.log[-1].exchanges.append(Exchange(words="Look around.", lines=()))
 
-    region = RegionDraft[Npc](
+    region = RegionProposal[Npc](
         places={
             "beyond": Place(id="beyond", name="Beyond", brief="b", known=False, description="d")
         },
@@ -372,13 +374,13 @@ def test_unlocking_an_unwalked_way_tells_a_card_becomes_known_and_appears_in_way
 
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place(draft: TunnelGoonsGame) -> None:
     world = draft.payload
-    _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to=MIRA)
+    _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=MIRA)
     assert world.items[LANTERN].on == MIRA
 
-    _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to=PLAYER_ID)
+    _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=PLAYER_ID)
     assert world.items[LANTERN].on == PLAYER_ID
 
-    _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to=START)
+    _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=START)
     assert world.items[LANTERN].on == START
 
 
@@ -386,14 +388,14 @@ def test_move_item_refuses_a_holder_the_player_has_not_met(draft: TunnelGoonsGam
     world = draft.payload
     world.npcs[MANTIS].place = START
     with pytest.raises(Refusal, match="has not met"):
-        _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to=MANTIS)
+        _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=MANTIS)
 
 
 def test_kill_drops_an_npcs_items_loose(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
     blade = "mira-blade"
     world.items[blade] = Prop(id=blade, name="Blade", brief="Mira's blade", known=True, on=MIRA)
 
-    _ = change(ENGINE, draft, "kill", entity_id=MIRA)
+    _ = change(ENGINE, draft, "kill", target_id=MIRA)
 
     assert not world.npcs[MIRA].alive
     assert world.items[blade].on == START
@@ -401,11 +403,11 @@ def test_kill_drops_an_npcs_items_loose(draft: TunnelGoonsGame, world: TunnelGoo
 
 def test_reveal_only_what_is_here_and_unknown(draft: TunnelGoonsGame) -> None:
     world = draft.payload
-    assert "not here" in refused(ENGINE, draft, "reveal", entity_id=KEY)
-    assert "already" in refused(ENGINE, draft, "reveal", entity_id=LANTERN)
+    assert "not here" in refused(ENGINE, draft, "reveal", target_id=KEY)
+    assert "already" in refused(ENGINE, draft, "reveal", target_id=LANTERN)
 
     world.npcs[MANTIS].place = START
-    _ = change(ENGINE, draft, "reveal", entity_id=MANTIS)
+    _ = change(ENGINE, draft, "reveal", target_id=MANTIS)
     assert world.npcs[MANTIS].known
 
 
@@ -417,7 +419,7 @@ def test_action_roll_a_member_rolls_on_their_own_abilities_and_items() -> None:
     world.items[ROPE].on = MIRA
     facts = ENGINE.roll(
         draft,
-        Roll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10, actor_id=MIRA),
+        Roll(what="Sneak past", ability="skulker", item_ids=(ROPE,), difficulty=10, actor_id=MIRA),
         Random(1),
     )
     rolled = facts[1]
@@ -433,7 +435,7 @@ def test_action_roll_refuses_rolling_against_oneself(draft: TunnelGoonsGame) -> 
     with pytest.raises(Refusal, match="cannot roll against themselves"):
         _ = ENGINE.roll(
             draft,
-            Roll(what="Wrestle", ability="brute", against=MIRA, actor_id=MIRA),
+            Roll(what="Wrestle", ability="brute", target_id=MIRA, actor_id=MIRA),
             Random(0),
         )
 

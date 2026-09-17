@@ -73,7 +73,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
         what="Force her back",
         actor_id=PLAYER_ID,
         question="Does he force her back from the door?",
-        opponent_id=FOE,
+        target_id=FOE,
     )
 
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
@@ -96,7 +96,7 @@ def test_the_players_own_defeat_reads_without_their_name() -> None:
         what="Hold the doorway",
         actor_id=FOE,
         question="Does she drive him off the doorway?",
-        opponent_id=PLAYER_ID,
+        target_id=PLAYER_ID,
     )
 
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the player's last point.
@@ -116,7 +116,7 @@ def test_restoring_luck_shows_as_a_counter_card() -> None:
     loner_sheet(draft, PLAYER_ID).luck.current = 1
     spent = draft.commit()
 
-    facts = tuple(change(ENGINE, spent.draft(), "restore_luck", entity_id=PLAYER_ID))
+    facts = tuple(change(ENGINE, spent.draft(), "restore_luck", actor_id=PLAYER_ID))
     (event,) = cards(facts)
     assert event.card == "Luck +5 → 6/6"
 
@@ -128,11 +128,11 @@ def test_drive_refuses_naming_a_hidden_entity_but_allows_a_revealed_one() -> Non
     kael = loner_sheet(draft, PLAYER_ID)
 
     assert "not met" in refused(
-        ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Watcher hunts him"
+        ENGINE, draft, "drive", actor_id=PLAYER_ID, nemesis="The Watcher hunts him"
     )
     assert kael.nemesis == ""
 
-    _ = change(ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Warden hunts him")
+    _ = change(ENGINE, draft, "drive", actor_id=PLAYER_ID, nemesis="The Warden hunts him")
     assert kael.nemesis == "The Warden hunts him"
 
 
@@ -144,7 +144,7 @@ def test_drive_refuses_naming_someone_unmet_who_is_not_in_this_scene() -> None:
     kael = loner_sheet(draft, PLAYER_ID)
 
     assert "not met" in refused(
-        ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Watcher hunts him"
+        ENGINE, draft, "drive", actor_id=PLAYER_ID, nemesis="The Watcher hunts him"
     )
     assert kael.nemesis == ""
 
@@ -153,7 +153,7 @@ def test_spend_luck_is_refused_when_no_selected_pack_spends_it() -> None:
     _, state = initialized()
 
     assert "no selected pack spends luck" in refused(
-        ENGINE, state.draft(), "spend_luck", entity_id=PLAYER_ID, amount=2, why="A ward"
+        ENGINE, state.draft(), "spend_luck", actor_id=PLAYER_ID, amount=2, why="A ward"
     )
 
 
@@ -164,7 +164,7 @@ def test_spend_luck_above_the_pool_is_refused_naming_it() -> None:
     fantasy = draft.commit()
 
     assert "has 6 luck, not 10" in refused(
-        ENGINE, fantasy.draft(), "spend_luck", entity_id=PLAYER_ID, amount=10, why="A ward"
+        ENGINE, fantasy.draft(), "spend_luck", actor_id=PLAYER_ID, amount=10, why="A ward"
     )
 
 
@@ -175,7 +175,7 @@ def test_spend_luck_lands_one_fact_and_no_defeat() -> None:
     fantasy = draft.commit()
 
     facts = change(
-        ENGINE, fantasy.draft(), "spend_luck", entity_id=PLAYER_ID, amount=2, why="A ward"
+        ENGINE, fantasy.draft(), "spend_luck", actor_id=PLAYER_ID, amount=2, why="A ward"
     )
 
     (event,) = cards(facts)
@@ -195,7 +195,7 @@ def test_change_tags_refuses_naming_a_hidden_entity_but_allows_a_revealed_one() 
         ENGINE,
         draft,
         "change_tags",
-        entity_id=PLAYER_ID,
+        actor_id=PLAYER_ID,
         kind="gear",
         gained=["The Watcher's Key"],
     )
@@ -205,7 +205,7 @@ def test_change_tags_refuses_naming_a_hidden_entity_but_allows_a_revealed_one() 
         ENGINE,
         draft,
         "change_tags",
-        entity_id=PLAYER_ID,
+        actor_id=PLAYER_ID,
         kind="gear",
         gained=["The Warden's Key"],
     )

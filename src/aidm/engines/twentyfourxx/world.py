@@ -9,8 +9,7 @@ from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows, filled
 from aidm.engines.base import Sheet, Sheeted, Thing
-from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.world import SceneWorld
+from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
@@ -30,6 +29,8 @@ SHIP_FUNCTIONS: tuple[str, ...] = (
 )  # the SRD's seven, in its order
 SHIP_IDS: tuple[Slug, ...] = tuple(slug(name, ()) for name in SHIP_FUNCTIONS)
 UPGRADE_COST = 10
+ALREADY_BROKEN = "{name} is already broken"
+BREAKS_HARMLESSLY = "{name} breaks harmlessly: leave `hindrance` empty"
 
 
 class Kit(Frozen):
@@ -50,15 +51,6 @@ class Gear(Mutable):
     @property
     def broken(self) -> bool:
         return self.broken_times >= self.breaks
-
-    @property
-    def broken_message(self) -> str:
-        return f"{self.name} is already broken"
-
-    @property
-    def harmless_message(self) -> str:
-        """Raised before the roll and inside the break, so the two must stay the same sentence."""
-        return f"{self.name} breaks harmlessly: leave `hindrance` empty"
 
     def notes(self) -> str:
         parts: list[str] = []
@@ -244,7 +236,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         actor = self.require_actor(actor_id)
         item = self.require_gear(actor, item_id)
         if item.broken:
-            raise Refusal(item.broken_message)
+            raise Refusal(ALREADY_BROKEN.format(name=item.name))
         return self._break(actor, item, hindrance)
 
     def take_hit(
@@ -275,10 +267,10 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         claimed = Counter(id(item) for _, item, _ in resolved)
         for actor, item, hindrance in resolved:
             if item.breaks - item.broken_times < claimed[id(item)]:
-                raise Refusal(item.broken_message)
+                raise Refusal(ALREADY_BROKEN.format(name=item.name))
             if item.harmless:
                 if hindrance:
-                    raise Refusal(item.harmless_message)
+                    raise Refusal(BREAKS_HARMLESSLY.format(name=item.name))
                 continue
             if not hindrance:
                 raise Refusal(f"name the hindrance {item.name} leaves behind")
@@ -288,7 +280,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
     def _break(self, actor: Crewmate, item: Gear, hindrance: str) -> list[Fact]:
         if item.harmless:
             if hindrance:
-                raise Refusal(item.harmless_message)
+                raise Refusal(BREAKS_HARMLESSLY.format(name=item.name))
             item.broken_times += 1
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
             return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks"))]
@@ -342,7 +334,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]
 
-TwentyfourxxScenario = Scenario[SceneDraft[Crewmate]]
+TwentyfourxxScenario = Scenario[SceneProposal[Crewmate]]
 
 TwentyfourxxCharacter = Character[Crewmate]
 

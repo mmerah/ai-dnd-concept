@@ -9,8 +9,8 @@ from random import Random
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator
 from aidm.app.providers import close_posting
-from aidm.app.roles import RoleRunner, interject, master, narrate
-from aidm.app.spawn import Spawner, worldsmith
+from aidm.app.roles import OPENING_NARRATION, interject, master, narrate, worldsmith
+from aidm.app.spawn import RoleRunner, Spawner
 from aidm.app.speech import Reader
 from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
@@ -30,14 +30,6 @@ LOGGER = logging.getLogger(__name__)
 INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
 IN_FLIGHT_HERE = "A turn is already in flight in this game."
 IN_FLIGHT_ELSEWHERE = "Another game is taking a turn. Wait for it to finish, then try again."
-OPENING_NARRATION = (
-    "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
-    "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
-    "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
-    "SCENE IS ABOUT where it is given, said as the thing pulling at them; and two or three "
-    "things they could plainly do first, offered by the place and the people, in prose, never "
-    "as a list. Six to eight sentences. They have not acted, so settle nothing."
-)
 
 
 @dataclass(slots=True)
@@ -178,7 +170,7 @@ class GameService:
             and self.state.pending is None
             and self.engine.over(self.state) is None
         ):
-            self._speaking = create_task(self.interject())
+            self._speaking = create_task(self.let_party_speak())
             self.tasks.retain(self._speaking)
 
     def hush(self) -> None:
@@ -187,7 +179,7 @@ class GameService:
             self._speaking.cancel()
             self._speaking = None
 
-    async def interject(self) -> None:
+    async def let_party_speak(self) -> None:
         member = next(
             (
                 candidate
@@ -260,7 +252,7 @@ class GameService:
 
     def _present(self) -> None:
         newest = self._newest()
-        self.illustrate("" if newest is None else newest.narration)
+        self.illustrate("" if newest is None else newest.narration())
         self.speak(newest)
 
     def player_view(self) -> PlayerView:

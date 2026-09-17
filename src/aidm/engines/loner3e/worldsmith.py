@@ -61,7 +61,6 @@ class Loner3eBlock(Frozen):
         check_items("a block list", (*self.skills, *self.frailties, *self.gear))
         return self
 
-    @property
     def line(self) -> str:
         return block_line(
             self.name,
@@ -101,7 +100,6 @@ class Loner3ePack(Pack):
             option.id for option in (*self.concepts, *self.skills, *self.frailties, *self.gear)
         )
 
-    @property
     def counts(self) -> tuple[tuple[str, int], ...]:
         return (
             ("concepts", len(self.concepts)),
@@ -111,7 +109,7 @@ class Loner3ePack(Pack):
             ("factions", len(self.factions)),
             ("people", len(self.npcs)),
             ("monsters", len(self.monsters)),
-            *super().counts,
+            *super().counts(),
         )
 
     def sections(self, *, opening: bool) -> Sections:
@@ -127,9 +125,9 @@ class Loner3ePack(Pack):
         return (
             *super().sections(opening=opening),
             ("TRAIT TAGS", tags),
-            *bullets("FACTIONS", (block.line for block in self.factions)),
-            *bullets("PEOPLE", (block.line for block in self.npcs)),
-            *bullets("MONSTERS", (block.line for block in self.monsters)),
+            *bullets("FACTIONS", (block.line() for block in self.factions)),
+            *bullets("PEOPLE", (block.line() for block in self.npcs)),
+            *bullets("MONSTERS", (block.line() for block in self.monsters)),
         )
 
 

@@ -64,7 +64,7 @@ def body(s: Session) -> None:
     s.shot(page, "huge-action")
 
     # 4. Reload storm while a role is slow: three reloads inside one turn.
-    submit(page, 'I wait a while.\n!slow narrator\n!drive entity_id=player goal="Hold on"')
+    submit(page, 'I wait a while.\n!slow narrator\n!drive actor_id=player goal="Hold on"')
     for index in range(3):
         page.wait_for_timeout(700)
         page.reload()
@@ -100,7 +100,7 @@ def body(s: Session) -> None:
     s.shot(other, "two-tabs-other")
 
     # 6. Leave mid-turn, come back: the turn is still there and still lands.
-    submit(page, 'I stall again.\n!slow narrator\n!drive entity_id=player goal="Stall"')
+    submit(page, 'I stall again.\n!slow narrator\n!drive actor_id=player goal="Stall"')
     page.wait_for_timeout(600)
     page.goto(BASE + "/")
     page.wait_for_timeout(1200)

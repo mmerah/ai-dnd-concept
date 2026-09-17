@@ -19,38 +19,36 @@ def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
     _, state = initialized()
     draft = state.draft()
 
-    assert "at least one" in refused(draft, "change_tags", entity_id=PLAYER_ID, kind="gear")
+    assert "at least one" in refused(draft, "change_tags", actor_id=PLAYER_ID, kind="gear")
 
-    traces = changed(draft, "change_tags", entity_id=PLAYER_ID, kind="gear", gained=["Rusty Key"])
+    traces = changed(draft, "change_tags", actor_id=PLAYER_ID, kind="gear", gained=["Rusty Key"])
     assert "Rusty Key" in draft.payload.player.tagged("gear")
     assert traces[0].endswith("gear +Rusty Key")
 
     assert "already carries" in refused(
-        draft, "change_tags", entity_id=PLAYER_ID, kind="gear", gained=["Rusty Key"]
+        draft, "change_tags", actor_id=PLAYER_ID, kind="gear", gained=["Rusty Key"]
     )
 
     traces = changed(
-        draft, "change_tags", entity_id=PLAYER_ID, kind="condition", gained=["Listening"]
+        draft, "change_tags", actor_id=PLAYER_ID, kind="condition", gained=["Listening"]
     )
     assert "Listening" in draft.payload.player.tagged("condition")
     assert traces[0].endswith("condition +Listening")
 
-    traces = changed(
-        draft, "change_tags", entity_id=PLAYER_ID, kind="condition", lost=["Listening"]
-    )
+    traces = changed(draft, "change_tags", actor_id=PLAYER_ID, kind="condition", lost=["Listening"])
     assert "Listening" not in draft.payload.player.tagged("condition")
     assert traces[0].endswith("condition -Listening")
 
     assert "carries no condition" in refused(
-        draft, "change_tags", entity_id=PLAYER_ID, kind="condition", lost=["Listening"]
+        draft, "change_tags", actor_id=PLAYER_ID, kind="condition", lost=["Listening"]
     )
 
     assert "duplicate" in refused(
-        draft, "change_tags", entity_id=PLAYER_ID, kind="gear", gained=["Rope", "Rope"]
+        draft, "change_tags", actor_id=PLAYER_ID, kind="gear", gained=["Rope", "Rope"]
     )
 
-    _ = changed(draft, "kill", entity_id=MARA)
-    assert "dead" in refused(draft, "change_tags", entity_id=MARA, kind="gear", gained=["Rope"])
+    _ = changed(draft, "kill", target_id=MARA)
+    assert "dead" in refused(draft, "change_tags", actor_id=MARA, kind="gear", gained=["Rope"])
     _ = draft.commit()
 
 
@@ -58,14 +56,14 @@ def test_drive_writes_what_play_revealed() -> None:
     _, state = initialized()
     draft = state.draft()
 
-    traces = changed(draft, "drive", entity_id=PLAYER_ID, goal="Get out of the ruin alive")
+    traces = changed(draft, "drive", actor_id=PLAYER_ID, goal="Get out of the ruin alive")
     assert draft.payload.player.goal == "Get out of the ruin alive"
     assert "goal: Get out of the ruin alive" in traces[0]
 
-    assert "goal, a motive or a nemesis" in refused(draft, "drive", entity_id=PLAYER_ID)
+    assert "goal, a motive or a nemesis" in refused(draft, "drive", actor_id=PLAYER_ID)
 
-    _ = changed(draft, "kill", entity_id=MARA)
-    assert "dead" in refused(draft, "drive", entity_id=MARA, motive="Survive")
+    _ = changed(draft, "kill", target_id=MARA)
+    assert "dead" in refused(draft, "drive", actor_id=MARA, motive="Survive")
     _ = draft.commit()
 
 

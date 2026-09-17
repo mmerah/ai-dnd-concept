@@ -50,14 +50,14 @@ truth that makes it fit. If no result fits, treat it as `yes-but` with a small c
 A conflict has two active sides, such as a fight, a chase, a hunt or an argument. You choose how
 much detail it deserves.
 
-One question can settle a whole conflict: leave `opponent_id` null, ask whether the actor wins
+One question can settle a whole conflict: leave `target_id` null, ask whether the actor wins
 it, and let the answer stand. Use this when the opposition is minor, or when the story wants the
 contest over in a line.
 
-A series of questions plays the key actions out: leave `opponent_id` null and roll each one. Use
+A series of questions plays the key actions out: leave `target_id` null and roll each one. Use
 this when the steps matter but holding out does not.
 
-Luck exchanges run a contest of endurance: set `opponent_id`. Use this when both sides can lose
+Luck exchanges run a contest of endurance: set `target_id`. Use this when both sides can lose
 ground over several exchanges and how long each holds out is the point. A person, a vehicle, a
 machine and a cursed object all resist the same way. Run one exchange per turn. The engine takes
 luck from the result. A strong yes costs the opponent more luck. A strong no costs the acting

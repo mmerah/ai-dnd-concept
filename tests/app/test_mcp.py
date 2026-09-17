@@ -10,14 +10,15 @@ from support.table import NO_PACKS, narrated, offline_settings
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
-from aidm.app.spawn import RunResult, Tools
+from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import EngineId
 from aidm.core.play import Answer
+from aidm.core.tools import Tools
 from aidm.engines.loner3e.engine import Loner3eEngine
 
 BASE_URL = "http://localhost:8123"
-REVEAL_VAULT_MAP: dict[str, object] = {"name": "reveal", "arguments": {"entity_id": "vault-map"}}
+REVEAL_VAULT_MAP: dict[str, object] = {"name": "reveal", "arguments": {"target_id": "vault-map"}}
 
 
 class Tool(TypedDict):

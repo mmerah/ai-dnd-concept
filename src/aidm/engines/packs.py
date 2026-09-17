@@ -56,7 +56,6 @@ class Names(Frozen):
     surnames: tuple[str, ...] = ()
     nicknames: tuple[str, ...] = ()
 
-    @property
     def listed(self) -> tuple[tuple[Slug, tuple[str, ...]], ...]:
         return (
             ("female", self.female),
@@ -68,7 +67,7 @@ class Names(Frozen):
 
     @model_validator(mode="after")
     def _every_name_reads_in_a_list(self) -> Self:
-        for kind, values in self.listed:
+        for kind, values in self.listed():
             check_items(kind, values)
         return self
 
@@ -114,19 +113,17 @@ class Pack(Frozen):
         """The option ids this pack defines; two selected packs may not share one."""
         return ()
 
-    @property
     def counts(self) -> tuple[tuple[str, int], ...]:
         """What the home page counts; an engine puts its tables before the kit's."""
         return (("locations", len(self.locations)), ("seeds", len(self.seeds)))
 
-    @property
     def summary(self) -> str:
-        return " · ".join(f"{count} {what}" for what, count in self.counts if count)
+        return " · ".join(f"{count} {what}" for what, count in self.counts() if count)
 
     def sections(self, *, opening: bool) -> Sections:
         """Setting, names, locations always; seeds at the opening only; an engine adds its own."""
         name_lines = "\n".join(
-            f"{kind}: {SEPARATOR.join(values)}" for kind, values in self.names.listed if values
+            f"{kind}: {SEPARATOR.join(values)}" for kind, values in self.names.listed() if values
         )
         location_lines: list[str] = []
         for location in self.locations:

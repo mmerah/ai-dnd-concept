@@ -9,7 +9,7 @@ from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID, Gauge, Sheet, Sheeted, joined
-from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
+from aidm.engines.rooms.world import Dweller, MapProposal, Prop, RoomWorld
 
 type Ability = Literal["brute", "skulker", "erudite"]
 type AbilityScores = dict[Ability, Annotated[int, Field(ge=0)]]
@@ -134,6 +134,6 @@ class TunnelGoonsWorld(RoomWorld[Goon, Npc]):
 
 TunnelGoonsGame = Game[TunnelGoonsWorld]
 
-TunnelGoonsScenario = Scenario[MapDraft[Npc]]
+TunnelGoonsScenario = Scenario[MapProposal[Npc]]
 
 TunnelGoonsCharacter = Character[Goon]

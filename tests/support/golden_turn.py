@@ -19,7 +19,7 @@ INTERJECTION = json.dumps(
 
 LISTENING = tool_call(
     "change_tags",
-    entity_id="player",
+    actor_id="player",
     kind="condition",
     gained=["Listening"],
 )
@@ -71,7 +71,7 @@ def _loner3e_behind(state: AnyGame) -> AnyGame:
 
 
 _LONER3E_SCRIPT: tuple[Call, ...] = (
-    tool_call("reveal", entity_id="vault-map"),
+    tool_call("reveal", target_id="vault-map"),
     tool_call(
         "roll",
         what="Listen at the vault door",
@@ -92,12 +92,12 @@ _TUNNELGOONS_SCRIPT: tuple[Call, ...] = (
         difficulty=10,
         dangerous=True,
     ),
-    tool_call("reveal", entity_id="lurker"),
+    tool_call("reveal", target_id="lurker"),
 )
 
 _TWENTYFOURXX_SCRIPT: tuple[Call, ...] = (
-    tool_call("join_party", entity_id="vessa-rune"),
-    tool_call("reveal", entity_id="warden-six"),
+    tool_call("join_party", target_id="vessa-rune"),
+    tool_call("reveal", target_id="warden-six"),
     tool_call("roll", what="Slip along the dark gantry", skill="Stealth"),
     tool_call("spend", amount=1, why="Harl's docking logs"),
 )

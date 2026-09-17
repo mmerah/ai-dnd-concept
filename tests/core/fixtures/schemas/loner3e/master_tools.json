@@ -5,13 +5,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of something hidden here.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -22,13 +22,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of who here died.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -39,13 +39,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of who is joining.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -56,13 +56,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of the party member leaving.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -73,13 +73,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of a cast member not already here.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -90,13 +90,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of someone here.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -127,7 +127,7 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "actor_id": {
           "description": "Exact id of the player or someone here.",
           "type": "string"
         },
@@ -159,7 +159,7 @@
         }
       },
       "required": [
-        "entity_id",
+        "actor_id",
         "kind"
       ],
       "type": "object"
@@ -171,7 +171,7 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "actor_id": {
           "description": "Exact id of the player or a living character here.",
           "type": "string"
         },
@@ -192,7 +192,7 @@
         }
       },
       "required": [
-        "entity_id"
+        "actor_id"
       ],
       "type": "object"
     }
@@ -203,13 +203,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "actor_id": {
           "description": "Exact id of the player or a character here.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "actor_id"
       ],
       "type": "object"
     }
@@ -247,7 +247,7 @@
           "description": "Tag or circumstance that sets the position, read by the player. Empty for neutral.",
           "type": "string"
         },
-        "opponent_id": {
+        "target_id": {
           "type": [
             "string",
             "null"
@@ -270,7 +270,7 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "actor_id": {
           "description": "Exact id of the player or a living character here.",
           "type": "string"
         },
@@ -285,7 +285,7 @@
         }
       },
       "required": [
-        "entity_id",
+        "actor_id",
         "amount",
         "why"
       ],

@@ -27,6 +27,7 @@ from aidm.engines.base import (
 )
 from aidm.engines.packs import Pack
 from aidm.engines.rooms.tools import (
+    ELSEWHERE,
     MEANWHILE,
     MOVE,
     MOVE_ITEM,
@@ -39,7 +40,7 @@ from aidm.engines.rooms.tools import (
     MoveItem,
     UnlockWay,
 )
-from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RegionDraft, RoomWorld
+from aidm.engines.rooms.world import Dweller, MapProposal, Prop, RegionProposal, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map
 from aidm.engines.seam import Engine, Request, Written
 
@@ -52,7 +53,6 @@ MAP_UNWRITTEN = Fact(
     trace="the map could not be written",
     card="The map could not be written. You are still where you were.",
 )
-ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 
 
 class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[P, N, W, K]):
@@ -64,7 +64,7 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
     )
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
-        draft: MapDraft[N] = scenario.payload
+        draft: MapProposal[N] = scenario.payload
         check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
@@ -159,12 +159,12 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        def built(draft: MapDraft[N]) -> AnyScenario:
+        def built(draft: MapProposal[N]) -> AnyScenario:
             start = draft.places.get(draft.start)
             premise = "" if start is None else start.description
             return self.build_scenario(meta, packs, draft, source, premise)
 
-        model = MapDraft[self.member]
+        model = MapProposal[self.member]
         prompt = self.render_worldsmith(
             source,
             meta.scope,
@@ -204,7 +204,7 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         )
 
     def move_item(self, draft: Game[W], args: MoveItem, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).move_item(args.item_id, args.to)
+        return self.world_of(draft).move_item(args.item_id, args.to_id)
 
     def meanwhile(self, draft: Game[W], args: Meanwhile, _rng: Random) -> list[Fact]:
         """The ids resolve here; the world is handed what they name and changes its fields."""
@@ -212,30 +212,30 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         if not world.meanwhile_due:
             raise Refusal(NOTHING_OFFSCREEN)
         facts: list[Fact] = []
-        if args.dweller_id is not None and args.dweller_to is not None:
+        if args.dweller_id is not None and args.dweller_to_id is not None:
             npc = world.require_dweller(args.dweller_id)
-            facts.append(world.walk_offscreen(npc, world.offscreen_place(args.dweller_to)))
-        if args.item_id is not None and args.item_to is not None:
+            facts.append(world.walk_offscreen(npc, world.offscreen_place(args.dweller_to_id)))
+        if args.item_id is not None and args.item_to_id is not None:
             item = world.require_prop(args.item_id)
-            facts.append(world.drift_item(item, world.offscreen_place(args.item_to)))
-        if args.shut_from is not None and args.shut_to is not None:
-            start = world.require_place(args.shut_from)
-            facts.append(world.shut_way(start, world.require_place(args.shut_to)))
+            facts.append(world.drift_item(item, world.offscreen_place(args.item_to_id)))
+        if args.shut_from_id is not None and args.shut_to_id is not None:
+            start = world.require_place(args.shut_from_id)
+            facts.append(world.shut_way(start, world.require_place(args.shut_to_id)))
         facts.append(Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD))
         world.disarm()
         return facts
 
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
-    ) -> RegionDraft[N]:
+    ) -> RegionProposal[N]:
         world = self.world_of(draft)
-        model = RegionDraft[self.member]
+        model = RegionProposal[self.member]
         prompt = self.render_request(
             draft, intent=intent, guidance=self.guidance(draft.packs, opening=False), answer=model
         )
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
-    def install(self, draft: Game[W], extension: RegionDraft[N]) -> None:
+    def install(self, draft: Game[W], extension: RegionProposal[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
         self.world_of(draft).attach(extension, extension.start)
         draft.log[-1].recap = extension.recap

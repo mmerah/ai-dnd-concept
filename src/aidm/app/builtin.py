@@ -1,20 +1,14 @@
-import logging
-from asyncio import timeout
-from time import monotonic
 from typing import Literal
 
 from httpx import HTTPError, HTTPStatusError
 from pydantic import JsonValue
 
 from aidm.app.providers import post_bearer
-from aidm.app.spawn import RunResult, Tools, final_message
 from aidm.config import ProviderConfig, Role, RoleConfig
 from aidm.core.entities import Echoed, Loose, Refusal, parse_json
 from aidm.core.io import decode
 from aidm.core.model import AnyGame
-from aidm.core.tools import MasterTool, schema_of
-
-LOGGER = logging.getLogger(__name__)
+from aidm.core.tools import MasterTool, Tools, schema_of
 
 
 class _Function(Echoed):
@@ -49,26 +43,13 @@ class _Completion(Loose):
 
 async def run_builtin(
     role: Role, config: RoleConfig, provider: ProviderConfig, prompt: str, tools: Tools | None
-) -> RunResult:
+) -> tuple[str, int]:
     """Stateless: nothing is ever resumed, and a retry resends the whole prompt."""
-    started = monotonic()
     try:
-        async with timeout(config.timeout):
-            said, rounds = await _converse(role, config, provider, prompt, tools)
-    except TimeoutError:
-        raise Refusal(f"the {role} answered nothing in {config.timeout:.0f}s") from None
+        said, rounds = await _converse(role, config, provider, prompt, tools)
     except HTTPError as failed:
         raise Refusal(f"the {role}'s provider failed: {_detail(failed)}") from failed
-    LOGGER.info(
-        "%s answered: provider=%s model=%s effort=%s in %d rounds and %.1fs",
-        role,
-        config.provider,
-        config.model,
-        config.effort,
-        rounds,
-        monotonic() - started,
-    )
-    return RunResult(final_message(said), None)
+    return said, rounds
 
 
 async def _converse(

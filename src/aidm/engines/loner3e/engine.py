@@ -17,10 +17,12 @@ from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     CHANGE_TAGS,
+    DEFEAT_NOTE,
     DRIVE,
     RESTORE_LUCK,
     ROLL,
     SPEND_LUCK,
+    TWIST_NOTE,
     ChangeTags,
     Drive,
     RestoreLuck,
@@ -46,18 +48,6 @@ from aidm.engines.loner3e.worldsmith import (
     Loner3ePack,
 )
 from aidm.engines.scenes.engine import SceneEngine
-
-TWIST_NOTE = (
-    "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
-    "arriving. Develop it this turn. Say what it set in motion, what it costs, and what it "
-    "changes."
-)
-DEFEAT_NOTE = (
-    "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
-    "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
-    "lasting mark with `change_tags`, as a `condition`. Then let the story move on. They are "
-    "marked defeated and take no new luck exchange until `restore_luck` puts it behind them."
-)
 
 
 class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
@@ -171,17 +161,17 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         world.check_unnamed(*args.gained)
-        actor = world.require_living_here(args.entity_id)
+        actor = world.require_living_here(args.actor_id)
         return actor.change_tags(args.kind, args.gained, args.lost)
 
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         world.check_unnamed(args.goal, args.motive, args.nemesis)
-        actor = world.require_living_here(args.entity_id)
+        actor = world.require_living_here(args.actor_id)
         return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_living_here(args.entity_id)
+        actor = self.world_of(draft).require_living_here(args.actor_id)
         # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
         return actor.recover("the conflict is behind them")
 
@@ -190,7 +180,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
             raise Refusal("no selected pack spends luck")
         world = self.world_of(draft)
         world.check_unnamed(args.why)
-        actor = world.require_living_here(args.entity_id)
+        actor = world.require_living_here(args.actor_id)
         return actor.spend_luck(args.amount, args.why)
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
@@ -198,8 +188,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         world.check_unnamed(args.what, args.edge)
         actor = world.require_living_here(args.actor_id)
         opponent = None
-        if args.opponent_id is not None:
-            opponent = world.require_living_here(args.opponent_id)
+        if args.target_id is not None:
+            opponent = world.require_living_here(args.target_id)
         world.check_conflict(actor, opponent)
 
         chance_faces, risk_faces = args.faces()

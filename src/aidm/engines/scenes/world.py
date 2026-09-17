@@ -4,6 +4,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import (
+    Frozen,
     Mutable,
     Refusal,
     Slug,
@@ -14,24 +15,7 @@ from aidm.core.facts import Fact
 from aidm.core.prompt import lines_of, sentence
 from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
-from aidm.engines.scenes.tools import SceneDraft
-
-WAY_OFFERED = Fact(
-    trace=(
-        "this scene offers a way on. Ask the player what they want to pursue next — in the "
-        "fiction, naming what the scene left open, never as a list of choices. They may also "
-        "stay and keep playing here, so ask; do not push them out"
-    ),
-    told=True,
-)
-
-SCENE_LEFT = Fact(
-    trace=(
-        "the player has left this place; close the scene on their going and describe nothing "
-        "of where they arrive: the crossing is written next"
-    ),
-    told=True,
-)
+from aidm.engines.scenes.tools import WAY_OFFERED
 
 
 class SceneRun(Mutable):
@@ -42,6 +26,42 @@ class SceneRun(Mutable):
     situation: str = Field(min_length=1)
     here: list[Slug] = Field(default_factory=list)
     offered: bool = False
+
+
+class SceneProposal[C: Person](Frozen):
+    place: Slug = Field(description="Slug naming the place. Reuse it when the player returns here.")
+    title: str = Field(description="The scene's title, read by the player. Name nothing hidden.")
+    focus: str = Field(
+        default="",
+        description="What this scene is about, in one line the player reads. Name nothing "
+        "hidden. Empty when the situation says it all.",
+    )
+    situation: str = Field(
+        min_length=1,
+        description="What the player sees and knows on arrival. Hold nothing hidden here.",
+    )
+    present: tuple[str, ...] = Field(
+        default=(), description="Ids of who and what is in the scene now."
+    )
+    hidden: tuple[str, ...] = Field(default=(), description="Ids of what is hidden here.")
+    cast: dict[Slug, C] = Field(
+        default_factory=dict,
+        description="New people and things, each filed under its own id. A brief and a sheet "
+        "are read once the player meets that entry, so neither names what is still hidden.",
+    )
+    arc: str = Field(
+        default="",
+        description="The setup beyond this scene: pressures, motives, secrets, what can come. "
+        "The player never reads it, so what ties one hidden thing to another belongs here.",
+    )
+
+
+class NextProposal[C: Person](SceneProposal[C]):
+    recap: str = Field(
+        min_length=1,
+        description="One paragraph on the scene the player leaves: what they did, cost, "
+        "learned and missed.",
+    )
 
 
 class SceneWorld[C: Person](World[C, C]):
@@ -67,7 +87,7 @@ class SceneWorld[C: Person](World[C, C]):
         return self
 
     @classmethod
-    def opening(cls, draft: SceneDraft[C], player: C) -> Self:
+    def opening(cls, draft: SceneProposal[C], player: C) -> Self:
         """The player is added by code and never authored, so no scenario can claim their id."""
         cast, run = settled(draft, player, dict(draft.cast), ())
         return parse(cls, {"player": player, "cast": cast, "runs": [run], "arc": draft.arc})
@@ -220,7 +240,7 @@ class SceneWorld[C: Person](World[C, C]):
             },
         }
 
-    def apply_scene(self, draft: SceneDraft[C]) -> None:
+    def apply_scene(self, draft: SceneProposal[C]) -> None:
         self.cast, run = settled(draft, self.player, self.merged_cast(draft.cast), self.party)
         self.arc = draft.arc or self.arc
         self.runs.append(run)
@@ -232,7 +252,7 @@ class SceneWorld[C: Person](World[C, C]):
 
 
 def settled[C: Person](
-    draft: SceneDraft[C], player: Person, cast: dict[Slug, C], party: Sequence[Slug]
+    draft: SceneProposal[C], player: Person, cast: dict[Slug, C], party: Sequence[Slug]
 ) -> tuple[dict[Slug, C], SceneRun]:
     """Marks the present met and files the run, for a world that may not exist yet."""
     everyone: Mapping[Slug, Thing] = {player.id: player, **cast}

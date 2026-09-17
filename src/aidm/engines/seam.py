@@ -119,7 +119,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         world_of = self.world_of
         return (
             master_tool(
-                "reveal", REVEAL, Reveal, lambda d, a, _: world_of(d).reveal_hidden(a.entity_id)
+                "reveal", REVEAL, Reveal, lambda d, a, _: world_of(d).reveal_hidden(a.target_id)
             ),
             master_tool("kill", KILL, Kill, self.kill),
             master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
@@ -133,13 +133,13 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
 
     def kill(self, draft: Game[W], args: Kill, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).kill(args.entity_id)
+        return self.world_of(draft).kill(args.target_id)
 
     def join_party(self, draft: Game[W], args: JoinParty, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).join_party(args.entity_id)
+        return self.world_of(draft).join_party(args.target_id)
 
     def leave_party(self, draft: Game[W], args: LeaveParty, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).leave_party(args.entity_id)
+        return self.world_of(draft).leave_party(args.target_id)
 
     async def write_sheet(
         self, _draft: Game[W], _member: M, _terms: str, _worldsmith: WorldsmithAnswer, /
@@ -147,7 +147,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         raise ValueError(f"the {self.id!r} engine hires nobody")
 
     def hire(self, draft: Game[W], args: Hire, _rng: Random) -> list[Fact]:
-        member = self.world_of(draft).require_hireable(args.entity_id)
+        member = self.world_of(draft).require_hireable(args.target_id)
         draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
         trace = (
             f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
@@ -177,14 +177,14 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         self.packs = self.packs.installing(pack_id, pack)
 
     def pack_of(
-        self, head: PackHead, body: PackBody | None, *, name: str, source: str, license: str
+        self, head: PackHead, body: PackBody | None, *, name: str, origin: str, license: str
     ) -> K:
         """Every id the pack carries is made here, by code, from the labels the worldsmith wrote."""
         return parse(
             self.pack,
             {
                 "name": name,
-                "source": source,
+                "source": origin,
                 "license": license,
                 **head.pack_fields(),
                 **({} if body is None else body.model_dump()),
@@ -204,7 +204,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         """Head, then body; each checked by building the pack; nothing is written here."""
 
         def built(from_head: PackHead, from_body: PackBody | None) -> K:
-            return self.pack_of(from_head, from_body, name=name, source=origin, license=license)
+            return self.pack_of(from_head, from_body, name=name, origin=origin, license=license)
 
         def check_head(answer: PackHead) -> None:
             self.packs.check_addable(pack_id, built(answer, None))

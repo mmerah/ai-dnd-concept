@@ -71,7 +71,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
     state = await play_turn(
         table,
         "Hire Vessa to keep the corridor guards talking.",
-        tool_call("hire", entity_id=member_id, terms="Keep the corridor guards talking"),
+        tool_call("hire", target_id=member_id, terms="Keep the corridor guards talking"),
         narration="Vessa pockets the terms and falls in step behind Kael.",
     )
     world = state.payload

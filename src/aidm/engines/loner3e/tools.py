@@ -17,12 +17,23 @@ SPEND_LUCK = (
     "A character here spends luck on a cost the selected pack's SPECIAL RULES name, such as a "
     "spell."
 )
+TWIST_NOTE = (
+    "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
+    "arriving. Develop it this turn. Say what it set in motion, what it costs, and what it "
+    "changes."
+)
+DEFEAT_NOTE = (
+    "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
+    "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
+    "lasting mark with `change_tags`, as a `condition`. Then let the story move on. They are "
+    "marked defeated and take no new luck exchange until `restore_luck` puts it behind them."
+)
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
 class ChangeTags(Frozen):
-    entity_id: Slug = Field(description="Exact id of the player or someone here.")
+    actor_id: Slug = Field(description="Exact id of the player or someone here.")
     kind: TagKind = Field(
         description="`gear` for a thing taken or lost. `condition` for a lasting mark such as "
         "`Poisoned`."
@@ -40,7 +51,7 @@ class ChangeTags(Frozen):
 
 
 class Drive(Frozen):
-    entity_id: Slug = Field(description="Exact id of the player or a living character here.")
+    actor_id: Slug = Field(description="Exact id of the player or a living character here.")
     goal: str = Field(
         default="",
         description="What they now pursue, in one line. Empty keeps the current goal.",
@@ -58,11 +69,11 @@ class Drive(Frozen):
 
 
 class RestoreLuck(Frozen):
-    entity_id: Slug = Field(description="Exact id of the player or a character here.")
+    actor_id: Slug = Field(description="Exact id of the player or a character here.")
 
 
 class SpendLuck(Frozen):
-    entity_id: Slug = Field(description="Exact id of the player or a living character here.")
+    actor_id: Slug = Field(description="Exact id of the player or a living character here.")
     amount: int = Field(ge=1, description="The luck spent: the cost the SPECIAL RULES print.")
     why: str = Field(min_length=1, description="What it buys, in one line, read by the player.")
 
@@ -83,7 +94,7 @@ class Roll(Attempt):
         description="Tag or circumstance that sets the position, read by the player. Empty "
         "for neutral.",
     )
-    opponent_id: Slug | None = Field(
+    target_id: Slug | None = Field(
         default=None,
         description="Exact id of the character here whose endurance is worn down, for a contest "
         "run as luck exchanges. Null for one decisive question or a single key action, even "

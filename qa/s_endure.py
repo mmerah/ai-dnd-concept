@@ -12,12 +12,12 @@ WORK = Path(os.environ.get("QA_WORK", "/tmp/aidm-qa-work"))
 RUNS: dict[str, tuple[str, ...]] = {
     "whispering-vault": (
         '!roll what="Listen at the door" actor_id=player question="Is anyone there?"',
-        "!reveal entity_id=vault-map",
-        '!drive entity_id=mara goal="Finish the catalogue"',
-        "!change_tags entity_id=player kind=condition gained='[\"winded\"]'",
-        "!restore_luck entity_id=player",
+        "!reveal target_id=vault-map",
+        '!drive actor_id=mara goal="Finish the catalogue"',
+        "!change_tags actor_id=player kind=condition gained='[\"winded\"]'",
+        "!restore_luck actor_id=player",
         '!roll what="Force the lid" actor_id=player question="Does it lift?"',
-        "!change_tags entity_id=player kind=condition lost='[\"winded\"]'",
+        "!change_tags actor_id=player kind=condition lost='[\"winded\"]'",
         '!roll what="Read the seal" actor_id=player question="Does it name a year?"',
     ),
     "buried-keep": (
@@ -27,7 +27,7 @@ RUNS: dict[str, tuple[str, ...]] = {
         "!rest",
         '!roll what="Search the shelves" ability=erudite difficulty=10',
         "!move to_id=corridor",
-        "!meanwhile dweller_id=grix dweller_to=corridor",
+        "!meanwhile dweller_id=grix dweller_to_id=corridor",
         "!move to_id=entrance",
     ),
     "silent-relay": (

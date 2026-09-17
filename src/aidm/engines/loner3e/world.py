@@ -9,8 +9,7 @@ from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows, filled
 from aidm.engines.base import Gauge, Person, joined
-from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.world import SceneWorld
+from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -178,7 +177,7 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
 
 Loner3eGame = Game[Loner3eWorld]
 
-Loner3eScenario = Scenario[SceneDraft[Loner3eCast]]
+Loner3eScenario = Scenario[SceneProposal[Loner3eCast]]
 
 Loner3eCharacter = Character[Loner3eCast]
 

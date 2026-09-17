@@ -12,6 +12,7 @@ SPEND = "The actor pays credits for something that is not an item or a repair."
 TAKE_LEAD = "A hired member takes the lead after the player dies."
 SHIP_UPGRADE = "The player upgrades one ship function."
 DEFEND = "A carried item or a ship function breaks so a hit becomes a hindrance."
+DROP_ITEM = "The actor loses an item for good."
 ROLL = (
     "Call this when the outcome of an action matters. The engine picks the dice, "
     "rolls them, and reads the result."
@@ -79,7 +80,7 @@ class Spend(Frozen):
 
 
 class TakeLead(Frozen):
-    entity_id: Slug = Field(description="Exact id of the living hired member who takes the lead.")
+    actor_id: Slug = Field(description="Exact id of the living hired member who takes the lead.")
 
 
 class ShipUpgrade(Frozen):
@@ -96,6 +97,17 @@ class Defend(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
+class DropItem(Frozen):
+    item_id: Slug = Field(description="Exact id of an item the actor carries.")
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
+
+
+class AskWorld(Frozen):
+    question: str = Field(
+        min_length=1, description="A closed question about the world where nobody is acting."
+    )
+
+
 class Staked(Frozen):
     risk: str = Field(
         default="",
@@ -103,13 +115,16 @@ class Staked(Frozen):
         "Empty when they are in no danger.",
     )
     deadly: bool = Field(default=False, description=DEADLY.format(who="actor"))
-    defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="actor"))
+    defend_with_id: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="actor"))
     hindrance: str = Field(default="", description=HINDRANCE)
 
     @model_validator(mode="after")
     def _defend_fields(self) -> Self:
         check_risk(
-            self.risk, deadly=self.deadly, defend_with=self.defend_with, hindrance=self.hindrance
+            self.risk,
+            deadly=self.deadly,
+            defend_with_id=self.defend_with_id,
+            hindrance=self.hindrance,
         )
         return self
 
@@ -123,7 +138,7 @@ class Helper(Staked):
         "Empty when helping puts them in no danger.",
     )
     deadly: bool = Field(default=False, description=DEADLY.format(who="helper"))
-    defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
+    defend_with_id: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
 
 
 class Roll(Staked, Attempt):
@@ -174,10 +189,10 @@ class Job(Frozen):
         return self
 
 
-def check_risk(risk: str, *, deadly: bool, defend_with: Slug | None, hindrance: str) -> None:
+def check_risk(risk: str, *, deadly: bool, defend_with_id: Slug | None, hindrance: str) -> None:
     if deadly and not risk:
         raise ValueError("deadly needs the risk it names")
-    if defend_with is not None and not risk:
-        raise ValueError("defend_with needs the risk it shields against")
-    if hindrance and defend_with is None:
-        raise ValueError("hindrance needs the defend_with that earns it")
+    if defend_with_id is not None and not risk:
+        raise ValueError("defend_with_id needs the risk it shields against")
+    if hindrance and defend_with_id is None:
+        raise ValueError("hindrance needs the defend_with_id that earns it")

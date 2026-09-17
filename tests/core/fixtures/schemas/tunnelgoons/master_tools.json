@@ -5,13 +5,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of something hidden here.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -22,13 +22,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of who here died.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -39,13 +39,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of who is joining.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -56,13 +56,13 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of the party member leaving.",
           "type": "string"
         }
       },
       "required": [
-        "entity_id"
+        "target_id"
       ],
       "type": "object"
     }
@@ -73,7 +73,7 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "entity_id": {
+        "target_id": {
           "description": "Exact id of who here signs on.",
           "type": "string"
         },
@@ -83,7 +83,7 @@
         }
       },
       "required": [
-        "entity_id",
+        "target_id",
         "terms"
       ],
       "type": "object"
@@ -99,14 +99,14 @@
           "description": "Exact id of an item here or carried.",
           "type": "string"
         },
-        "to": {
+        "to_id": {
           "description": "Exact id of the player, an npc here, or this place.",
           "type": "string"
         }
       },
       "required": [
         "item_id",
-        "to"
+        "to_id"
       ],
       "type": "object"
     }
@@ -167,7 +167,7 @@
           "default": null,
           "description": "Exact id of a dweller elsewhere who walks to a new place."
         },
-        "dweller_to": {
+        "dweller_to_id": {
           "type": [
             "string",
             "null"
@@ -183,7 +183,7 @@
           "default": null,
           "description": "Exact id of a loose item elsewhere that moves to a new place."
         },
-        "item_to": {
+        "item_to_id": {
           "type": [
             "string",
             "null"
@@ -191,7 +191,7 @@
           "default": null,
           "description": "Exact id of the place the item moves to."
         },
-        "shut_from": {
+        "shut_from_id": {
           "type": [
             "string",
             "null"
@@ -199,7 +199,7 @@
           "default": null,
           "description": "Exact id of one end of the way that shuts."
         },
-        "shut_to": {
+        "shut_to_id": {
           "type": [
             "string",
             "null"
@@ -239,7 +239,7 @@
           ],
           "type": "string"
         },
-        "items": {
+        "item_ids": {
           "default": [],
           "description": "Exact ids of items the actor carries that plainly help.",
           "items": {
@@ -254,9 +254,9 @@
             "null"
           ],
           "default": null,
-          "description": "Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `against` is set."
+          "description": "Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `target_id` is set."
         },
-        "against": {
+        "target_id": {
           "type": [
             "string",
             "null"

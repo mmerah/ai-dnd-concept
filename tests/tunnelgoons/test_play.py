@@ -62,7 +62,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
             "roll",
             what="Fight the crawler",
             ability="brute",
-            against="crawler",
+            target_id="crawler",
             dangerous=True,
         ),
     )

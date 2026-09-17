@@ -191,8 +191,8 @@ def decode(raw: str) -> JsonValue:
         raise Refusal(f"not JSON: {broken}") from broken
 
 
-def parse_unique[T: BaseModel](model: type[T], raw: str) -> T:
-    """The decode pass rejects a doubled key; validation then reads the text, not its result."""
+def parse_text[T: BaseModel](model: type[T], raw: str) -> T:
+    """The decode pass rejects a doubled key; a caller that already decoded uses `parse_json`."""
     decode(raw)
     return parse_json(model, raw)
 
@@ -206,7 +206,7 @@ def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
 
 
 def read_model[T: BaseModel](path: Path, model: type[T]) -> T:
-    return parse_unique(model, _read_text(path))
+    return parse_text(model, _read_text(path))
 
 
 def _read_text(path: Path) -> str:
