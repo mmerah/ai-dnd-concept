@@ -54,6 +54,8 @@ overrides, every `None` branch, `STARTING_ITEM_LIST`.
 
 **Status.** Accepted, option (a): replace `G` by `W` only.
 
+**Measured (Opus implemented it in a worktree, all four checks clean).** src −6, tests −3, net **−9** (claimed −12). 15 min. Two test engines subclassed `Game[...]` and had to become aliases; one test lambda became a `def` once `begin` returned `Game[W]`.
+
 **Plain words.** Every engine spells the same five lines to tell the type checker what its state is.
 One parameter carries all of it.
 
@@ -157,7 +159,9 @@ one entry point. Delete everything listed in "Now" except `select_packs`.
 
 ## 5. Lift the view and authoring builders out of the two families
 
-**Status.** Accepted.
+**Status.** Accepted, then measured at +36 lines with a panel-order change; awaiting re-decision.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+36** (deleted −115 from the families, added +161: shared builders in `seam.py` +78, `World` hooks +35). 30 min. Two surprises: `premise_of` cannot be typed without `Any` under strict, so each family keeps a ~10-line `author`; and one `family_panels` hook cannot reproduce both panel orders, so the room page now shows Carrying and Ways out above Party and Also here. **Re-decide**: the duplication is gone, but it costs lines and changes the room page.
 
 **Plain words.** The scene family and the room family each build the narrator's view, the player's
 page and the opening prompt with the same code, only the field names differ. Build them once.
@@ -187,7 +191,9 @@ DecisionOption | None` (MOVE_ON if offered / MORE_MAP if frontier == 0), `openin
 
 ## 6. State owns its own mutation
 
-**Status.** Accepted.
+**Status.** Accepted, then measured at +16 lines; awaiting re-decision.
+
+**Measured (Opus implemented it in a worktree, all four checks clean).** src **+16** (claimed −12 plus ~20 moved). 15 min. `Game.close` needs its own six-line signature; `require_present` costs about what the branch it replaced cost. No test pinned the changed refusal. **Re-decide**: the ownership rule is the only win.
 
 **Plain words.** Four places change the game's log or the party from outside the object that holds
 them. Move each onto its owner, as CLAUDE.md says.
@@ -613,10 +619,3 @@ One line per concept: where, verdict, which proposal touches it.
 | `tests/support` harness | tests | dedupe (14) |
 | qa harness | qa/ | keep; decision (14) |
 | `scripts/srd_packs.py` | scripts, tests | decision (14) |
-
-
-**Measured (Opus implemented it in a worktree, all four checks clean).** src −6, tests −3, net **−9** (claimed −12). 15 min. Two test engines subclassed `Game[...]` and had to become aliases; one test lambda became a `def` once `begin` returned `Game[W]`.
-
-**Measured (Opus implemented it in a worktree, all four checks clean).** src **+36** (deleted −115 from the families, added +161: shared builders in `seam.py` +78, `World` hooks +35). 30 min. Two surprises: `premise_of` cannot be typed without `Any` under strict, so each family keeps a ~10-line `author`; and one `family_panels` hook cannot reproduce both panel orders, so the room page now shows Carrying and Ways out above Party and Also here. **Re-decide**: the duplication is gone, but it costs lines and changes the room page.
-
-**Measured (Opus implemented it in a worktree, all four checks clean).** src **+16** (claimed −12 plus ~20 moved). 15 min. `Game.close` needs its own six-line signature; `require_present` costs about what the branch it replaced cost. No test pinned the changed refusal. **Re-decide**: the ownership rule is the only win.
