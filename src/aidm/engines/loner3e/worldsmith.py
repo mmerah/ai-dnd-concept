@@ -2,10 +2,11 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Slug
+from aidm.core.entities import Frozen, Slug
 from aidm.core.play import DecisionOption
+from aidm.core.prompt import Sections, section_if
 from aidm.engines.loner3e.world import DIE_FACE
-from aidm.engines.scenes.packs import ScenePack
+from aidm.engines.packs import Pack
 
 AUTHORING = (
     "LONER 3E AUTHORING\n"
@@ -23,15 +24,50 @@ AUTHORING = (
     "Loner tags are freeform descriptions. Use selected pack entries when they fit. Invent "
     "scenario-specific tags when they are clearer. Only a pack tag carries a meaning the game "
     "master can look up. An invented tag that does not say what it does needs one sentence in "
-    "that character's `brief`. Positions are judged from it."
+    "that character's `brief`. Positions are judged from it. "
+    "A pack's factions, people and monsters are written to be used: file one into `cast` under "
+    "a new id, with its tags and drives copied and a `brief` for this scene, and size its luck "
+    "by the rule above. Names come from the pack's name lists when the setting has them."
 )
 
 
-class Pack(ScenePack):
+class Loner3eBlock(Frozen):
+    """A faction, an NPC or a monster as the SRD prints it; the worldsmith copies it into cast."""
+
+    name: str = Field(min_length=1)
+    concept: str = Field(min_length=1)
+    skills: tuple[str, ...] = Field(min_length=1)
+    frailties: tuple[str, ...] = Field(min_length=1)
+    gear: tuple[str, ...] = ()
+    goal: str = ""
+    motive: str = ""
+    nemesis: str = ""
+
+    @property
+    def line(self) -> str:
+        parts = [f"{self.name} — {self.concept}"]
+        for key, value in (
+            ("skills", ", ".join(self.skills)),
+            ("frailties", ", ".join(self.frailties)),
+            ("gear", ", ".join(self.gear)),
+            ("goal", self.goal),
+            ("motive", self.motive),
+            ("nemesis", self.nemesis),
+        ):
+            if value:
+                parts.append(f"{key}: {value}")
+        return "; ".join(parts)
+
+
+class Loner3ePack(Pack):
     concepts: tuple[DecisionOption, ...] = Field(min_length=1)
     skills: tuple[DecisionOption, ...] = Field(min_length=1)
     frailties: tuple[DecisionOption, ...] = Field(min_length=1)
     gear: tuple[DecisionOption, ...] = Field(min_length=1)
+    spends_luck: bool = False  # AP01: `rules` spends Luck, so `spend_luck` is allowed
+    factions: tuple[Loner3eBlock, ...] = ()
+    npcs: tuple[Loner3eBlock, ...] = ()
+    monsters: tuple[Loner3eBlock, ...] = ()
     twist_subjects: tuple[str, ...] | None = None
     twist_actions: tuple[str, ...] | None = None
 
@@ -47,4 +83,22 @@ class Pack(ScenePack):
     def defined_ids(self) -> tuple[Slug, ...]:
         return tuple(
             option.id for option in (*self.concepts, *self.skills, *self.frailties, *self.gear)
+        )
+
+    def sections(self, *, opening: bool) -> Sections:
+        tags = "\n".join(
+            f"{kind}: {', '.join(option.label for option in options)}"
+            for kind, options in (
+                ("concepts", self.concepts),
+                ("skills", self.skills),
+                ("frailties", self.frailties),
+                ("gear", self.gear),
+            )
+        )
+        return (
+            *super().sections(opening=opening),
+            ("TRAIT TAGS", tags),
+            *section_if("FACTIONS", "\n".join(f"- {block.line}" for block in self.factions)),
+            *section_if("PEOPLE", "\n".join(f"- {block.line}" for block in self.npcs)),
+            *section_if("MONSTERS", "\n".join(f"- {block.line}" for block in self.monsters)),
         )

@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Refusal, Slug, check_unique
 from aidm.core.play import DecisionOption
-from aidm.engines.scenes.packs import ScenePack
+from aidm.engines.packs import Pack as SettingPack
 from aidm.engines.tools import HIRED, UNWRITTEN_CAST
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
@@ -56,7 +56,7 @@ class Origin(DecisionOption):
     choice: tuple[Body, ...] = ()
 
 
-class Pack(ScenePack):
+class Pack(SettingPack):
     skills: tuple[DecisionOption, ...] = Field(min_length=17, max_length=17)
     specialties: tuple[Specialty, ...]
     origins: tuple[Origin, ...]

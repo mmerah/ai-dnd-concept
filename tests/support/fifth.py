@@ -6,8 +6,8 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.core.prompt import Sections
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.packs import Pack
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -34,17 +34,18 @@ class FifthCharacter(Character[Person]):
     pass
 
 
-class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
+class FifthEngine(SceneEngine[Person, FifthGame, Pack]):
     """A fifth scene engine: its state model, its creation, its sections."""
 
     id = FIFTH
     title = "FIFTH"
+    authoring = "Write the taproom plainly."
     art_style = "Ink."
     game = FifthGame
     scenario = FifthScenario
     character = FifthCharacter
     member = Person
-    pack = ScenePack
+    pack = Pack
     world = FifthState
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
@@ -57,9 +58,6 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
             packs=PackSelection(ids=("srd",)),
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
-
-    def guidance(self, _selection: PackSelection | None) -> str:
-        return "Write the taproom plainly."
 
     def master_sections(self, state: FifthGame) -> Sections:
         return (("SCENE", self.world_of(state).run.title),)

@@ -5,6 +5,7 @@ import pytest
 
 import aidm.app.spawn as spawn
 from aidm.app.spawn import (
+    PROMPT_MAX_BYTES,
     ClaudeDriver,
     CodexDriver,
     RunResult,
@@ -33,6 +34,21 @@ class _NoSuchBinary:
     def read_result(self, output: str) -> RunResult:
         del output
         raise AssertionError("exec fails before there is any output to read")
+
+
+@dataclass(frozen=True, slots=True)
+class _NoCommandBuilder:
+    secrets: tuple[str, ...] = ()
+
+    def command(
+        self, role: Role, config: RoleConfig, session: str | None, url: str
+    ) -> tuple[str, ...]:
+        del role, config, session, url
+        raise AssertionError("no command is built for a prompt over the cap")
+
+    def read_result(self, output: str) -> RunResult:
+        del output
+        raise AssertionError("no command is built for a prompt over the cap")
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +141,15 @@ async def test_a_missing_cli_binary_is_a_refusal_not_a_crash() -> None:
 
     with pytest.raises(Refusal, match="could not be started"):
         _ = await run_cli("master", config, _NoSuchBinary(), 1, "PLAY", None)
+
+
+async def test_a_prompt_over_the_cap_is_refused_before_any_command_is_built() -> None:
+    config = RoleConfig(model="opus", effort="high")
+
+    with pytest.raises(Refusal, match="takes fewer than 131072"):
+        _ = await run_cli(
+            "worldsmith", config, _NoCommandBuilder(), 1, "x" * PROMPT_MAX_BYTES, None
+        )
 
 
 async def test_a_crashed_roles_raw_output_never_reaches_the_player(

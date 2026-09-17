@@ -44,6 +44,14 @@ S. John Ross for [Risus](https://www.risusrpg.com/); the Adventure Maker setup i
 - Eleven more adventure packs at
   `https://lonersrd.zotiquestgames.com/adventure_packs/APnn_<name>.html`, `AP01_fantasy` through
   `AP12_cyberpunk`; 2e copies live under `adventure_packs/legacy/`.
+- `scripts/srd_packs.py` builds an adventure pack's JSON from the SRD's own markdown page, run as
+  `uv run python scripts/srd_packs.py tests/fixtures/srd/AP01_fantasy.md`; `ap01-fantasy.json`
+  is its output.
+  `tests/fixtures/srd/AP01_fantasy.md` is that page, copied unchanged — CC BY-SA 4.0, (c) Roberto
+  Bisceglie / Zotiquest Games.
+- The four trait tables' ids are stable across runs of the converter: the same page converts to
+  the same ids every time, and a label with a diacritic, such as `Naïve`, folds to its plain form,
+  `naive`.
 
 **Open question, carried from `README.md`:** the AP01 page carries no CC declaration at all — only
 the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0.
@@ -93,6 +101,10 @@ a rule of this one.
    travels with the player, and the party follows into the next scene. Post-game growth is the
    SRD's own step, written with `change_tags` and `drive` when the adventure closes: no advance is
    counted or owed.
+6. **Trait labels carry no meaning of their own.** The SRD prints its d66 tables bare; a
+   converted pack's `concept`, `skill`, `frailty` and `gear` labels are exactly what it prints,
+   with no rules meaning attached. The glossary the game master reads (`pack_meanings`) lists only
+   the entries that do carry a `detail`, which the SRD's own tables never do.
 
 ## Readings where the SRD is open
 

@@ -5,7 +5,7 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, picked
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter, PackSelection, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Rows
@@ -62,6 +62,7 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
+    authoring = AUTHORING
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
     meanwhile_turns = 4
     directory = Path(__file__).parent
@@ -74,9 +75,6 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
 
     def world_of(self, state: TunnelGoonsGame) -> TunnelGoonsWorld:
         return state.payload
-
-    def guidance(self, _selection: PackSelection | None) -> str:
-        return AUTHORING
 
     async def write_sheet(
         self, draft: TunnelGoonsGame, member: Npc, terms: str, worldsmith: WorldsmithAnswer, /

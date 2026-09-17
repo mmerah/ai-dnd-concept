@@ -173,7 +173,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
 
         model = MapDraft[self.member]
         prompt = self.render_worldsmith(
-            source, meta.scope, self.opening_sections, MAP_ASK, self.guidance(None), model
+            source, meta.scope, self.opening_sections, MAP_ASK, self.authoring, model
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
@@ -222,9 +222,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
     ) -> RegionDraft[N]:
         world = self.world_of(draft)
         model = RegionDraft[self.member]
-        prompt = self.render_request(
-            draft, intent=intent, guidance=self.guidance(None), answer=model
-        )
+        prompt = self.render_request(draft, intent=intent, guidance=self.authoring, answer=model)
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
     def install(self, draft: G, extension: RegionDraft[N]) -> None:

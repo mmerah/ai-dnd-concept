@@ -14,7 +14,7 @@ from aidm.core.creation import (
 )
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter, PackSelection, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
@@ -88,6 +88,7 @@ class Helping(NamedTuple):
 class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
+    authoring = AUTHORING
     art_style = (
         "Clean science-fiction illustration: hard light, neon on steel, lived-in "
         "technology, no text or lettering."
@@ -250,10 +251,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
-
-    def guidance(self, _selection: PackSelection | None) -> str:
-        """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
-        return AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
         world = self.world_of(state)

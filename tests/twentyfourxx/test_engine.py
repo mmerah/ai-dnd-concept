@@ -4,7 +4,7 @@ from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
 from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
-from aidm.engines.scenes.packs import SRD_PACK
+from aidm.engines.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import Gear, TwentyfourxxGame
 
