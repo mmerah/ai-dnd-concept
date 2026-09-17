@@ -28,20 +28,26 @@ Decided on 2026-09-17 and not re-opened by any phase:
 - The worldsmith reads setting, names, cast blocks and locations every time, seeds at the opening
   only, trait labels only and never their details; the master reads the rules prose and the
   glossary (10). Two packs plus a 48 KB source sit near the 131,072-byte argv cap, so the
-  rendering rule is a constraint, not a preference.
+  rendering rule is a constraint, not a preference, and a game plays the SRD and at most two
+  supplements.
 
 Not in this plan: twist-table authoring (the SRD's own 12 cells stay on `srd.json`); runtime
 fetch of the SRD site; pack versioning or save migration (a missing pack leaves its saves
 unresumable, as a missing scenario does); a delete button (the file is the player's); shipped
 24XX or Tunnel Goons packs (neither SRD publishes any); a typed spell table (one pack has one,
-and `spend_luck` takes an amount).
+and `spend_luck` takes an amount); a seed picker as a select (a "Roll a seed" button does the
+same with no list).
 
 Measured before any step: `src` **9,464** Python lines, `tests` **11,406**, `qa` **2,004**, at
 `b40e50a`. Every anchor below is as of that commit. An SRD pack page is about 26 KB of markdown
 (AP01 26,805 bytes, AP12 26,495, AP06 24,089); the AP01 sections weigh roughly: setting 1.7 KB,
 traits 6.9 KB (2.5 KB as labels alone), names 1.3 KB, rules with spells 4.3 KB, cast 7.5 KB,
-locations 2.6 KB, seeds 3.8 KB. Line targets below are estimates for additive work, given as a
-range; a phase that lands outside its range by more than 20% stops and says why.
+locations 2.6 KB, seeds 3.8 KB. In play a pack renders to about 15 KB; with the SRD pack, a
+48 KB source, the role text, the schema and a long history the worldsmith prompt holds two
+supplements and not three, which is where the cap of two comes from. Line targets below are
+estimates for additive work, given as a range; a phase that lands outside its range by more than
+20% stops and says why. The plan was reviewed adversarially once before phase 1; the shapes and
+the phase split below are the reviewed ones.
 
 ## How to work
 
@@ -69,11 +75,14 @@ uv run basedpyright
    find scripts -name '*.py' | xargs cat | wc -l
    ```
 4. Every line target is a count after `uv run ruff format`.
-5. Golden files live in `tests/core/fixtures/`. Phase 1 changes what the worldsmith prompt holds
-   for `loner3e`, so `tests/core/fixtures/prompts/loner3e/worldsmith.txt` is regenerated once, in
-   phase 1 step 12, and read by a human before it is staged; phase 4 does the same for
-   `twentyfourxx`. No other phase regenerates a golden; a changed golden elsewhere is a bug in
-   the step that changed it.
+5. Golden files live in `tests/core/fixtures/`. Exactly these are regenerated, each once, in the
+   phase named, and read by a human before they are staged: phase 2,
+   `prompts/loner3e/worldsmith.txt` (the pack renders as sections); phase 3,
+   `schemas/loner3e/master_tools.json` (`spend_luck` joins the tools); phase 5,
+   `prompts/twentyfourxx/worldsmith.txt` and `prompts/tunnelgoons/worldsmith.txt` (the packs
+   reach both). Phase 1 leaves every golden byte-identical, which is its proof that the
+   `srd`-only prompt did not move. A changed golden anywhere else is a bug in the step that
+   changed it.
 6. One commit per phase, full check green, reviewed adversarially against the staged diff first.
    Before the commit, run `uv sync --all-groups --locked` once and then the four commands on the
    staged tree. `ruff format` also formats the Python fences in this file, so run
@@ -81,14 +90,15 @@ uv run basedpyright
    phase: `uv run aidm`, open each shipped scenario, take a turn.
 7. Delete, do not preserve. No compatibility path reads an old pack, scenario or character file.
    The three shipped scenarios and `characters/kael` are re-checked at the end of phase 1 and
-   phase 4; a file the new shape refuses is rewritten by hand in that phase, never bridged.
+   phase 5; a file the new shape refuses is rewritten by hand in that phase, never bridged.
 8. The standing limits hold. Imports flow `core <- engines <- turn <- app <- ui` with no cycles,
-   and no family imports a sibling family. No `Any` beyond the `Game[P]` bound. Every
-   `__init__.py` stays empty. Tests never start a process and never reach the network; the
-   converter is run by hand and tested on a checked-in fixture. `Refusal` stays the one
-   message-bearing exception. Only code changes state or rolls dice. The narrator reads revealed
-   facts only. Module layout is imports, constants, classes, public functions, private functions.
-   A comment is one line, only where the reason is not visible in the code.
+   and no family imports a sibling family. No `Any` beyond the `Game[P]` bound and, from phase 5,
+   the `Pack` bound of `AnyEngine`, which is `Any` for the same reason: `PackSet[K]` is
+   invariant. Every `__init__.py` stays empty. Tests never start a process and never reach the
+   network; the converter is run by hand and tested on a checked-in fixture. `Refusal` stays the
+   one message-bearing exception. Only code changes state or rolls dice. The narrator reads
+   revealed facts only. Module layout is imports, constants, classes, public functions, private
+   functions. A comment is one line, only where the reason is not visible in the code.
 9. Names shown to a role or the player are `id`, `label`, `detail`; a pack file keeps `name`.
    A cast block's `name` is the SRD's, and it is data the worldsmith copies, so it stays `name`.
 
@@ -99,6 +109,9 @@ Every phase refers to these. A phase that needs to change one says so in its own
 `src/aidm/engines/packs.py`, new in phase 1, family-neutral, imported by both families:
 
 ```python
+MAX_SUPPLEMENTS = 2  # two packs in play beside the source fill the worldsmith's command line
+
+
 class Names(Frozen):
     female: tuple[str, ...] = ()
     male: tuple[str, ...] = ()
@@ -144,26 +157,37 @@ class PackSet[K: Pack]:
 
     @property
     def installed(self) -> Mapping[Slug, K]: ...  # shipped then written
+    def srd(self) -> K: ...  # `ValueError(f"the {engine!r} engine ships no 'srd' pack")` on a miss
+    def require(self, selection: PackSelection | None) -> PackSelection: ...  # as today
     def supplements(self) -> tuple[tuple[Slug, K], ...]: ...  # every installed pack but `srd`
     def chosen(self, selection: PackSelection | None) -> tuple[K, ...]: ...  # `()` for None
-    def select(self, selection: PackSelection) -> PackSelection: ...  # installed, no shared ids
+    def select(self, selection: PackSelection) -> PackSelection: ...
     def check_addable(self, pack_id: Slug, pack: K) -> None: ...  # trial-select beside `srd` if any
     def installing(
         self, pack_id: Slug, pack: K
     ) -> "PackSet[K]": ...  # a new set, `written` updated
     def guidance(self, selection: PackSelection | None, *, opening: bool) -> str: ...
+    def rules_sections(self, selection: PackSelection | None) -> Sections: ...  # for the master
 
 
 def read_packs[P: Pack](
-    engine: EngineId, shipped: Path, written: Path, model: type[P]
+    engine: EngineId, shipped: Path, written: Path | None, model: type[P]
 ) -> PackSet[P]:
-    """A missing directory is empty; a written file that fails to parse is logged and skipped."""
+    """`written` None or missing is empty; a written file that fails to parse is logged and skipped."""
 ```
 
-`select` refuses an uninstalled id and two selected packs defining one id; it no longer requires
-`srd`. `SceneEngine` alone requires `srd`, in `__init__` and `validate`. `PackSet.guidance`
-renders `sections(opening=...)` of every chosen pack under one heading per pack, never
-`json.dumps`.
+`select` refuses an uninstalled id, two selected packs defining one id, and more than
+`MAX_SUPPLEMENTS` ids beyond `srd` ("a game plays at most two packs beside the SRD"); it no
+longer requires `srd`. `SceneEngine` alone requires `srd`, in `__init__` and `validate`.
+`PackSet.guidance` renders `sections(opening=...)` of every chosen pack under `PACK: <name>`,
+never `json.dumps`, and is `""` for `None`. `rules_sections` is one `("SPECIAL RULES: <name>",
+rules)` per chosen pack whose `rules` is not empty.
+
+`src/aidm/engines/seam.py`, phase 1: `Engine.authoring: str` is declared beside `title`, each
+engine's `AUTHORING` constant; `guidance(self, selection, /, *, opening: bool) -> str` becomes
+concrete on the seam, `f"{self.authoring}\n\n{self.packs.guidance(selection, opening=opening)}"`
+with the trailing blank dropped when the pack text is empty. `SceneEngine.guidance` overrides only
+to `require(selection)` first. The three engines' own `guidance` methods go.
 
 `src/aidm/engines/loner3e/worldsmith.py`, phase 1:
 
@@ -197,9 +221,9 @@ class Loner3ePack(Pack):
 Its `sections` adds `TRAIT TAGS` (four lines of labels joined by `, `, no details) and one
 section each for `FACTIONS`, `PEOPLE` and `MONSTERS` (blocks as `name — concept; skills: …;
 frailties: …; gear: …; goal: …; motive: …; nemesis: …`, empty fields dropped). The master reads
-`rules` from `master_sections`, never the worldsmith.
+`rules` through `rules_sections`, never the worldsmith.
 
-`src/aidm/engines/twentyfourxx/worldsmith.py`, phase 4:
+`src/aidm/engines/twentyfourxx/worldsmith.py`, phase 5:
 
 ```python
 class TwentyfourxxBlock(Frozen):
@@ -220,7 +244,7 @@ class TwentyfourxxPack(Pack):
     hostiles: tuple[TwentyfourxxBlock, ...] = ()
 ```
 
-`src/aidm/engines/tunnelgoons/worldsmith.py`, phase 4:
+`src/aidm/engines/tunnelgoons/worldsmith.py`, phase 5:
 
 ```python
 class TunnelGoonsBlock(Frozen):
@@ -236,7 +260,7 @@ class TunnelGoonsPack(Pack):
     monsters: tuple[TunnelGoonsBlock, ...] = ()
 ```
 
-Authoring drafts, phase 6, one pair per engine, no `id`, no `name`, no `source`, no `license`:
+Authoring drafts, phase 7, one pair per engine, no `id`, no `name`, no `source`, no `license`:
 
 ```python
 class Labelled(Frozen):  # engines/packs.py
@@ -261,107 +285,150 @@ class PackBody(Frozen):  # engines/packs.py; an engine subclasses it with its bl
 Tunnel Goons follow the same pattern with their own tables and blocks. `Engine.pack_of(head,
 body, *, name, source, license) -> K` builds the pack, making ids with `slug(label, taken)`.
 
-## Phase 1: the whole pack, and AP01 complete
+## Phase 1: the whole pack
 
 The base pack moves out of `engines/scenes/` and grows the setting kit. Loner's pack takes the
 kit, the cast blocks and the magic flag. The worldsmith prompt renders sections, not JSON, and
-never more than the cap allows. A converter turns the SRD's markdown into `ap01-fantasy.json`,
-whole.
+never more than the cap allows. No pack file changes yet: `srd.json` and `ap01-fantasy.json`
+parse as they are, every field new to them defaulted, and every golden stays byte-identical.
 
-Target: `src` about **9,760**, within 9,700 to 9,840 (`engines/packs.py` about 150, `scenes/packs.py`
-minus 69, `loner3e/worldsmith.py` plus 90, `loner3e/engine.py` plus 20, `spawn.py` plus 6).
-`tests` about **11,620**, within 11,560 to 11,700. `scripts` about **220**. About a day and a
-half.
+Target: `src` about **9,700**, within 9,640 to 9,780 (`engines/packs.py` about 170,
+`scenes/packs.py` minus 69, `loner3e/worldsmith.py` plus 80, `seam.py` plus 10, three `guidance`
+methods minus 12, `spawn.py` plus 6). `tests` about **11,520**, within 11,470 to 11,580. About
+a day.
 
 ### Steps
 
-1. Create `src/aidm/engines/packs.py` with `Names`, `Location`, `Pack`, `PackSet` and
-   `read_packs` as in "The shapes, once". `SRD_PACK: Slug = "srd"` moves here from
-   `src/aidm/engines/scenes/packs.py:12`. `read_packs` reads `shipped` then `written`, both
-   optional directories; a written file whose parse raises `Refusal`, or whose stem is a shipped
-   id, is logged with `LOGGER.warning` and skipped, as `Library.read_scenarios`
-   (`src/aidm/core/io.py:73-87`) skips a scenario. `Pack.kit_sections` renders `SETTING`,
-   `NAMES` (four lines, `female: …`, `male: …`, `surnames: …`, `nicknames: …`, empty ones
-   dropped), `LOCATIONS` (`- label — detail` and `  encounters: …` when given) and, when
-   `opening`, `ADVENTURE SEEDS` (`- seed` lines). `PackSet.guidance` joins each chosen pack's
-   `sections` under `PACK: <name>`. Delete `src/aidm/engines/scenes/packs.py`.
+1. Create `src/aidm/engines/packs.py` with `MAX_SUPPLEMENTS`, `Names`, `Location`, `Pack`,
+   `PackSet` and `read_packs` as in "The shapes, once". `SRD_PACK: Slug = "srd"` moves here from
+   `src/aidm/engines/scenes/packs.py:12`. `read_packs` reads `shipped` then `written`; a written
+   file whose parse raises `Refusal`, or whose stem is a shipped id, is logged with
+   `LOGGER.warning` and skipped, as `Library.read_scenarios` (`src/aidm/core/io.py:73-87`) skips
+   a scenario. `Pack.kit_sections` renders `SETTING`, `NAMES` (four lines, `female: …`,
+   `male: …`, `surnames: …`, `nicknames: …`, empty ones dropped), `LOCATIONS` (`- label — detail`
+   and `  encounters: …` when given) and, when `opening`, `ADVENTURE SEEDS` (`- seed` lines).
+   Delete `src/aidm/engines/scenes/packs.py`. Repoint every importer of `ScenePack`:
+   `src/aidm/engines/twentyfourxx/worldsmith.py:8,59` (the class keeps its fields until phase 5;
+   only its base changes to `Pack`) and `tests/support/fifth.py:10,37,47`.
 2. `src/aidm/engines/scenes/engine.py`: import from `aidm.engines.packs` (`:30`). `__init__`
-   (`:91-93`) becomes `self.packs = read_packs(self.id, self.directory / "packs", Path(), self.pack)`
-   and then `self.packs.srd()`, which raises `ValueError` when no shipped `srd` exists (the
-   check `read_packs` used to make, `scenes/packs.py:66-67`). `validate` (`:106-108`) adds
+   (`:91-93`) becomes `self.packs = read_packs(self.id, self.directory / "packs", None, self.pack)`
+   followed by `self.packs.srd()`, which raises `ValueError` when no shipped `srd` exists (the
+   check `read_packs` made at `scenes/packs.py:66-67`). `validate` (`:106-108`) adds
    `if SRD_PACK not in selection.ids: raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")`,
-   the line `select` loses. `chosen_packs` (`:110-114`) stays. The seam's `guidance` gains a
-   keyword: `guidance(self, selection, /, *, opening: bool) -> str` at
-   `src/aidm/engines/seam.py:363`; `author` (`:281`) passes `opening=True`, `render_next`
-   (`:245`) `opening=False`. `RoomEngine.author` (`src/aidm/engines/rooms/engine.py:176`) and
-   `write_next` (`:226`) pass the same two.
-3. `src/aidm/engines/loner3e/worldsmith.py`: `Pack` (`:30-50`) becomes `Loner3ePack` as in the
+   the line `select` loses. `chosen_packs` (`:110-114`) stays. `render_next` (`:245`) passes
+   `opening=False`, `author` (`:281`) `opening=True`; `RoomEngine.author`
+   (`src/aidm/engines/rooms/engine.py:176`) and `write_next` (`:226`) pass the same two, still
+   with `None`. Move the pack tests now, not later: `tests/engines/test_scenes.py:238-271`
+   become `tests/engines/test_packs.py`; the `select` case at `:260-263` asserts the refusal
+   comes from `SceneEngine.validate` on a state instead, the `PackSet(...)` construction at
+   `:268` takes the three fields, and one new case: a selection of three supplements is refused
+   naming the cap.
+3. `src/aidm/engines/seam.py`: declare `authoring: str` at `:63-80`; `guidance` (`:363`) becomes
+   the concrete method in the shapes. `src/aidm/engines/loner3e/engine.py`: `authoring = AUTHORING`
+   beside `title` (`:62`), delete `guidance` (`:143-145`), `_revised` (`:260-262`) and the
+   `JsonValue` import. `src/aidm/engines/twentyfourxx/engine.py`: `authoring = AUTHORING`,
+   delete `guidance` (`:254-256`). `src/aidm/engines/tunnelgoons/engine.py`:
+   `authoring = AUTHORING`, delete `guidance` (`:78-79`). `SceneEngine.guidance` overrides to
+   `require` then `super()`.
+4. `src/aidm/engines/loner3e/worldsmith.py`: `Pack` (`:30-50`) becomes `Loner3ePack` as in the
    shapes, with `Loner3eBlock` above it; `defined_ids` stays; `_twist_columns_pair_up` stays.
    Add `Loner3ePack.sections(*, opening)` as described in the shapes. Rename every use:
    `loner3e/engine.py:44,60,68`, `tests/support/`, `tests/loner3e/`.
-4. `src/aidm/engines/loner3e/engine.py`: `guidance` (`:143-145`) returns
-   `f"{AUTHORING}\n\n{self.packs.guidance(self.packs.require(selection), opening=opening)}"`;
-   delete `_revised` (`:260-262`) and the `JsonValue` import. `master_sections` (`:147-163`)
-   adds, before the glossary, one `("SPECIAL RULES", rules)` section per chosen pack whose
-   `rules` is not empty, titled `SPECIAL RULES: <pack name>`. `PackSet.require` moves with the
-   class; keep its refusal text.
-5. `AUTHORING` (`loner3e/worldsmith.py:10-27`) gains two sentences at the end: the packs' factions,
-   people and monsters are written to be used; file one into `cast` under a new id with its
-   tags and drives copied and a `brief` for this scene, and size its luck by the rule above.
-   Names come from the pack's name lists when the setting has them.
-6. `src/aidm/app/spawn.py`: `PROMPT_MAX_BYTES = 131_072` after `KEPT_ENV` (`:26`), with the
+5. `src/aidm/engines/loner3e/engine.py` `master_sections` (`:147-163`) adds, before the
+   glossary, `*self.packs.rules_sections(state.packs)`.
+6. `AUTHORING` (`loner3e/worldsmith.py:10-27`) gains two sentences at the end: the packs'
+   factions, people and monsters are written to be used; file one into `cast` under a new id with
+   its tags and drives copied and a `brief` for this scene, and size its luck by the rule above.
+   Names come from the pack's name lists when the setting has them. The `loner3e` worldsmith
+   golden holds `LONER 3E AUTHORING`, so this sentence lands in phase 2 with the regeneration,
+   not here: write it in phase 2 step 6.
+7. `src/aidm/app/spawn.py`: `PROMPT_MAX_BYTES = 131_072` after `KEPT_ENV` (`:26`), with the
    one-line reason (Linux `MAX_ARG_STRLEN`: one argv element). `run_cli` (`:162`) refuses before
    `_spawn` when `len(prompt.encode()) >= PROMPT_MAX_BYTES`:
    `Refusal(f"the {role} prompt is {size} bytes; the command line takes fewer than {PROMPT_MAX_BYTES}")`.
-   An `E2BIG` `OSError` was a bug; now it is a message the player reads.
-7. The converter, `scripts/srd_packs.py`, outside `src` and outside the test tree: given one or
+   An `E2BIG` `OSError` was a bug; now it is a message the player reads. One test in
+   `tests/app/` with a `Driver` stub: a prompt of the cap is refused before any command is built.
+8. Tests: `tests/engines/test_packs.py` also covers `kit_sections` (seeds present at the opening,
+   absent in play; empty name lists dropped) and `read_packs` skipping a written file that
+   fails to parse and one whose stem is a shipped id, each with a warning. Full check; every
+   golden unchanged. `PROGRESS.md` entry with all four counts.
+
+## Phase 2: the converter, and AP01 complete
+
+A script turns the SRD's markdown into a whole pack. AP01 is the first, and the ids of its four
+trait tables do not move.
+
+Target: `src` within 20 lines of phase 1's count. `tests` about **11,640**, within 11,590 to
+11,700. `scripts` about **260**. About half a day.
+
+### Steps
+
+1. The converter, `scripts/srd_packs.py`, a module with a `main()`, outside `src`: given one or
    more `APnn_<name>.md` paths, it writes `src/aidm/engines/loner3e/packs/apnn-<name>.json`
-   (stem from the file: `AP01_fantasy` to `ap01-fantasy`). It parses: `## Setting Information`
-   paragraphs to `setting`; the four `### Concepts|Skills|Frailties|Gear` d66 pipe tables to
-   `DecisionOption(id=slug(label, taken), label, detail="")`; `#### Female Names|Male Names|
-   Surnames` and `### Nicknames` (AP12 files it under `####`) to `names`; every `## Special Rule*`
-   section, its subsections and tables included, to `rules` as plain text (a `| D66 | Spell |`
-   row becomes `- **Heal** (1 Luck) – …` with the number dropped, headings kept as `Heading:`
-   lines, bold kept); `## Factions`, `## NPCs`, `## Monsters` or `## Hostile Entities` `###`
-   entries to blocks, reading `**Concept:**`, `**Skills:**`, `**Frailty:**`, `**Gear:**`,
-   `**Goal:**`, `**Motive:**`, `**Nemesis:**` lines, lists split on `, `; `## Locations` `###`
-   entries to `Location(label, detail, encounters)` where `encounters` is the text after
-   `Possible encounters:`; `## Adventure Seeds` d66 rows to `seeds`. `spends_luck` is true when
-   `rules` contains `Luck cost`. `name` is the `# ` title minus ` Adventure Pack`; `source` is the
-   page URL `https://lonersrd.zotiquestgames.com/adventure_packs/<stem>.html`; `license` is the
-   line `ap01-fantasy.json:4` carries today, with the pack name substituted. The output goes
-   through `parse(Loner3ePack, …)` before it is written, so a shape error stops the script. Every
-   list keeps the SRD's order; the JSON is `indent=2`, keys in model order, so a second run is
-   byte-identical. Trailing spaces on headings (AP01 `### King Vaelor the Thornbound  `) and
-   curly quotes in names are handled: strip, keep.
-8. Run the converter on AP01 and replace `src/aidm/engines/loner3e/packs/ap01-fantasy.json`. The
-   trait ids it makes must equal today's (`ap01-fantasy.json:7,189,371,553` and on), since
-   `characters/` files store labels, not ids, and nothing else stores them; a diff of the four
-   tables against the old file shows label-only changes at most.
-9. Fixture and test: copy `AP01_fantasy.md` to `tests/fixtures/srd/AP01_fantasy.md` (CC BY-SA
+   (stem from the file: `AP01_fantasy` to `ap01-fantasy`). Every heading is matched after
+   stripping surrounding `**` and trailing spaces (AP06 writes `### **Concepts**`, AP01
+   `### King Vaelor the Thornbound  `). It parses:
+   - `## Setting Information` paragraphs to `setting`, markdown bold kept.
+   - `### Concepts|Skills|Frailties|Gear`: each is a 6×6 grid, a pipe table with a row header
+     `1`–`6` and six columns `1`–`6`; entries are read row-major, so d66 `11` is row 1 column 1
+     and `36` is row 3 column 6. Each becomes `DecisionOption(id=slug(folded, taken), label,
+     detail="")` where `folded` is the label NFKD-normalised with combining marks dropped, so
+     `Naïve` makes `naive` as `ap01-fantasy.json:526` has it, not `na-ve`.
+   - `#### Female Names|Male Names|Surnames` and the fourth list, `### Nicknames` (AP01),
+     `#### Nicknames` (AP12) or `#### Codenames / Call Signs` (AP06), the same 6×6 grids, to
+     `names`.
+   - Every `## Special Rule*` section, its `###` subsections and tables included, to `rules` as
+     plain text: a subsection heading becomes a `Heading:` line, a `| D66 | Spell |` row becomes
+     `- **Heal** (1 Luck) – …` with the number dropped, a bullet list stays a bullet list, bold
+     kept. `spends_luck` is true when `rules` contains `Luck cost`.
+   - `## Factions`, `## NPCs`, and `## Monsters` | `## Hostile Entities` | `## Creatures`
+     (AP01, AP12, AP06) `###` entries to blocks. A field line is `- **Key:** value` (AP01) or
+     `* **Key**: value` (AP12) or `- **Key**: value` (AP06): match
+     `^[-*]\s+\*\*(Key)\*\*:?\s*:?\s*(.*)$` with the key one of Concept, Skills, Frailty,
+     Frailties, Gear, Goal, Motive, Nemesis; `Skills`, `Frailty` and `Gear` split on `, `;
+     a missing optional key is the model's default and a missing required one stops the script
+     naming the block.
+   - `## Locations` `###` entries: bullet paragraphs joined by a space to `detail`, the bullet
+     starting `Possible encounters:` to `encounters` with the prefix dropped.
+   - `## Adventure Seeds` `| D66 | Adventure |` rows to `seeds`.
+   `name` is `APnn <Title>` where the title is the `# ` heading minus ` Adventure Pack`, so
+   `AP01 Fantasy` stays what `ap01-fantasy.json:2` and the supplements select show today.
+   `source` is `https://lonersrd.zotiquestgames.com/adventure_packs/<original stem>.html`,
+   `AP01_fantasy` and not `ap01-fantasy`. `license` is the line `ap01-fantasy.json:4` carries,
+   the pack title substituted. The output goes through `parse(Loner3ePack, …)` before it is
+   written, so a shape error stops the script. Every list keeps the SRD's order; the JSON is
+   `indent=2`, keys in model order, so a second run is byte-identical.
+2. `pyproject.toml:43-44,47`: add `"scripts"` to pytest `pythonpath` and to basedpyright
+   `include`, so the converter is type-checked and importable by its test. Not to `testpaths`.
+3. Run the converter on AP01 and replace `src/aidm/engines/loner3e/packs/ap01-fantasy.json`. The
+   four trait tables' ids must equal today's, `naive` included, since `characters/` store labels
+   and saves store pack ids, not entry ids; `git diff` of the file shows the four tables changed
+   in nothing but whitespace, and the new sections added.
+4. Fixture and test: copy `AP01_fantasy.md` to `tests/fixtures/srd/AP01_fantasy.md` (CC BY-SA
    4.0, attributed in `docs/LONER-3E.md`). `tests/scripts/test_srd_packs.py` runs the converter's
-   parse function on the fixture and asserts 36 entries in each trait table, 6 factions, 6 NPCs,
-   6 monsters, 6 locations, 36 seeds, `spends_luck`, and that converting twice gives equal JSON.
-   `pyproject.toml` adds `scripts` to the pytest path only if the test cannot import it
-   otherwise; the converter is a module with a `main()`, not a package.
-10. Prompt budget test, `tests/loner3e/test_prompt_budget.py`: build a `Loner3eGame` from
-    `whispering-vault` with `packs = (srd, ap01-fantasy)`, a `source` of 48,000 bytes, two
-    chapters of 20 exchanges each of 400-character transcripts, and assert
-    `len(ENGINE.render_next(state, "…").encode()) < PROMPT_MAX_BYTES`. When phase 3 lands the
-    other eleven, the test picks the two largest by file size instead of naming AP01.
-11. `docs/LONER-3E.md` "Pack sources" (`:39-50`): the twelve packs, the converter and its command,
-    the fixture's attribution, and one line saying the four trait tables' ids are stable across
-    runs. Deviation 6: trait labels are the SRD's, bare; the glossary lists only entries with a
-    detail. `README.md:54`: a pack is the whole SRD kit, one sentence.
-12. Regenerate `tests/core/fixtures/prompts/loner3e/worldsmith.txt` (the only golden that holds
-    a Loner worldsmith prompt), read it, and confirm it shows `PACK: Starter tables` sections
-    and no JSON. Full check. `PROGRESS.md` entry with all four counts.
+   parse function on the fixture and asserts 36 entries in each trait table and each name list,
+   6 factions, 6 NPCs, 6 monsters, 6 locations, 36 seeds, `spends_luck`, `Naïve` at id `naive`,
+   and that converting twice gives equal JSON.
+5. Prompt budget test, `tests/loner3e/test_prompt_budget.py`: build a `Loner3eGame` from
+   `whispering-vault` with `packs = (srd, ap01-fantasy)`, a `source` of 48,000 bytes, a cast of
+   30 members, and a log of 40 chapters whose last two hold 20 exchanges each of 400-character
+   transcripts and the rest a recap, then assert
+   `len(ENGINE.render_next(state, "…").encode()) < PROMPT_MAX_BYTES`. When phase 4 lands the
+   other eleven, the test picks the two largest pack files instead of naming AP01.
+6. `AUTHORING` gains the two sentences phase 1 step 6 deferred. Regenerate
+   `tests/core/fixtures/prompts/loner3e/worldsmith.txt`, read it, and confirm it shows
+   `PACK: Starter tables` sections and no JSON.
+7. `docs/LONER-3E.md` "Pack sources" (`:39-50`): the converter and its command, the fixture's
+   attribution, and one line saying the four trait tables' ids are stable across runs and that
+   `Naïve` folds to `naive`. Deviation 6: trait labels are the SRD's, bare; the glossary lists
+   only entries with a detail. `README.md:54`: a pack is the whole SRD kit, one sentence.
+8. Full check. `PROGRESS.md` entry.
 
-## Phase 2: `spend_luck`, the seed picker and the pack the character already chose
+## Phase 3: `spend_luck`, and the pack the character already chose
 
-Three small things the whole pack now allows. About half a day.
+Two small things the whole pack now allows. About half a day.
 
-Target: `src` about **9,850**, within 9,810 to 9,900. `tests` about **11,720**, within 11,680
+Target: `src` about **9,780**, within 9,740 to 9,830. `tests` about **11,720**, within 11,680
 to 11,780.
 
 ### Steps
@@ -378,132 +445,132 @@ to 11,780.
 3. `src/aidm/engines/loner3e/engine.py`: `master_tools` (`:79-86`) adds
    `master_tool("spend_luck", SPEND_LUCK, SpendLuck, self.spend_luck)`. `spend_luck(draft, args,
    _rng)`: refuse unless some chosen pack has `spends_luck` ("no selected pack spends luck"),
-   `world.check_unnamed(args.why)`, `require_living_here`, then the cast method.
+   `world.check_unnamed(args.why)`, `require_living_here`, then the cast method. Regenerate
+   `tests/core/fixtures/schemas/loner3e/master_tools.json` and read the new entry.
    `docs/LONER-3E.md` "The tools" adds the line.
 4. `src/aidm/engines/loner3e/rules.md`: under "Tags and drives" one paragraph: when SPECIAL
    RULES price something in luck, call `spend_luck` with the printed cost before the `roll`
    that decides it, and read the roll as those rules say.
-5. Seeds on the scenario page. `src/aidm/engines/seam.py`: `Engine.seeds(self, supplements:
-   Sequence[Slug]) -> tuple[DecisionOption, ...]`, default `()`; `SceneEngine` and `RoomEngine`
-   override after phase 4, `SceneEngine` now: for each chosen pack (`srd` included) and each
-   seed, `DecisionOption(id=f"{pack_id}-{n}", label=seed[:60], detail=seed)`.
-   `src/aidm/ui/create.py` `ScenarioForm.character_fields` (`:243-262`): under the supplements
-   select, a `ui.select` "Adventure seed" filled from `engine.seeds(chosen supplements)`, rebuilt
-   on supplements change, whose `on_change` sets `self.premise.value` to the seed's `detail`.
-   The premise stays editable; the seed is a starting point, not stored.
-6. Supplements default to the character's. `src/aidm/core/model.py` `CharacterHeader` (`:52-54`)
+5. Supplements default to the character's. `src/aidm/core/model.py` `CharacterHeader` (`:52-54`)
    gains `packs: PackSelection | None = None`; `src/aidm/app/launch.py` `CatalogEntry` (`:15-22`)
    gains `packs: tuple[Slug, ...] = ()`, filled at `:86-96` from the header. In
-   `character_fields`, the character select's `on_change` sets `self.supplements.value` to that
-   character's packs minus `srd`; the first render does the same for the preselected character.
-   A test in `tests/ui/test_create.py` or the nearest existing create-page test file: picking a
-   character made with `ap01-fantasy` selects it.
-7. Full check. `PROGRESS.md` entry.
+   `src/aidm/ui/create.py` `ScenarioForm.character_fields` (`:243-262`), the character select's
+   `on_change` sets `self.supplements.value` to that character's packs minus `srd`; the first
+   render does the same for the preselected character. A test in the create-page test file:
+   picking a character made with `ap01-fantasy` selects it.
+6. Tests: `spend_luck` refuses without the flag, refuses past the pool, and lands a `Luck -2`
+   fact with the flag; the tool schema golden shows it. Full check. `PROGRESS.md` entry.
 
-## Phase 3: the other eleven packs
+## Phase 4: the other eleven packs
 
-The converter runs on AP02 through AP12. Where a page differs from AP01 the converter grows;
-where the SRD's own text is broken, the page wins and the difference is recorded.
+The converter runs on AP02 through AP12. Where a page differs from the three already read, the
+converter grows; where the SRD's own text is broken, the page wins and the difference is
+recorded.
 
-Target: `src` unchanged within 20 lines; `scripts` about 260; eleven new JSON files under
-`src/aidm/engines/loner3e/packs/`. About two hours plus review.
+Target: `src` about **9,800**, within 9,770 to 9,840; `scripts` about 290; eleven new JSON files
+under `src/aidm/engines/loner3e/packs/`. About two hours plus review.
 
 ### Steps
 
 1. Download the eleven markdown files by hand (`curl` of the raw GitHub URLs; not in a test) to a
-   scratch directory and run the converter on all twelve. Read every refusal it raises. Known
-   differences to handle: `## Hostile Entities` (AP12) beside `## Monsters`; `## Special Rules`
-   with `###` subsections beside `## Special Rule: Magic`; `#### Nicknames` under `### Names`
-   (AP12) beside `### Nicknames`; names with quotes (`Hannah "Blackout" Garcia`); a
-   `**Frailty:**` that holds two frailties split by `, `; an entry missing a key, which becomes
-   the model's default when the field allows one and a stop otherwise.
+   scratch directory and run the converter on all twelve. Read every refusal it raises. The
+   differences phase 2 already handles are the bold-wrapped headings, the three monster section
+   names, the three field-line spellings and the three fourth-name-list headings; a page that
+   differs beyond these grows the converter in one place and adds one line to the fixture test.
 2. Every trait table across the twelve is checked for `defined_ids` collisions against `srd`:
    `PackSet.select` refuses a shared id, so a pack that shares one with `srd.json` cannot be
    selected at all. The repo's `srd.json` tables were written to avoid the AP01 words; check the
    other eleven with a one-off loop over `Loner3ePack.defined_ids()` and rename the `srd.json`
    entry, never the SRD's, where one collides. Two supplements may legitimately collide with
    each other; that is the existing rule and the refusal names both.
-3. `tests/scripts/test_srd_packs.py` gains one test over the shipped JSON, not the network:
+3. `src/aidm/core/creation.py:43`: `ANSWER_MAX` applies per part of a `multiple` step, not to
+   the joined string, so two long pack ids never read as "takes at most 100 characters"; the cap
+   on packs is `select`'s and says so. One test in `tests/core/`.
+4. `tests/scripts/test_srd_packs.py` gains one test over the shipped JSON, not the network:
    every `loner3e/packs/ap*.json` parses as `Loner3ePack`, has 36 entries in each trait table
    and 6 blocks in each of the three cast lists, and no two of them share an id with `srd`.
-4. `docs/LONER-3E.md`: the twelve packs listed with their page URLs; the open licence question
+5. `docs/LONER-3E.md`: the twelve packs listed with their page URLs; the open licence question
    stays open with the note that the site index declares CC BY-SA 4.0 and every page carries only
    the copyright footer. `README.md`: "twelve adventure packs" where it says one.
-5. The prompt budget test of phase 1 now picks the two largest pack files. If it fails, the fix is
+6. The prompt budget test of phase 2 now picks the two largest pack files. If it fails, the fix is
    in `kit_sections` (drop `encounters` in play, then shorten block rendering), never in the cap.
-6. Full check. `PROGRESS.md` entry.
+7. Full check. `PROGRESS.md` entry.
 
-## Phase 4: packs on the seam, for 24XX and Tunnel Goons
+## Phase 5: packs on the seam, for 24XX and Tunnel Goons
 
 The pack set moves from the scene family to the engine seam, so a room engine has one. 24XX's
 pack becomes a supplement shape with the seventeen skills required of `srd` alone. Tunnel Goons
-gets a pack model with no shipped pack and no `srd`. This is the phase that touches every engine;
-it is reviewed hardest.
+gets a pack model with no shipped pack and no `srd`. A "Roll a seed" button on the scenario page
+reads the chosen packs. This is the phase that touches every engine; it is reviewed hardest.
 
-Target: `src` about **10,050**, within 9,980 to 10,140. `tests` about **11,900**, within 11,820
+Target: `src` about **10,000**, within 9,930 to 10,090. `tests` about **11,900**, within 11,820
 to 12,000. About a day.
 
 ### Steps
 
 1. `src/aidm/engines/seam.py`: `Engine[P, M, G]` becomes `Engine[P, M, G, K: Pack]` with
-   `pack: type[K]` and `packs: PackSet[K]` declared at `:63-80`; `__init__` (`:82-95`) reads
-   `self.packs = read_packs(self.id, self.directory / "packs", Path(), self.pack)` before the
-   tools. `supplement_options` (`:154`), `select_packs` (`:157`), `admit` (`:160`),
-   `chosen_packs`, `supplement_steps` and `SUPPLEMENTS` move up from
+   `pack: type[K]` and `packs: PackSet[K]` declared at `:63-80`; `AnyEngine` (`:48`) becomes
+   `Engine[Any, Any, Any, Any]`, the fourth for the invariance reason "How to work" 8 records.
+   `__init__` (`:82-95`) reads `self.packs = read_packs(self.id, self.directory / "packs", None,
+   self.pack)` before the tools. `supplement_options` (`:154`), `select_packs` (`:157`),
+   `admit` (`:160`), `chosen_packs`, `supplement_steps` and `SUPPLEMENTS` move up from
    `src/aidm/engines/scenes/engine.py:47,98-124,222-233`. On the seam: `select_packs(supplements)`
    returns `None` for an empty sequence, else `self.packs.select(parse(PackSelection, {"ids": tuple(supplements)}))`;
-   `admit(packs, character)` refuses unless `set(character.packs.ids if character.packs else ()) <= set(packs.ids if packs else ())`,
+   `chosen_packs(picks)` reads the picked supplements alone; `admit(packs, character)` refuses
+   unless `set(character.packs.ids if character.packs else ()) <= set(packs.ids if packs else ())`,
    with the existing message; `validate` (`:325`) adds `if state.packs is not None:
-   self.packs.select(state.packs)`. `SceneEngine` overrides `select_packs` to prepend `SRD_PACK`
-   and `admit` to `require` first, and keeps the `srd`-in-selection check in its `validate`.
-   `RoomEngine.validate` (`rooms/engine.py:67-70`) loses its "plays no table set" refusal.
-2. `Engine.creation_steps` callers: `TunnelGoonsEngine.creation_steps`
-   (`src/aidm/engines/tunnelgoons/engine.py:102-118`) starts with `*self.supplement_steps()` and
-   the item hint joins `STARTING_ITEM_LIST` with the chosen packs' `items` labels;
-   `build_character` (`:120-135`) passes `self.select_packs(picked_many(picks, SUPPLEMENTS))` to
-   `sheet_character`. A character made with no pack stores `packs: None`, as today.
+   self.packs.select(state.packs)`. `SceneEngine` overrides `select_packs` and `chosen_packs` to
+   prepend `SRD_PACK` (`Loner3eEngine.creation_steps`, `loner3e/engine.py:89-93`, pools its
+   tables from that result) and `admit` to `require` first, and keeps the `srd`-in-selection
+   check in its `validate`. `RoomEngine.validate` (`rooms/engine.py:67-70`) loses its "plays no
+   table set" refusal. `RoomEngine.author` (`:176`) passes `self.guidance(packs, opening=True)`
+   and `write_next` (`:226`) `self.guidance(draft.packs, opening=False)`, in place of `None`.
+2. `TunnelGoonsEngine.creation_steps` (`src/aidm/engines/tunnelgoons/engine.py:102-118`) starts
+   with `*self.supplement_steps()` and the item hint joins `STARTING_ITEM_LIST` with the chosen
+   packs' `items` labels; `build_character` (`:120-135`) passes
+   `self.select_packs(picked_many(picks, SUPPLEMENTS))` to `sheet_character`. A character made
+   with no pack stores `packs: None`, as today.
 3. `src/aidm/engines/tunnelgoons/worldsmith.py`: `TunnelGoonsBlock` and `TunnelGoonsPack` as in
    the shapes, `sections` adding `ITEMS`, `FACTIONS`, `PEOPLE`, `MONSTERS` (`- name — brief
-   (hp N)`). `TunnelGoonsEngine.guidance` (`:78-79`) returns `AUTHORING` followed by
-   `self.packs.guidance(selection, opening=opening)` when `selection` is not `None`. `AUTHORING`
-   gains one sentence: a pack's monster is written as an npc with that `hp`. The master reads
-   `rules` through `RoomEngine.master_sections`, one section per chosen pack with rules, the same
-   shape as Loner's; put the helper that builds those sections on `PackSet`
-   (`rules_sections(selection) -> Sections`) since two families need it.
+   (hp N)`). `AUTHORING` gains one sentence: a pack's monster is written as an npc with that
+   `hp`. `RoomEngine.master_sections` (`rooms/engine.py:93-107`) adds
+   `*self.packs.rules_sections(state.packs)` after `WAYS OUT`. Regenerate
+   `tests/core/fixtures/prompts/tunnelgoons/worldsmith.txt` once and read it.
 4. `src/aidm/engines/twentyfourxx/worldsmith.py`: `Pack` (`:59-77`) becomes `TwentyfourxxPack` as
    in the shapes, `skills` no longer `min_length=17, max_length=17`; `_every_pick_told` stays.
    `TwentyfourxxEngine.__init__` checks `len(self.packs.srd().skills) == 17` and that
    `starting_kit` is not empty, raising `ValueError` otherwise, the check the model made.
    `sections` adds `SPECIALTIES` (`specialty_lines()`), `ORIGINS` (label — detail) and the three
-   block sections. `guidance` (`twentyfourxx/engine.py:254-256`) returns `AUTHORING` plus
-   `self.packs.guidance(...)`. `write_sheet` (`:107-125`) keeps its own specialty lines.
-   Regenerate `tests/core/fixtures/prompts/twentyfourxx/worldsmith.txt` once and read it.
-5. `src/aidm/engines/registry.py` stays; `build_engines()` takes nothing until phase 5.
-6. `Engine.seeds` from phase 2 step 5 moves to the seam in full: chosen packs' seeds, `srd`
-   included where present.
-7. Tests: `tests/engines/test_scenes.py:238-271` move their pack cases to
-   `tests/engines/test_packs.py` and gain: a room engine accepts `packs: None` and a selection of
-   one written pack; a scene engine still refuses a selection without `srd`; a 24XX supplement
+   block sections. `write_sheet` (`:107-125`) keeps its own specialty lines. Regenerate
+   `tests/core/fixtures/prompts/twentyfourxx/worldsmith.txt` once and read it.
+5. `Engine.seeds(self, selection: PackSelection | None) -> tuple[str, ...]` on the seam, the
+   chosen packs' seeds in order. `src/aidm/ui/create.py` `ScenarioForm.character_fields`
+   (`:243-262`): under the supplements select, a "Roll a seed" button, shown when
+   `engine.seeds(...)` is not empty for the current supplements, whose click writes one seed
+   drawn with `random.choice` into `self.premise.value`. The premise stays editable; the seed is
+   a starting point, not stored. The page's own `Random` is fine: it rolls no game die.
+6. Tests: `tests/engines/test_packs.py` gains: a room engine accepts `packs: None` and a selection
+   of one written pack; a scene engine still refuses a selection without `srd`; a 24XX supplement
    with no `skills` selects; the seam `admit` refuses a character whose packs exceed the
-   scenario's and accepts `None` against anything. Re-check `scenarios/buried-keep/world.json`
-   and `characters/kael/tunnelgoons.json` still load.
-8. `docs/24XX.md` "Pack sources" and `docs/TUNNEL-GOONS.md` gain a "Packs" paragraph each: what
+   scenario's and accepts `None` against anything; `seeds` is empty for `None`. Re-check
+   `scenarios/buried-keep/world.json` and `characters/kael/tunnelgoons.json` still load.
+7. `docs/24XX.md` "Pack sources" and `docs/TUNNEL-GOONS.md` gain a "Packs" paragraph each: what
    a pack holds for this engine, that none ships, and that a written one is selected on the
    character and the scenario like Loner's.
-9. Full check. `PROGRESS.md` entry.
+8. Full check. `PROGRESS.md` entry.
 
-## Phase 5: packs the player owns
+## Phase 6: packs the player owns
 
 A `packs/` directory beside `saves/`, read at start, hot-installed after a write, listed on the
 home page.
 
-Target: `src` about **10,150**, within 10,100 to 10,220. `tests` about **11,980**, within 11,920
+Target: `src` about **10,100**, within 10,050 to 10,170. `tests` about **11,980**, within 11,920
 to 12,060. About half a day.
 
 ### Steps
 
 1. `.gitignore`: `packs/` under "Play data". `src/aidm/config.py:140-142`:
-   `packs_dir: Path = Path("packs")`.
+   `packs_dir: Path = Path("packs")`, the sibling of the three directories there.
 2. `src/aidm/core/io.py`: `class PackStore` after `Library` (`:56-140`), `directory: Path`,
    `folder(engine) -> Path` (`directory / engine`), `write(engine, pack_id, pack: BaseModel)`
    through `write_text` (`:165`) with `model_dump_json(indent=2)`; `exists(engine, pack_id)`.
@@ -512,7 +579,7 @@ to 12,060. About half a day.
    built with `written=packs_dir / engine.id`; `Engine.__init__` takes `written: Path` and hands
    it to `read_packs`. `Runtime.__post_init__` (`src/aidm/app/runtime.py:321-325`) passes
    `settings.packs_dir`. `tests/support/table.py` and every `build_engines()` call pass a
-   `tmp_path` or `Path()`.
+   `tmp_path` or a path that does not exist.
 4. `Engine.install_pack(self, pack_id, pack: K) -> None`: `self.packs.check_addable(pack_id, pack)`
    then `self.packs = self.packs.installing(pack_id, pack)`. Reinstalling an existing written id
    replaces it; a shipped id is refused by `check_addable`.
@@ -522,18 +589,18 @@ to 12,060. About half a day.
    own fields, rendered by `Pack.summary()` on the base model, engine tables counted by the
    subclass). `src/aidm/ui/app.py` `home_page` (`:87-108`) adds a "Packs" section after
    "Saved games": one row per pack, engine badge, `Written` badge for the player's own. No
-   buttons yet; phase 7 adds View and Edit.
+   buttons yet; phase 8 adds View and Edit.
 6. Test: a written pack file under `tmp_path / "loner3e"` is installed at build and listed;
    a file whose stem is `srd` is skipped with a warning; `install_pack` of a colliding pack is
    refused and leaves the set unchanged; a game whose save names a written pack that was deleted
    is filed under `unresumable` by `LauncherCatalog.read`.
 7. Full check. `PROGRESS.md` entry.
 
-## Phase 6: the worldsmith writes a pack
+## Phase 7: the worldsmith writes a pack
 
 Two typed asks, nothing saved until both pass, one page.
 
-Target: `src` about **10,420**, within 10,340 to 10,520. `tests` about **12,140**, within 12,060
+Target: `src` about **10,370**, within 10,290 to 10,470. `tests` about **12,140**, within 12,060
 to 12,240. About a day.
 
 ### Steps
@@ -552,13 +619,13 @@ to 12,240. About a day.
    `items_from_kits` is the pattern).
 3. `Engine.author_pack(self, name, source, license, worldsmith: WorldsmithAnswer) -> K` on the
    seam, concrete: render the head prompt with `render_worldsmith(source, scope="", family=(),
-   intent=HEAD_ASK, guidance=<engine AUTHORING>, answer=self.head)`; `check` builds
+   intent=HEAD_ASK, guidance=self.authoring, answer=self.head)`; `check` builds
    `self.pack_of(head, empty body, …)` and calls `self.packs.check_addable(pack_id, pack)`, so a
    trait id that collides with `srd` is re-prompted with the collision named; then the body prompt
    with the head rendered as family sections (`THE PACK SO FAR`: the head's `sections`), answer
-   `self.body`, check by building the whole pack. A `PackBody` for a scene engine also passes
-   `Loner3eBlock`-level checks the model already makes. `scope` is empty for a pack; add
-   `SOURCELESS`-style text for a scope-less prompt rather than a new render method.
+   `self.body`, check by building the whole pack. `scope` is empty for a pack; `render_worldsmith`
+   (`seam.py:205-224`) prints `SOURCELESS`-style text for an empty scope rather than a new
+   render method.
 4. `src/aidm/app/runtime.py` `Runtime.new_pack(engine_id, name, premise, document, license) ->
    Slug`: `given_text` as `new_scenario` (`:357-377`) does; `pack_id = slug(name, installed ids)`;
    `engine.author_pack(...)`; `self.packs.write(engine.id, pack_id, pack)` then
@@ -577,11 +644,11 @@ to 12,240. About a day.
 7. `IDEAS.md` item 13 checked. `README.md`: one paragraph on writing a pack. Full check.
    `PROGRESS.md` entry.
 
-## Phase 7: the editor
+## Phase 8: the editor
 
 One page per written pack, one field per section, text in and a validated pack out.
 
-Target: `src` about **10,700**, within 10,600 to 10,820. `tests` about **12,300**, within 12,220
+Target: `src` about **10,650**, within 10,550 to 10,770. `tests` about **12,300**, within 12,220
 to 12,400. About a day.
 
 ### Steps
