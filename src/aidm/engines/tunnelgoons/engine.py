@@ -32,7 +32,13 @@ from aidm.engines.tunnelgoons.world import (
     TunnelGoonsScenario,
     TunnelGoonsWorld,
 )
-from aidm.engines.tunnelgoons.worldsmith import AUTHORING, HIRE_GUIDANCE, HIRING, AbilitiesDraft
+from aidm.engines.tunnelgoons.worldsmith import (
+    AUTHORING,
+    HIRE_GUIDANCE,
+    HIRING,
+    AbilitiesDraft,
+    TunnelGoonsPack,
+)
 
 STARTING_ITEM_LIST: tuple[str, ...] = (
     "Melee Weapon (specify)",
@@ -59,7 +65,7 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 )
 
 
-class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
+class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame, TunnelGoonsPack]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     authoring = AUTHORING
@@ -69,6 +75,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
     character = TunnelGoonsCharacter
+    pack = TunnelGoonsPack
     world = TunnelGoonsWorld
     member = Npc
     hires = True
@@ -97,7 +104,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
             master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
         )
 
-    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
+    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(
             CreationStep(
                 id=ability,
@@ -107,13 +114,13 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
             )
             for ability in ABILITIES
         )
+        packed = (name for pack in self.chosen_packs(picks) for name in pack.items)
+        hint = ", ".join((*STARTING_ITEM_LIST, *packed))
         item_steps = tuple(
-            CreationStep(
-                id=f"item-{number}", label=f"Item {number}", hint=", ".join(STARTING_ITEM_LIST)
-            )
+            CreationStep(id=f"item-{number}", label=f"Item {number}", hint=hint)
             for number in range(1, STARTING_ITEMS + 1)
         )
-        return (*ability_steps, *item_steps)
+        return (*self.supplement_steps(), *ability_steps, *item_steps)
 
     def build_character(self, name: str, brief: str, picks: Picks) -> TunnelGoonsCharacter:
         abilities: dict[Ability, int] = {
@@ -130,7 +137,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
             kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
         sheet.unpack_kit(())
-        return self.sheet_character(name, sheet)
+        return self.sheet_character(name, sheet, self.picked_packs(picks))
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character)

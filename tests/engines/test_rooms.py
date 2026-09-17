@@ -16,6 +16,7 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
 from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.packs import Pack, PackSet
 from aidm.engines.rooms.engine import ELSEWHERE
 from aidm.engines.rooms.world import (
     MOVED_CARD,
@@ -150,13 +151,18 @@ def test_move_does_not_clear_an_authored_lock_on_the_way_back(begun_room: SixthG
     assert back.locked
 
 
-def test_a_room_game_given_a_table_set_is_refused(
+def test_a_room_game_validates_the_packs_it_plays(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    stranded = updated(begun_room, packs=PackSelection(ids=("srd",)))
+    room_engine.packs = PackSet(
+        room_engine.id, {"mine": Pack(name="Mine", source="", license="")}, {}
+    )
 
-    with pytest.raises(Refusal, match="plays no table set"):
-        room_engine.validate(stranded)
+    room_engine.validate(updated(begun_room, packs=PackSelection(ids=("mine",))))
+    room_engine.validate(updated(begun_room, packs=None))
+
+    with pytest.raises(Refusal, match="packs not installed"):
+        room_engine.validate(updated(begun_room, packs=PackSelection(ids=("gone",))))
 
 
 def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:

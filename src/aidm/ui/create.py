@@ -1,4 +1,5 @@
 import logging
+import random
 import shutil
 from collections.abc import Callable
 from functools import partial
@@ -179,6 +180,7 @@ class ScenarioForm:
         self.uploads: Path | None = None
         self.title: ui.input
         self.supplements: ui.select | None = None
+        self.seed_button: ui.button
         self.character: ui.select
         self.premise: ui.textarea
         self.scope: ui.textarea
@@ -249,22 +251,24 @@ class ScenarioForm:
             ui.select(
                 options=offered,
                 value=[],
-                label="Table sets beyond the SRD",
+                label="Packs",  # the seam's `SUPPLEMENTS_LABEL`; ui may not import engines
                 multiple=True,
+                on_change=lambda _: self.follow_supplements(),
             )
             if offered
             else None
+        )
+        self.seed_button = ui.button("Roll a seed", icon="casino", on_click=self.roll_seed).props(
+            "outline dense"
         )
         self.character = ui.select(
             options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
             value=characters[0].id if characters else None,
             label="Character",
-            on_change=self.follow_character,
+            on_change=lambda event: self.follow_character_id(event.value),
         )
         self.follow_character_id(self.character.value)
-
-    def follow_character(self, event: ValueChangeEventArguments[str | None]) -> None:
-        self.follow_character_id(event.value)
+        self.follow_supplements()
 
     def follow_character_id(self, character_id: str | None) -> None:
         """The scenario plays what the character was made with, until the player says otherwise."""
@@ -278,6 +282,25 @@ class ScenarioForm:
         # The SRD is implicit and never offered, so this keeps only the named supplements.
         offered = {pack.id for pack in self.runtime.engines[self.engine_id].supplement_options()}
         self.supplements.value = [pack for pack in entry.packs if pack in offered]
+
+    def chosen_supplements(self) -> tuple[Slug, ...]:
+        picked: list[str] = [] if self.supplements is None else self.supplements.value or []
+        return tuple(content_id(pick) for pick in picked)
+
+    def seeds(self) -> tuple[str, ...]:
+        engine = self.runtime.engines[self.engine_id]
+        try:
+            return engine.packs.seeds(engine.select_packs(self.chosen_supplements()))
+        except Refusal:
+            return ()  # `write` reports the refusal; the button only hides
+
+    def follow_supplements(self) -> None:
+        self.seed_button.set_visibility(bool(self.seeds()))
+
+    def roll_seed(self) -> None:
+        """A starting point the player edits; the seed is never stored on its own."""
+        if seeds := self.seeds():
+            self.premise.value = random.choice(seeds)  # the page's own die: it rolls no game die
 
     @ui.refreshable_method
     def button_row(self) -> None:
@@ -309,8 +332,7 @@ class ScenarioForm:
         )
         engine = self.runtime.engines[self.engine_id]
         try:
-            chosen: list[str] = self.supplements.value or [] if self.supplements is not None else []
-            packs = engine.select_packs(tuple(content_id(pick) for pick in chosen))
+            packs = engine.select_packs(self.chosen_supplements())
             character_id = content_id(character_id)
             name = await self.runtime.new_scenario(
                 self.engine_id, meta, self.document, packs, character_id

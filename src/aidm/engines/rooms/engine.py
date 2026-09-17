@@ -26,6 +26,7 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
+from aidm.engines.packs import Pack
 from aidm.engines.rooms.tools import (
     MEANWHILE,
     MOVE,
@@ -52,7 +53,7 @@ MAP_UNWRITTEN = Fact(
 ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 
 
-class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
+class RoomEngine[P: Person, N: Dweller, G: Game[Any], K: Pack](Engine[P, N, G, K]):
     world: type[RoomWorld[P, N]]
     family_dir = Path(__file__).parent
     opening_sections = (
@@ -63,11 +64,6 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
 
     def world_of(self, state: G) -> RoomWorld[P, N]:
         return state.payload
-
-    def validate(self, state: G) -> None:
-        super().validate(state)
-        if state.packs is not None:
-            raise Refusal(f"a {self.id!r} game plays no table set")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[P, N]:
         draft: MapDraft[N] = scenario.payload
@@ -103,6 +99,7 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
             ("HIDDEN HERE (the player has not found these)", world.place_lines(known=False)),
             *section_if("THE ARC (the player has not found this)", world.arc),
             ("WAYS OUT", world.ways_lines()),
+            *self.packs.rules_sections(state.packs),
             *(((ELSEWHERE, world.elsewhere_lines()),) if world.meanwhile_due else ()),
         )
 
@@ -173,7 +170,12 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
 
         model = MapDraft[self.member]
         prompt = self.render_worldsmith(
-            source, meta.scope, self.opening_sections, MAP_ASK, self.authoring, model
+            source,
+            meta.scope,
+            self.opening_sections,
+            MAP_ASK,
+            self.guidance(packs, opening=True),
+            model,
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
@@ -222,7 +224,9 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
     ) -> RegionDraft[N]:
         world = self.world_of(draft)
         model = RegionDraft[self.member]
-        prompt = self.render_request(draft, intent=intent, guidance=self.authoring, answer=model)
+        prompt = self.render_request(
+            draft, intent=intent, guidance=self.guidance(draft.packs, opening=False), answer=model
+        )
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
     def install(self, draft: G, extension: RegionDraft[N]) -> None:

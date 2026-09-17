@@ -35,7 +35,7 @@ Deeper in, toward the sound.
 
 ENGINE GUIDANCE:
 TUNNEL GOONS AUTHORING
-Every npc needs `hp`. It is the npc's Health and its Difficulty Score at once. Grade it as 8 easy, 10 moderate, or 12 hard.
+Every npc needs `hp`. It is the npc's Health and its Difficulty Score at once. Grade it as 8 easy, 10 moderate, or 12 hard. A pack's people and monsters are written to be met: file one as an npc under a new id, a monster with the `hp` the pack prints.
 
 ANSWER WITH:
 <<schema>>

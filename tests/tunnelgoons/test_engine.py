@@ -1,11 +1,13 @@
 import pytest
-from support.table import TUNNELGOONS, game, narrowed
+from support.table import NO_PACKS, TUNNELGOONS, game, narrowed
 from support.tunnelgoons import ENGINE
 
 from aidm.core.entities import Refusal
+from aidm.engines.packs import PackSet
 from aidm.engines.seam import AnyEngine
-from aidm.engines.tunnelgoons.engine import STARTING_ITEM_LIST
+from aidm.engines.tunnelgoons.engine import STARTING_ITEM_LIST, TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
+from aidm.engines.tunnelgoons.worldsmith import TunnelGoonsPack
 
 PICKS = {
     "brute": "1",
@@ -83,3 +85,20 @@ def test_preview_character_rows() -> None:
     character = ENGINE.create_character("Kael", "A wiry scavenger", PICKS)
     rows = ENGINE.preview_character(character)
     assert ("Items", "Rope, Torch, Melee Weapon (dagger)") in rows
+
+
+def test_an_installed_pack_offers_its_items_and_lands_on_the_character() -> None:
+    engine = TunnelGoonsEngine(NO_PACKS)
+    engine.packs = PackSet(
+        engine.id,
+        {"mine": TunnelGoonsPack(name="Mine", source="", license="", items=("Lamp",))},
+        {},
+    )
+
+    assert engine.creation_steps({})[0].id == "supplements"
+
+    picks = dict(PICKS, supplements="mine")
+    assert engine.creation_steps(picks)[-1].hint.endswith("Lamp")
+
+    character = engine.create_character("Kael", "A wiry scavenger", picks)
+    assert character.packs is not None and character.packs.ids == ("mine",)

@@ -41,6 +41,10 @@ Attribution, as `rules.md` carries it:
 
 None. The starting item list is in the SRD's character creation.
 
+Packs. A Tunnel Goons pack holds items, factions, people with their `hp`, monsters and the
+setting kit every pack carries — its setting, names, locations, seeds and special rules. None
+ships. A written one is selected on the character and on the scenario, the way Loner's packs are.
+
 ## The tools
 
 Every tool makes one change, rolls dice, opens a decision, or ends the turn.

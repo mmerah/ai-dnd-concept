@@ -4,9 +4,9 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Sections, section_if
+from aidm.core.prompt import Sections
 from aidm.engines.loner3e.world import DIE_FACE
-from aidm.engines.packs import Pack
+from aidm.engines.packs import Pack, block_line, bullets
 
 AUTHORING = (
     "LONER 3E AUTHORING\n"
@@ -45,18 +45,16 @@ class Loner3eBlock(Frozen):
 
     @property
     def line(self) -> str:
-        parts = [f"{self.name} — {self.concept}"]
-        for key, value in (
+        return block_line(
+            self.name,
+            self.concept,
             ("skills", ", ".join(self.skills)),
             ("frailties", ", ".join(self.frailties)),
             ("gear", ", ".join(self.gear)),
             ("goal", self.goal),
             ("motive", self.motive),
             ("nemesis", self.nemesis),
-        ):
-            if value:
-                parts.append(f"{key}: {value}")
-        return "; ".join(parts)
+        )
 
 
 class Loner3ePack(Pack):
@@ -85,6 +83,19 @@ class Loner3ePack(Pack):
             option.id for option in (*self.concepts, *self.skills, *self.frailties, *self.gear)
         )
 
+    @property
+    def counts(self) -> tuple[tuple[str, int], ...]:
+        return (
+            ("concepts", len(self.concepts)),
+            ("skills", len(self.skills)),
+            ("frailties", len(self.frailties)),
+            ("gear", len(self.gear)),
+            ("factions", len(self.factions)),
+            ("people", len(self.npcs)),
+            ("monsters", len(self.monsters)),
+            *super().counts,
+        )
+
     def sections(self, *, opening: bool) -> Sections:
         tags = "\n".join(
             f"{kind}: {', '.join(option.label for option in options)}"
@@ -98,7 +109,7 @@ class Loner3ePack(Pack):
         return (
             *super().sections(opening=opening),
             ("TRAIT TAGS", tags),
-            *section_if("FACTIONS", "\n".join(f"- {block.line}" for block in self.factions)),
-            *section_if("PEOPLE", "\n".join(f"- {block.line}" for block in self.npcs)),
-            *section_if("MONSTERS", "\n".join(f"- {block.line}" for block in self.monsters)),
+            *bullets("FACTIONS", (block.line for block in self.factions)),
+            *bullets("PEOPLE", (block.line for block in self.npcs)),
+            *bullets("MONSTERS", (block.line for block in self.monsters)),
         )

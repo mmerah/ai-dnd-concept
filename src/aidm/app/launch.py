@@ -24,6 +24,15 @@ class CatalogEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class PackEntry:
+    id: Slug
+    label: str
+    rules: str
+    written: bool
+    tables: str  # `Pack.summary`: what the pack holds, counted
+
+
+@dataclass(frozen=True, slots=True)
 class LaunchTarget:
     scenario_id: Slug
     character_id: Slug
@@ -47,6 +56,7 @@ class SaveOption:
 class LauncherCatalog:
     scenarios: tuple[CatalogEntry, ...]
     characters: tuple[CatalogEntry, ...]
+    packs: tuple[PackEntry, ...]
     saves: tuple[SaveOption, ...]
     # Only entries whose stem equals a rendered `LaunchTarget.slug` are ever looked up by slug.
     unresumable: tuple[str, ...]
@@ -96,6 +106,18 @@ class LauncherCatalog:
             )
             for name, engine, header in library.read_characters(engines)
         )
+        packs = tuple(
+            PackEntry(
+                id=pack_id,
+                label=pack.name,
+                rules=engine.title,
+                written=written,
+                tables=pack.summary,
+            )
+            for engine in engines.values()
+            for written, shelf in ((False, engine.packs.shipped), (True, engine.packs.written))
+            for pack_id, pack in shelf.items()
+        )
         titles = {(entry.id, entry.engine): entry.label for entry in characters}
         played_by = {entry.id: entry.engine for entry in scenarios}
         saves: list[SaveOption] = []
@@ -113,6 +135,7 @@ class LauncherCatalog:
         return cls(
             scenarios=scenarios,
             characters=characters,
+            packs=packs,
             saves=tuple(saves),
             unresumable=tuple(unresumable),
         )

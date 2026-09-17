@@ -104,3 +104,64 @@ Known and accepted:
   to 110,529 bytes of the 131,072-byte cap, about 20 KB of headroom, down from 95 KB with AP01.
 - **AP01 alone sets `spends_luck`.** No other page prices anything in Luck.
 - **The licence question stays open** for all twelve pages, as the docs say.
+
+## Phase 3: packs on the seam, and packs the player owns
+
+| count     | before | after  | plan target      |
+| --------- | ------ | ------ | ---------------- |
+| `src`     | 9,634  | 9,869  | 10,030 to 10,190 |
+| `tests`   | 11,815 | 11,990 | 11,900 to 12,060 |
+| `qa`      | 2,004  | 2,005  | unchanged        |
+| `scripts` | 396    | 396    | unchanged        |
+
+`src` lands under its floor for the reason phases 1 and 2 did, plus the cuts below: the plan's
+target carries `PackStore`, `install_pack`, `check_addable` and `installing`, all deferred.
+
+Decisions taken off-plan:
+
+1. **Nothing writes a pack in this phase.** `PackStore`, `Engine.install_pack`,
+   `PackSet.check_addable` and `PackSet.installing` had no production caller before phase 4's
+   `new_pack`, the same cut phase 1 made; phase 4 part A adds them with that caller. Phase 3
+   reads `packs/<engine>/` at start and lists it.
+2. **One SRD override point.** `Engine.pack_ids(supplements)` returns the ids a creation pick
+   selects; `SceneEngine` prepends `srd` there. `select_packs`, `chosen_packs`, `picked_packs`
+   (the `supplements` pick to a selection, the one spelling for all three `build_character`s),
+   `admit`, `guidance`, `supplement_options` and `supplement_steps` are concrete on the seam.
+3. **`admit` runs in `Engine.begin`.** Both reviews found the seam's `admit` dead for the room
+   family: the launcher pairs any saved character with any scenario through `begin`, and only
+   `SceneEngine.new_game` called it. It now runs once, on the seam, before the game is parsed.
+4. **`rules_sections` renders on `SceneEngine.master_sections`**, not on Loner alone, so a
+   written 24XX pack's special rules reach its master. Same position; no golden moved.
+5. **`seeds` lives on `PackSet`** beside `chosen`, `guidance` and `rules_sections`; the page
+   reads `engine.packs.seeds(...)`. `PackSet.guidance` takes an optional selection again: a
+   room game's `None` is a real caller now (phase 1 decision 4, re-opened as it foresaw).
+6. **`PackSet.installed` is a field computed once** in `__post_init__` from `shipped` and
+   `written`, so `select` and `chosen` read it with no local alias and no rebuild per id.
+7. **`TunnelGoonsPack.items` is `tuple[str, ...]`**: nothing read an id or a detail.
+8. **The supplements step is labelled "Packs"** (`SUPPLEMENTS_LABEL` on the seam; the literal
+   on the scenario page, which may not import engines). "Table sets beyond the SRD" was wrong
+   the moment Tunnel Goons, which has no SRD pack, could offer the step. `qa/s_create.py`
+   follows.
+9. **`PackEntry` has no `engine` field**; `rules` carries the engine's title, and nothing else
+   read it before phase 4's View/Edit buttons.
+10. **24XX's `counts` leave out `skills`**: a supplement's skills are never offered, so the home
+    page does not count them.
+11. **Two helpers in `engines/packs.py`** with three users each: `block_line` (Loner and 24XX
+    cast blocks) and `bullets` (nine `- line` sections). Byte-identical output.
+12. **A `Refusal` is never raised to be caught four lines below.** `read_packs` logs a written
+    file that shadows a shipped id with an `if`, and reserves `try` for the parse.
+
+Refuted findings: none. Every finding of both reviews (two Opus reviewers; no `codex` on the
+machine) was fixed, including the cuts: `sheet_character`'s dead `packs` default, the duplicate
+construction test in `tests/engines/test_seam.py`, and `SceneEngine.admit` binding the required
+selection once.
+
+Known and accepted:
+
+- **Only the two named goldens moved**: `prompts/twentyfourxx/worldsmith.txt` now carries
+  `PACK: Core tables` with `SPECIALTIES` and `ORIGINS`; `prompts/tunnelgoons/worldsmith.txt`
+  the one new `AUTHORING` sentence. Every other golden is byte-identical.
+- **Tests build every engine on a directory that never exists** (`tests/no-packs`), so a
+  developer's own `packs/` never reaches the suite.
+- **`tests/app/test_game_service.py` changed beyond part B's file list**: its engine subclass
+  needed the `written` argument; nothing else moved there.

@@ -14,7 +14,7 @@ def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
         meanwhile_turns = 1
 
     with pytest.raises(ValueError, match="ticks every"):
-        TooFast()
+        TooFast(tmp_path / "written")
 
 
 def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(
@@ -38,14 +38,7 @@ def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path)
     engine_type = type(installed(tmp_path))
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
     with pytest.raises(ValueError, match="ships no 'srd' pack"):
-        engine_type()
-
-
-def test_construction_refuses_when_the_packs_dir_has_no_srd(tmp_path: Path) -> None:
-    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    (tmp_path / "packs").mkdir()
-    with pytest.raises(ValueError, match="ships no 'srd' pack"):
-        engine_at(tmp_path)()
+        engine_type(tmp_path / "written")
 
 
 def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
@@ -55,7 +48,7 @@ def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
         '{"name": "The SRD", "name": "Twice"}', encoding=ENCODING
     )
     with pytest.raises(Refusal, match="duplicate keys"):
-        engine_at(tmp_path)()
+        engine_at(tmp_path)(tmp_path / "written")
 
 
 def test_a_fifth_scene_engine_begins_a_playable_game(

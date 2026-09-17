@@ -3,8 +3,7 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from aidm.core.creation import CreationStep, Picks, picked_many
-from aidm.core.entities import Refusal, Slug, parse
+from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import (
     AnyCharacter,
@@ -27,7 +26,7 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.packs import SRD_PACK, Pack, PackSet, read_packs
+from aidm.engines.packs import SRD_PACK, Pack
 from aidm.engines.scenes.tools import (
     ENTER,
     LEAVE,
@@ -44,7 +43,6 @@ from aidm.engines.seam import Engine, Request, Written
 
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
-SUPPLEMENTS: Slug = "supplements"
 MOVE_ON = DecisionOption(
     id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
 )
@@ -77,10 +75,8 @@ MEANWHILE_NUDGE = (
 )
 
 
-class SceneEngine[C: Person, G: Game[Any], K: Pack](Engine[C, C, G]):
-    pack: type[K]
+class SceneEngine[C: Person, G: Game[Any], K: Pack](Engine[C, C, G, K]):
     world: type[SceneWorld[C]]
-    packs: PackSet[K]
     family_dir = Path(__file__).parent
     opening_sections = (
         ("SCENES SO FAR", "(no scenes yet — write the opening)"),
@@ -88,54 +84,34 @@ class SceneEngine[C: Person, G: Game[Any], K: Pack](Engine[C, C, G]):
         ("THE SCENE NOW", "(none yet)"),
     )
 
-    def __init__(self) -> None:
-        self.packs = read_packs(self.id, self.directory / "packs", self.pack)
+    def __init__(self, written: Path) -> None:
+        super().__init__(written)
         self.packs.srd()  # an engine that ships no srd pack is a bug, not a refusal
-        super().__init__()
 
     def world_of(self, state: G) -> SceneWorld[C]:
         return state.payload
 
-    def supplement_options(self) -> tuple[DecisionOption, ...]:
-        return tuple(
-            DecisionOption(id=key, label=pack.name) for key, pack in self.packs.supplements()
-        )
-
-    def select_packs(self, supplements: Sequence[Slug]) -> PackSelection:
-        return self.packs.select(parse(PackSelection, {"ids": (SRD_PACK, *supplements)}))
+    def pack_ids(self, supplements: Sequence[Slug]) -> tuple[Slug, ...]:
+        return (SRD_PACK, *supplements)
 
     def validate(self, state: G) -> None:
         super().validate(state)
-        selection = self.packs.require(state.packs)
-        if SRD_PACK not in selection.ids:
+        if SRD_PACK not in self.packs.require(state.packs).ids:
             raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")
-        self.packs.select(selection)
 
     def guidance(self, selection: PackSelection | None, /, *, opening: bool) -> str:
-        packs = self.packs.guidance(self.packs.require(selection), opening=opening)
-        return f"{self.authoring}\n\n{packs}" if packs else self.authoring
-
-    def chosen_packs(self, picks: Picks) -> tuple[K, ...]:
-        """An uninstalled id is skipped: the page calls this on every change and cannot raise."""
-        wanted = (SRD_PACK, *picked_many(picks, SUPPLEMENTS))
-        installed = self.packs.installed
-        return tuple(installed[pack_id] for pack_id in wanted if pack_id in installed)
+        return super().guidance(self.packs.require(selection), opening=opening)
 
     def admit(self, packs: PackSelection | None, character: AnyCharacter) -> None:
         selection = self.packs.require(packs)
         if character.packs is None:
             raise Refusal(f"{character.id!r} was made with no table set")
-        if not set(character.packs.ids) <= set(selection.ids):
-            raise Refusal(
-                f"{character.id!r} was made with {', '.join(character.packs.ids)}; "
-                f"this scenario plays {', '.join(selection.ids)}"
-            )
+        super().admit(selection, character)
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C]:
         # Copied: a restart reopens the same scenario file.
         draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
         check_scene(draft)
-        self.admit(scenario.packs, character)
         return self.world.opening(draft, self.player_of(character), scenario.source)
 
     def master_sections(self, state: G) -> Sections:
@@ -150,6 +126,7 @@ class SceneEngine[C: Person, G: Game[Any], K: Pack](Engine[C, C, G]):
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *section_if("THE ARC (the player has not found this)", world.arc),
+            *self.packs.rules_sections(state.packs),
         )
 
     def sheet_sections(self, _state: G) -> Sections:
@@ -226,19 +203,6 @@ class SceneEngine[C: Person, G: Game[Any], K: Pack](Engine[C, C, G]):
         if action != MOVE_ON.id or not self.world_of(draft).run.offered:
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
-
-    def supplement_steps(self) -> tuple[CreationStep, ...]:
-        options = self.supplement_options()
-        if not options:
-            return ()
-        return (
-            CreationStep(
-                id=SUPPLEMENTS,
-                label="Table sets beyond the SRD",
-                options=options,
-                multiple=True,
-            ),
-        )
 
     def render_next(self, draft: G, intent: str) -> str:
         world = self.world_of(draft)

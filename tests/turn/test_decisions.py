@@ -4,7 +4,7 @@ from random import Random
 import pytest
 from pydantic import Field, ValidationError
 from support.game import open_game
-from support.table import Table, narrowed, play_turn, tool_call
+from support.table import NO_PACKS, Table, narrowed, play_turn, tool_call
 
 from aidm.core.entities import Frozen, Refusal
 from aidm.core.facts import Fact
@@ -82,7 +82,7 @@ def _strike_tool(*, told: bool) -> MasterTool[Loner3eGame]:
 
 
 def _engine(*, told: bool = True) -> AnyEngine:
-    engine = Loner3eEngine()
+    engine = Loner3eEngine(NO_PACKS)
     tools = (_strike_tool(told=told), TURN_THE_HIT, CHAIN_THE_HIT)
     engine.tools = {tool.name: tool for tool in tools}
     return engine

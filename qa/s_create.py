@@ -88,7 +88,7 @@ def body(s: Session) -> None:
     page.goto(BASE + "/create")
     page.wait_for_timeout(800)
     text(page, "Name", "Wren")
-    select(page, "Table sets beyond the SRD", "AP01 Fantasy")
+    select(page, "Packs", "AP01 Fantasy")
     page.keyboard.press("Escape")
     page.wait_for_timeout(400)
     s.shot(page, "loner-supplements")
@@ -187,7 +187,7 @@ def body(s: Session) -> None:
     page.wait_for_timeout(1000)
     select(page, "Rules", "TUNNEL GOONS")
     s.check(
-        page.locator(".q-select", has_text="Table sets").count() == 0,
+        page.locator(".q-select", has_text="Packs").count() == 0,
         "a room engine offers table sets",
     )
     text(page, "Title", "The Sunken Bell")

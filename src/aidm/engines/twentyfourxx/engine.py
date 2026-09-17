@@ -10,7 +10,6 @@ from aidm.core.creation import (
     chosen_option,
     option_of,
     picked,
-    picked_many,
 )
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll
@@ -20,7 +19,7 @@ from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
+from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.tools import DROP_ITEM, AskWorld, DropItem, Kill
 from aidm.engines.twentyfourxx.tools import (
     ASK_WORLD,
@@ -65,10 +64,11 @@ from aidm.engines.twentyfourxx.world import (
 from aidm.engines.twentyfourxx.worldsmith import (
     AUTHORING,
     HIRING,
+    SKILL_COUNT,
     Origin,
-    Pack,
     SheetDraft,
     Specialty,
+    TwentyfourxxPack,
 )
 
 
@@ -85,7 +85,7 @@ class Helping(NamedTuple):
     terms: Helper
 
 
-class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
+class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, TwentyfourxxPack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     authoring = AUTHORING
@@ -97,10 +97,20 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario
     character = TwentyfourxxCharacter
-    pack = Pack
+    pack = TwentyfourxxPack
     world = TwentyfourxxWorld
     member = Crewmate
     hires = True
+
+    def __init__(self, written: Path) -> None:
+        super().__init__(written)
+        srd = self.packs.srd()  # the checks the model made before a supplement shape relaxed it
+        if len(srd.skills) != SKILL_COUNT:
+            raise ValueError(
+                f"the {self.id!r} srd pack lists {len(srd.skills)} skills, not {SKILL_COUNT}"
+            )
+        if not srd.starting_kit:
+            raise ValueError(f"the {self.id!r} srd pack has no starting kit")
 
     def world_of(self, state: TwentyfourxxGame) -> TwentyfourxxWorld:
         return state.payload
@@ -196,7 +206,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return tuple(steps)
 
     def build_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
-        packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
+        packs = self.picked_packs(picks)
         offered_specialties, offered_origins = self._offered(picks)
         specialty = chosen_option(offered_specialties, picked(picks, "specialty"))
         origin = chosen_option(offered_origins, picked(picks, "origin"))

@@ -52,6 +52,7 @@ def main() -> None:
         saves_dir=work / "saves",
         scenarios_dir=work / "scenarios",
         characters_dir=work / "characters",
+        packs_dir=work / "packs",
         server_port=parsed.port,
         # Only under `--art`: the default provider is what the settings scenario checks against.
         media=MediaConfig(enabled=True, provider="local") if parsed.art else MediaConfig(),

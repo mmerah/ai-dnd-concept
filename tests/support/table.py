@@ -35,11 +35,13 @@ class EnvFileFreeSettings(Settings):
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
+# never exists: tests must not read the player's packs
+NO_PACKS = REPOSITORY_ROOT / "tests" / "no-packs"
 LIBRARY = Library(SCENARIOS, CHARACTERS)
 LONER3E = EngineId("loner3e")
 TUNNELGOONS = EngineId("tunnelgoons")
 TWENTYFOURXX = EngineId("twentyfourxx")
-ENGINES_BUILT = build_engines()
+ENGINES_BUILT = build_engines(NO_PACKS)
 ENGINE_IDS = tuple(ENGINES_BUILT)
 SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}
 
@@ -104,6 +106,7 @@ def offline_settings(saves: Path | None = None, scenarios: Path = SCENARIOS) -> 
         saves_dir=Path("saves") if saves is None else saves,
         scenarios_dir=scenarios,
         characters_dir=CHARACTERS,
+        packs_dir=NO_PACKS,
     )
 
 
