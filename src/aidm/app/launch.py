@@ -20,6 +20,7 @@ class CatalogEntry:
     detail: str
     rules: str
     look: Look
+    packs: tuple[Slug, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +92,7 @@ class LauncherCatalog:
                 detail=header.payload.brief,
                 rules=engines[engine].title,
                 look=engines[engine].look,
+                packs=header.packs.ids if header.packs is not None else (),
             )
             for name, engine, header in library.read_characters(engines)
         )

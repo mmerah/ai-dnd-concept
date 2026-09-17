@@ -16,6 +16,7 @@ MAX_SUPPLEMENTS = 2  # two packs in play beside the source fill the worldsmith's
 class Names(Frozen):
     female: tuple[str, ...] = ()
     male: tuple[str, ...] = ()
+    neutral: tuple[str, ...] = ()
     surnames: tuple[str, ...] = ()
     nicknames: tuple[str, ...] = ()
 
@@ -49,6 +50,7 @@ class Pack(Frozen):
             for kind, values in (
                 ("female", self.names.female),
                 ("male", self.names.male),
+                ("neutral", self.names.neutral),
                 ("surnames", self.names.surnames),
                 ("nicknames", self.names.nicknames),
             )

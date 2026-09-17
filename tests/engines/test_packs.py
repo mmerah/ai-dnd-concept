@@ -88,9 +88,13 @@ def test_sections_shows_adventure_seeds_only_at_the_opening() -> None:
 def test_sections_drops_empty_name_lists() -> None:
     empty = Pack(name="Test", source="", license="")
     female_only = Pack(name="Test", source="", license="", names=Names(female=("Elira",)))
+    with_neutral = Pack(
+        name="Test", source="", license="", names=Names(female=("Elira",), neutral=("Ash",))
+    )
 
     assert "NAMES" not in dict(empty.sections(opening=False))
     assert dict(female_only.sections(opening=False))["NAMES"] == "female: Elira"
+    assert dict(with_neutral.sections(opening=False))["NAMES"] == "female: Elira\nneutral: Ash"
 
 
 def test_loner3e_pack_sections_render_trait_tags_and_factions() -> None:

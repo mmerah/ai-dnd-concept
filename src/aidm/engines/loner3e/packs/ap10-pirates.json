@@ -1,0 +1,1293 @@
+{
+  "name": "AP10 Pirates",
+  "source": "https://lonersrd.zotiquestgames.com/adventure_packs/AP10_pirates.html",
+  "license": "Adventure Pack 10: Pirates, Loner SRD site (CC BY-SA 4.0), (c) Roberto Bisceglie / Zotiquest Games",
+  "setting": "The world is ruled by tide and cannon — a storm-wracked sea of blood, gold, and betrayal where every ship sails on superstition as much as sailcloth.\nThe age is the twilight of empire — the late 1600s to early 1700s — when crowns send fleets they cannot control and laws are more rumor than rule.\nThe setting is the Caribbean, where jungle-choked islands rise from sapphire waters, forts crumble under the sun, and every cove might hide a rogue fleet or buried sin.\nPower is fractured and volatile — Spanish galleons patrol the trade lanes, English governors whisper to smugglers, and pirate captains carve empires from coral and gunpowder.\nJustice is a matter of aim and timing — courts are bought, navies are stretched thin, and gallows swing heavy with names no one remembers.\nCulture is wild and layered — tongues clash on every dock, drums echo in sugarcane fields, and stolen gods are prayed to under false names.\nGold is the hunger that drives it all — chests of coin, crates of rum, charts marked with cursed Xs — enough to make a sailor king, or sink him screaming.\nThe sea is freedom, but it keeps no promises — only the bold, the cruel, and the damned rise with the tide.",
+  "names": {
+    "female": [
+      "Anne",
+      "Clara",
+      "Esperanza",
+      "Judith",
+      "Lucille",
+      "Mary",
+      "Isabel",
+      "Brigitte",
+      "Marta",
+      "Eliza",
+      "Nora",
+      "Yvette",
+      "Agnes",
+      "Céleste",
+      "Dorothea",
+      "Inés",
+      "Lisbeth",
+      "Sabine",
+      "Hester",
+      "Colette",
+      "Maria",
+      "Jane",
+      "Renata",
+      "Béatrice",
+      "Abigail",
+      "Elena",
+      "Odette",
+      "Ruth",
+      "Sybil",
+      "Winifred",
+      "Constance",
+      "Ivy",
+      "Jeanne",
+      "Pilar",
+      "Rosalie",
+      "Thelma"
+    ],
+    "male": [
+      "Thomas",
+      "Edward",
+      "Jean",
+      "Pedro",
+      "James",
+      "Anton",
+      "Samuel",
+      "Diego",
+      "Elias",
+      "Charles",
+      "Lucien",
+      "Basil",
+      "Gabriel",
+      "Mateo",
+      "Hugh",
+      "Jacques",
+      "Oscar",
+      "Willem",
+      "Nathaniel",
+      "Louis",
+      "Álvaro",
+      "Frederick",
+      "Colin",
+      "Jasper",
+      "Henry",
+      "Stefan",
+      "Miguel",
+      "Walter",
+      "Lionel",
+      "Gilbert",
+      "Francis",
+      "Andre",
+      "Julian",
+      "Rupert",
+      "Sébastien",
+      "Amos"
+    ],
+    "neutral": [],
+    "surnames": [
+      "Blackwood",
+      "Tremayne",
+      "Delacruz",
+      "Lafitte",
+      "Hargrove",
+      "Montoya",
+      "Redfern",
+      "Barrow",
+      "Carvajal",
+      "Dubois",
+      "Kendrick",
+      "Saville",
+      "Ashford",
+      "Navarro",
+      "Desrosiers",
+      "Mendoza",
+      "Godwin",
+      "Moreau",
+      "Thorne",
+      "Ibanez",
+      "Leclair",
+      "Quintero",
+      "Rooke",
+      "Villarreal",
+      "Haskett",
+      "Marín",
+      "Beauchamp",
+      "Salazar",
+      "Dunmore",
+      "Rousseau",
+      "Fenwick",
+      "Ordoñez",
+      "Durant",
+      "Serrano",
+      "Trenholm",
+      "Castille"
+    ],
+    "nicknames": [
+      "One-Eye",
+      "Long Jack",
+      "Red Mary",
+      "Ironhand",
+      "Peg Joe",
+      "No-Nose",
+      "Black Cat",
+      "Old Salt",
+      "Lucky Jim",
+      "Brass Nell",
+      "Quick Tom",
+      "Bloody Anne",
+      "Half-Tongue",
+      "Hard Sue",
+      "Grin Bill",
+      "Quiet Liz",
+      "Mad Pete",
+      "Slick Sam",
+      "Hookjaw",
+      "Cold Jane",
+      "Crabby Lou",
+      "Silent John",
+      "Slim Vane",
+      "Big Martha",
+      "Ragged Dan",
+      "Sweet Meg",
+      "Tidy Ned",
+      "Fat Molly",
+      "Sharp Kit",
+      "Bold Reggie",
+      "Split Lip",
+      "Toothless",
+      "Narrow Nat",
+      "Wild Bess",
+      "Deadpan Joe",
+      "Slow Elias"
+    ]
+  },
+  "rules": "Ship Combat:\n\nWhen engaging in ship combat, resolve the scene by asking a closed question (e.g. *Do we manage to board them before they escape?*). Interpret the result with the following **fictional prompts**, not fixed effects.\n\n* **No, and**: Your ship takes a brutal hit or is outmaneuvered. You’re left vulnerable, or damage affects a key system (e.g. sails, rudder, morale).\n* **No**: The enemy ship holds position. You fail to make progress and remain under threat.\n* **No, but**: You’re kept at bay, but avoid damage or find a small tactical advantage.\n* **Yes, but**: You make contact or land a shot, but suffer damage or lose a key crew member.\n* **Yes**: You hit them hard or gain the upper hand.\n* **Yes, and**: A clean broadside, precise boarding, or swift disabling action—total advantage is yours.\n\n> **Note:** Treat “damage” loosely—it might mean a torn sail, spilled powder, broken morale, or wounded allies. Track the fiction, not HP.\n\nPlunder & Morale:\n\nAfter a successful raid, ask: *Did the haul satisfy the crew?* or *Do we manage to keep order during the division of spoils?*\n\nUse the result to build **emergent pressure or stability**, not binary success/failure.\n\n* **No, and**: Fights break out over shares; a faction forms against you.\n* **No**: The crew is grumbling, and trust is fraying.\n* **No, but**: Unease simmers, but your officers keep order—for now.\n* **Yes, but**: You get things settled, but only after giving up something or showing weakness.\n* **Yes**: Order is maintained, loot distributed.\n* **Yes, and**: A rousing speech, a fair hand—morale soars, you gain loyalty or volunteers.\n\n> **Caution:** Crew morale can be tracked abstractly (via a tag, journal note, or countdown). Use it narratively to inform future rolls.\n\nMutiny:\n\nWhen tension peaks, ask: *Does the crew rise against me?* or *Can I hold the deck in the face of open defiance?*\n\n* **No, and**: You reassert control with force or fear. The crew falls in line—at a cost.\n* **No**: The uprising is quelled. Morale is shaky, but you’re in charge.\n* **No, but**: You prevent a full revolt, but the ringleaders remain, watching.\n* **Yes, but**: You're deposed or forced to share power, but you avoid being cast overboard.\n* **Yes**: You're overthrown. Someone else takes the helm.\n* **Yes, and**: You’re betrayed by a close ally. Leadership shifts violently. You may survive—but not unscathed.\n\n> **Tip:** Let mutinies reshape the fiction dramatically. They’re a chance to reframe the story, not a game-over.",
+  "locations": [
+    {
+      "label": "Port Royal",
+      "detail": "A thriving British colonial port, infamous for its corruption and indulgence.",
+      "encounters": "Bribe the corrupt Governor’s aide; overhear treasonous plans at the Black Pearl Tavern; escape a tavern brawl turned deadly."
+    },
+    {
+      "label": "Isla de Culebras",
+      "detail": "A remote and rocky island, feared for its storms, snakes, and the wrecks that litter its shores.",
+      "encounters": "Dodge rival treasure hunters in the hidden cavern; get ambushed by smugglers in the clifftop watch; scale jagged cliffs under musket fire."
+    },
+    {
+      "label": "Tortuga",
+      "detail": "A loose, lawless port where pirates rule and no flag flies for long.",
+      "encounters": "Duel a rival in the Red Parrot Inn; persuade the Pirate Court to back a mutiny; chase a thief through crowded alleys."
+    },
+    {
+      "label": "Nassau",
+      "detail": "A fledgling pirate republic where ideals clash with ambition.",
+      "encounters": "Trade secrets in the Free Market; outwit a British informant in the Governor’s Quarters; rally support for a pirate fleet."
+    },
+    {
+      "label": "Shipbreaker Cove",
+      "detail": "A jagged inlet known for wrecks, reefs, and rumors of hidden anchorages.",
+      "encounters": "Slip through the cove’s defenses under pursuit; parley during a tense pirate summit; retrieve a wrecked courier ship’s logs before high tide."
+    },
+    {
+      "label": "The Lost Shoals",
+      "detail": "A shifting maze of reefs and fogbanks where compasses spin and charts lie.",
+      "encounters": "Board the haunted wreck of the Resolute; escape a pursuing brig obscured in the fog; investigate why the Deadlight Buoy is following your vessel."
+    }
+  ],
+  "seeds": [
+    "Escort a merchant brig through contested waters before a rival syndicate sabotages the deal.",
+    "Locate a hidden inlet said to shelter stolen goods — and those willing to kill for them.",
+    "A former naval officer offers you a ship and crew — but only if you break him out of prison.",
+    "A sugar baron’s daughter has vanished. His rivals deny involvement. His men prepare for war.",
+    "Rescue a cartographer stranded on a reef after his guides mutinied and fled inland.",
+    "A storm wrecks your ship near a colonial fort. The commander offers “hospitality” — and conscription.",
+    "Defend a coastal village from pirate raiders hired by a foreign power to provoke conflict.",
+    "After drifting to a barren island, you find signs of an earlier castaway — and their final journal.",
+    "A barkeep begs you to find their brother, last seen aboard a ship rumored cursed by bad luck.",
+    "Smuggle a banned shipment of weapons past patrols and deliver them to a rebel outpost.",
+    "Infiltrate a rival fleet’s anchorage to retrieve a blackmail ledger hidden in the captain’s cabin.",
+    "A crewman’s gambling debts drag you into a feud between two powerful dockside families.",
+    "Your quartermaster vanishes during shore leave. A witness says they boarded a governor’s skiff.",
+    "A ship limps into harbor claiming to have found a derelict full of gold — and only one survivor.",
+    "Take command of a crew mid-mutiny. They’ll follow your orders — for now.",
+    "A rival captain challenges you to a duel for the rights to a lucrative trade route.",
+    "A plantation owner offers coin to escort him home — but his enemies plan to intercept.",
+    "A prisoner offers a map to a hidden cache in exchange for safe passage. His former crew wants him dead.",
+    "Deliver a sealed letter to a colonial official. Inside: a list of names — including yours.",
+    "Investigate a portside warehouse where sailors have gone missing. The guards refuse to enter.",
+    "Ferry a noble’s spoiled heir to a new post, while rival ships try to “rescue” him for ransom.",
+    "A disgraced captain offers information on a treasure convoy — but demands half the haul.",
+    "Track down a saboteur leaking your ship’s position to the authorities. They may be one of your own.",
+    "A fishing village’s catch has dried up — and a merchant accuses them of piracy. Prove otherwise.",
+    "Pose as a crew on a slave ship to infiltrate an auction and free those held in the hold.",
+    "Explore a cave system exposed by erosion. Smugglers once used it — some may still.",
+    "Transport a diplomat between colonies, avoiding both pirates and those he’s betrayed.",
+    "Escape a foreign prison after your ship is seized — and your crew sold into forced labor.",
+    "A prominent merchant’s warehouse burns. He accuses you publicly. Clear your name — or run.",
+    "A mutiny splits your allied fleet. Choose a side — or seize the spoils amid the chaos.",
+    "Assist a rebel courier in delivering secret plans to a militia before the Navy catches wind.",
+    "Stumble upon a maroon camp deep inland. They offer shelter — for a price.",
+    "Discover a cache of weapons hidden under a church floor. Decide whether to report it — or sell it.",
+    "A known traitor offers safe passage through hostile waters. Your crew demands his head.",
+    "Track a rival who stole your ship’s figurehead — and your reputation — in a single night.",
+    "A coded logbook surfaces in a pawn shop. It leads to a smuggler’s vault — if you crack the cipher."
+  ],
+  "concepts": [
+    {
+      "id": "weathered-captain",
+      "label": "Weathered Captain",
+      "detail": ""
+    },
+    {
+      "id": "vengeful-buccaneer",
+      "label": "Vengeful Buccaneer",
+      "detail": ""
+    },
+    {
+      "id": "treasure-hunter",
+      "label": "Treasure Hunter",
+      "detail": ""
+    },
+    {
+      "id": "escaped-convict",
+      "label": "Escaped Convict",
+      "detail": ""
+    },
+    {
+      "id": "rogue-privateer",
+      "label": "Rogue Privateer",
+      "detail": ""
+    },
+    {
+      "id": "drunken-navigator",
+      "label": "Drunken Navigator",
+      "detail": ""
+    },
+    {
+      "id": "exiled-noble",
+      "label": "Exiled Noble",
+      "detail": ""
+    },
+    {
+      "id": "cunning-cook",
+      "label": "Cunning Cook",
+      "detail": ""
+    },
+    {
+      "id": "runaway-shipwright",
+      "label": "Runaway Shipwright",
+      "detail": ""
+    },
+    {
+      "id": "hardened-gunner",
+      "label": "Hardened Gunner",
+      "detail": ""
+    },
+    {
+      "id": "smiling-smuggler",
+      "label": "Smiling Smuggler",
+      "detail": ""
+    },
+    {
+      "id": "sharp-tongued-barkeep",
+      "label": "Sharp-Tongued Barkeep",
+      "detail": ""
+    },
+    {
+      "id": "reluctant-mutineer",
+      "label": "Reluctant Mutineer",
+      "detail": ""
+    },
+    {
+      "id": "survivor-of-shipwreck",
+      "label": "Survivor of Shipwreck",
+      "detail": ""
+    },
+    {
+      "id": "greedy-deckhand",
+      "label": "Greedy Deckhand",
+      "detail": ""
+    },
+    {
+      "id": "obsessive-cartographer",
+      "label": "Obsessive Cartographer",
+      "detail": ""
+    },
+    {
+      "id": "freed-bondsman",
+      "label": "Freed Bondsman",
+      "detail": ""
+    },
+    {
+      "id": "cold-eyed-lookout",
+      "label": "Cold-Eyed Lookout",
+      "detail": ""
+    },
+    {
+      "id": "former-officer",
+      "label": "Former Officer",
+      "detail": ""
+    },
+    {
+      "id": "quartermaster-in-hiding",
+      "label": "Quartermaster in Hiding",
+      "detail": ""
+    },
+    {
+      "id": "duel-happy-swashbuckler",
+      "label": "Duel-Happy Swashbuckler",
+      "detail": ""
+    },
+    {
+      "id": "bankrupt-merchant",
+      "label": "Bankrupt Merchant",
+      "detail": ""
+    },
+    {
+      "id": "powder-monkey-veteran",
+      "label": "Powder Monkey Veteran",
+      "detail": ""
+    },
+    {
+      "id": "grizzled-harpooner",
+      "label": "Grizzled Harpooner",
+      "detail": ""
+    },
+    {
+      "id": "island-trader-scout",
+      "label": "Island-Trader Scout",
+      "detail": ""
+    },
+    {
+      "id": "scarred-surgeon",
+      "label": "Scarred Surgeon",
+      "detail": ""
+    },
+    {
+      "id": "gambling-addict",
+      "label": "Gambling Addict",
+      "detail": ""
+    },
+    {
+      "id": "defrocked-missionary",
+      "label": "Defrocked Missionary",
+      "detail": ""
+    },
+    {
+      "id": "streetwise-orphan",
+      "label": "Streetwise Orphan",
+      "detail": ""
+    },
+    {
+      "id": "cross-dressed-stowaway",
+      "label": "Cross-Dressed Stowaway",
+      "detail": ""
+    },
+    {
+      "id": "seasoned-pilot",
+      "label": "Seasoned Pilot",
+      "detail": ""
+    },
+    {
+      "id": "silver-tongued-rogue",
+      "label": "Silver-Tongued Rogue",
+      "detail": ""
+    },
+    {
+      "id": "hothead-gunrunner",
+      "label": "Hothead Gunrunner",
+      "detail": ""
+    },
+    {
+      "id": "scarred-boatswain",
+      "label": "Scarred Boatswain",
+      "detail": ""
+    },
+    {
+      "id": "cocky-recruit",
+      "label": "Cocky Recruit",
+      "detail": ""
+    },
+    {
+      "id": "veteran-boatswain",
+      "label": "Veteran Boatswain",
+      "detail": ""
+    }
+  ],
+  "skills": [
+    {
+      "id": "ropework-mastery",
+      "label": "Ropework Mastery",
+      "detail": ""
+    },
+    {
+      "id": "pistol-accuracy",
+      "label": "Pistol Accuracy",
+      "detail": ""
+    },
+    {
+      "id": "commanding-voice",
+      "label": "Commanding Voice",
+      "detail": ""
+    },
+    {
+      "id": "celestial-navigation",
+      "label": "Celestial Navigation",
+      "detail": ""
+    },
+    {
+      "id": "fast-reload",
+      "label": "Fast Reload",
+      "detail": ""
+    },
+    {
+      "id": "dice-hustling",
+      "label": "Dice Hustling",
+      "detail": ""
+    },
+    {
+      "id": "silent-movement",
+      "label": "Silent Movement",
+      "detail": ""
+    },
+    {
+      "id": "knife-throwing",
+      "label": "Knife Throwing",
+      "detail": ""
+    },
+    {
+      "id": "swordsmanship",
+      "label": "Swordsmanship",
+      "detail": ""
+    },
+    {
+      "id": "reading-charts",
+      "label": "Reading Charts",
+      "detail": ""
+    },
+    {
+      "id": "hide-in-plain-sight",
+      "label": "Hide in Plain Sight",
+      "detail": ""
+    },
+    {
+      "id": "storm-sailing",
+      "label": "Storm Sailing",
+      "detail": ""
+    },
+    {
+      "id": "cannon-handling",
+      "label": "Cannon Handling",
+      "detail": ""
+    },
+    {
+      "id": "ship-tactics",
+      "label": "Ship Tactics",
+      "detail": ""
+    },
+    {
+      "id": "quick-reflexes",
+      "label": "Quick Reflexes",
+      "detail": ""
+    },
+    {
+      "id": "intimidation",
+      "label": "Intimidation",
+      "detail": ""
+    },
+    {
+      "id": "wilderness-survival",
+      "label": "Wilderness Survival",
+      "detail": ""
+    },
+    {
+      "id": "contraband-concealment",
+      "label": "Contraband Concealment",
+      "detail": ""
+    },
+    {
+      "id": "map-copying",
+      "label": "Map Copying",
+      "detail": ""
+    },
+    {
+      "id": "multilingual",
+      "label": "Multilingual",
+      "detail": ""
+    },
+    {
+      "id": "bartering",
+      "label": "Bartering",
+      "detail": ""
+    },
+    {
+      "id": "heavy-lifting",
+      "label": "Heavy Lifting",
+      "detail": ""
+    },
+    {
+      "id": "bluffing",
+      "label": "Bluffing",
+      "detail": ""
+    },
+    {
+      "id": "rig-climbing",
+      "label": "Rig Climbing",
+      "detail": ""
+    },
+    {
+      "id": "sharp-eyes",
+      "label": "Sharp Eyes",
+      "detail": ""
+    },
+    {
+      "id": "rig-repair",
+      "label": "Rig Repair",
+      "detail": ""
+    },
+    {
+      "id": "fire-starting",
+      "label": "Fire Starting",
+      "detail": ""
+    },
+    {
+      "id": "load-balancing",
+      "label": "Load Balancing",
+      "detail": ""
+    },
+    {
+      "id": "fast-talking",
+      "label": "Fast Talking",
+      "detail": ""
+    },
+    {
+      "id": "silent-signaling",
+      "label": "Silent Signaling",
+      "detail": ""
+    },
+    {
+      "id": "hold-breath-long",
+      "label": "Hold Breath Long",
+      "detail": ""
+    },
+    {
+      "id": "steady-hand",
+      "label": "Steady Hand",
+      "detail": ""
+    },
+    {
+      "id": "sea-shanty-leadership",
+      "label": "Sea Shanty Leadership",
+      "detail": ""
+    },
+    {
+      "id": "improvised-weapons",
+      "label": "Improvised Weapons",
+      "detail": ""
+    },
+    {
+      "id": "spot-a-traitor",
+      "label": "Spot a Traitor",
+      "detail": ""
+    },
+    {
+      "id": "hull-patching",
+      "label": "Hull Patching",
+      "detail": ""
+    }
+  ],
+  "frailties": [
+    {
+      "id": "hunted-by-the-navy",
+      "label": "Hunted by the Navy",
+      "detail": ""
+    },
+    {
+      "id": "seasick-in-storms",
+      "label": "Seasick in Storms",
+      "detail": ""
+    },
+    {
+      "id": "haunted-by-the-past",
+      "label": "Haunted by the Past",
+      "detail": ""
+    },
+    {
+      "id": "ill-reputation",
+      "label": "Ill Reputation",
+      "detail": ""
+    },
+    {
+      "id": "broken-ribs",
+      "label": "Broken Ribs",
+      "detail": ""
+    },
+    {
+      "id": "too-trusting",
+      "label": "Too Trusting",
+      "detail": ""
+    },
+    {
+      "id": "drunk-on-duty",
+      "label": "Drunk on Duty",
+      "detail": ""
+    },
+    {
+      "id": "guilt-ridden",
+      "label": "Guilt-Ridden",
+      "detail": ""
+    },
+    {
+      "id": "crippling-debt",
+      "label": "Crippling Debt",
+      "detail": ""
+    },
+    {
+      "id": "poor-swimmer",
+      "label": "Poor Swimmer",
+      "detail": ""
+    },
+    {
+      "id": "old-grudge",
+      "label": "Old Grudge",
+      "detail": ""
+    },
+    {
+      "id": "disobeys-orders",
+      "label": "Disobeys Orders",
+      "detail": ""
+    },
+    {
+      "id": "missing-fingers",
+      "label": "Missing Fingers",
+      "detail": ""
+    },
+    {
+      "id": "loud-sleeper",
+      "label": "Loud Sleeper",
+      "detail": ""
+    },
+    {
+      "id": "temper-problem",
+      "label": "Temper Problem",
+      "detail": ""
+    },
+    {
+      "id": "illiterate",
+      "label": "Illiterate",
+      "detail": ""
+    },
+    {
+      "id": "known-braggart",
+      "label": "Known Braggart",
+      "detail": ""
+    },
+    {
+      "id": "limp-from-old-wound",
+      "label": "Limp from Old Wound",
+      "detail": ""
+    },
+    {
+      "id": "fears-firearms",
+      "label": "Fears Firearms",
+      "detail": ""
+    },
+    {
+      "id": "wanted-in-port",
+      "label": "Wanted in Port",
+      "detail": ""
+    },
+    {
+      "id": "known-cheat",
+      "label": "Known Cheat",
+      "detail": ""
+    },
+    {
+      "id": "questionable-loyalty",
+      "label": "Questionable Loyalty",
+      "detail": ""
+    },
+    {
+      "id": "reeks-of-rum",
+      "label": "Reeks of Rum",
+      "detail": ""
+    },
+    {
+      "id": "speaks-out-of-turn",
+      "label": "Speaks Out of Turn",
+      "detail": ""
+    },
+    {
+      "id": "easily-distracted",
+      "label": "Easily Distracted",
+      "detail": ""
+    },
+    {
+      "id": "heavy-gambler",
+      "label": "Heavy Gambler",
+      "detail": ""
+    },
+    {
+      "id": "prone-to-brawls",
+      "label": "Prone to Brawls",
+      "detail": ""
+    },
+    {
+      "id": "voice-carries-too-far",
+      "label": "Voice Carries Too Far",
+      "detail": ""
+    },
+    {
+      "id": "trouble-holding-tongue",
+      "label": "Trouble Holding Tongue",
+      "detail": ""
+    },
+    {
+      "id": "overconfident",
+      "label": "Overconfident",
+      "detail": ""
+    },
+    {
+      "id": "bitter-toward-officers",
+      "label": "Bitter Toward Officers",
+      "detail": ""
+    },
+    {
+      "id": "jealous-of-others",
+      "label": "Jealous of Others",
+      "detail": ""
+    },
+    {
+      "id": "unreliable-memory",
+      "label": "Unreliable Memory",
+      "detail": ""
+    },
+    {
+      "id": "prone-to-sunstroke",
+      "label": "Prone to Sunstroke",
+      "detail": ""
+    },
+    {
+      "id": "fears-enclosed-spaces",
+      "label": "Fears Enclosed Spaces",
+      "detail": ""
+    },
+    {
+      "id": "weak-stomach",
+      "label": "Weak Stomach",
+      "detail": ""
+    }
+  ],
+  "gear": [
+    {
+      "id": "rusty-cutlass",
+      "label": "Rusty Cutlass",
+      "detail": ""
+    },
+    {
+      "id": "flintlock-pistol",
+      "label": "Flintlock Pistol",
+      "detail": ""
+    },
+    {
+      "id": "hand-drawn-map",
+      "label": "Hand-Drawn Map",
+      "detail": ""
+    },
+    {
+      "id": "locked-chest-no-key",
+      "label": "Locked Chest (no key)",
+      "detail": ""
+    },
+    {
+      "id": "well-oiled-compass",
+      "label": "Well-Oiled Compass",
+      "detail": ""
+    },
+    {
+      "id": "set-of-dice",
+      "label": "Set of Dice",
+      "detail": ""
+    },
+    {
+      "id": "bottle-of-strong-rum",
+      "label": "Bottle of Strong Rum",
+      "detail": ""
+    },
+    {
+      "id": "set-of-cooking-knives",
+      "label": "Set of Cooking Knives",
+      "detail": ""
+    },
+    {
+      "id": "waterproof-satchel",
+      "label": "Waterproof Satchel",
+      "detail": ""
+    },
+    {
+      "id": "engraved-spyglass",
+      "label": "Engraved Spyglass",
+      "detail": ""
+    },
+    {
+      "id": "faded-letter-from-home",
+      "label": "Faded Letter from Home",
+      "detail": ""
+    },
+    {
+      "id": "deck-of-playing-cards",
+      "label": "Deck of Playing Cards",
+      "detail": ""
+    },
+    {
+      "id": "belt-with-hidden-knife",
+      "label": "Belt with Hidden Knife",
+      "detail": ""
+    },
+    {
+      "id": "toolkit-for-ship-repairs",
+      "label": "Toolkit for Ship Repairs",
+      "detail": ""
+    },
+    {
+      "id": "ink-charts",
+      "label": "Ink & Charts",
+      "detail": ""
+    },
+    {
+      "id": "heavy-leather-boots",
+      "label": "Heavy Leather Boots",
+      "detail": ""
+    },
+    {
+      "id": "lockpicks",
+      "label": "Lockpicks",
+      "detail": ""
+    },
+    {
+      "id": "false-documents",
+      "label": "False Documents",
+      "detail": ""
+    },
+    {
+      "id": "signal-whistle",
+      "label": "Signal Whistle",
+      "detail": ""
+    },
+    {
+      "id": "barrel-of-powder",
+      "label": "Barrel of Powder",
+      "detail": ""
+    },
+    {
+      "id": "rope-grapple-hook",
+      "label": "Rope & Grapple Hook",
+      "detail": ""
+    },
+    {
+      "id": "pocket-notebook",
+      "label": "Pocket Notebook",
+      "detail": ""
+    },
+    {
+      "id": "engraved-locket",
+      "label": "Engraved Locket",
+      "detail": ""
+    },
+    {
+      "id": "sharpening-stone",
+      "label": "Sharpening Stone",
+      "detail": ""
+    },
+    {
+      "id": "smuggler-s-satchel",
+      "label": "Smuggler’s Satchel",
+      "detail": ""
+    },
+    {
+      "id": "brass-telescope",
+      "label": "Brass Telescope",
+      "detail": ""
+    },
+    {
+      "id": "pocket-telescope",
+      "label": "Pocket Telescope",
+      "detail": ""
+    },
+    {
+      "id": "merchant-s-ledger",
+      "label": "Merchant’s Ledger",
+      "detail": ""
+    },
+    {
+      "id": "custom-gunpowder-horn",
+      "label": "Custom Gunpowder Horn",
+      "detail": ""
+    },
+    {
+      "id": "dented-tin-mug",
+      "label": "Dented Tin Mug",
+      "detail": ""
+    },
+    {
+      "id": "signal-flags-set",
+      "label": "Signal Flags Set",
+      "detail": ""
+    },
+    {
+      "id": "ink-stained-journal",
+      "label": "Ink-Stained Journal",
+      "detail": ""
+    },
+    {
+      "id": "fishing-line-hook",
+      "label": "Fishing Line & Hook",
+      "detail": ""
+    },
+    {
+      "id": "black-bandana",
+      "label": "Black Bandana",
+      "detail": ""
+    },
+    {
+      "id": "heavy-cloak",
+      "label": "Heavy Cloak",
+      "detail": ""
+    },
+    {
+      "id": "brass-knuckles",
+      "label": "Brass Knuckles",
+      "detail": ""
+    }
+  ],
+  "spends_luck": false,
+  "factions": [
+    {
+      "name": "The British Royal Navy",
+      "concept": "Imperial navy enforcing order on lawless seas",
+      "skills": [
+        "Gunnery",
+        "Navigation"
+      ],
+      "frailties": [
+        "Arrogance born of assumed dominance"
+      ],
+      "gear": [
+        "Naval cutlass",
+        "flintlock pistol"
+      ],
+      "goal": "Suppress piracy and secure Crown trade routes",
+      "motive": "Expand British influence and control maritime commerce",
+      "nemesis": "French privateers and local resistance"
+    },
+    {
+      "name": "The Spanish Armada Real",
+      "concept": "Proud but strained colonial navy",
+      "skills": [
+        "Seamanship",
+        "Close-quarters combat"
+      ],
+      "frailties": [
+        "Rigid hierarchy and outdated tactics"
+      ],
+      "gear": [
+        "Officer's saber",
+        "long musket"
+      ],
+      "goal": "Defend Spain’s gold routes and recapture lost ports",
+      "motive": "Preserve colonial prestige and royal authority",
+      "nemesis": "British Royal Navy and rebellious locals"
+    },
+    {
+      "name": "The French Flibustiers",
+      "concept": "Crown-backed raiders with pirate instincts",
+      "skills": [
+        "Acrobatics",
+        "Ambush"
+      ],
+      "frailties": [
+        "Recklessness in pursuit of prize"
+      ],
+      "gear": [
+        "Slim rapier",
+        "boarding hook"
+      ],
+      "goal": "Undermine British and Spanish power through sanctioned piracy",
+      "motive": "Profit from privateering under royal commission",
+      "nemesis": "British Royal Navy and betrayed allies"
+    },
+    {
+      "name": "The Pirate Brotherhood",
+      "concept": "Loose alliance of outlaw captains and rogue crews",
+      "skills": [
+        "Intimidation",
+        "Swordplay"
+      ],
+      "frailties": [
+        "Self-interest over unity"
+      ],
+      "gear": [
+        "Boarding cutlass",
+        "stolen pistol"
+      ],
+      "goal": "Build freeholds beyond law, live rich and die free",
+      "motive": "Defy empires, claim fortune by force",
+      "nemesis": "All navies and the gallows they serve"
+    },
+    {
+      "name": "The Maroon Rebellion",
+      "concept": "Escaped slaves and native fighters seeking justice",
+      "skills": [
+        "Guerrilla tactics",
+        "Jungle survival"
+      ],
+      "frailties": [
+        "Scarce resources and isolation"
+      ],
+      "gear": [
+        "Carved spear",
+        "hunting bow"
+      ],
+      "goal": "Establish independent communities beyond colonial rule",
+      "motive": "Freedom through resistance and reclamation",
+      "nemesis": "Slavers, settlers, and empire loyalists"
+    },
+    {
+      "name": "The Dutch Merchant Syndicates",
+      "concept": "Traders balancing profit, diplomacy, and survival",
+      "skills": [
+        "Bargaining",
+        "Smuggling"
+      ],
+      "frailties": [
+        "Risk aversion and political caution"
+      ],
+      "gear": [
+        "Trade saber",
+        "ornate pocketwatch"
+      ],
+      "goal": "Expand influence via neutral ports and covert deals",
+      "motive": "Economic domination through contracts, not conflict",
+      "nemesis": "Pirates, tariffs, and rival colonial powers"
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Captain Anne Bonny",
+      "concept": "Defiant pirate captain with fire in her blood",
+      "skills": [
+        "Navigation",
+        "Swordplay"
+      ],
+      "frailties": [
+        "Overconfidence in her legend"
+      ],
+      "gear": [
+        "Naval cutlass",
+        "brass compass"
+      ],
+      "goal": "Become the most feared name on the sea",
+      "motive": "Avenge the English gallows that took her lover",
+      "nemesis": "Governor Woodes Rogers"
+    },
+    {
+      "name": "Governor Woodes Rogers",
+      "concept": "Driven governor and former privateer",
+      "skills": [
+        "Diplomacy",
+        "Command"
+      ],
+      "frailties": [
+        "Blinded by ambition"
+      ],
+      "gear": [
+        "Ledger of informants",
+        "dueling pistol"
+      ],
+      "goal": "Crush piracy and raise the Union Jack on every coast",
+      "motive": "Power, promotion, and a clean legacy",
+      "nemesis": "Edward “Blackbeard” Teach"
+    },
+    {
+      "name": "Edward \"Blackbeard\" Teach",
+      "concept": "Legendary pirate feared across the colonies",
+      "skills": [
+        "Intimidation",
+        "Gunnery"
+      ],
+      "frailties": [
+        "Thrives on chaos"
+      ],
+      "gear": [
+        "Blunderbuss",
+        "powder grenades"
+      ],
+      "goal": "Seize enough plunder to vanish into legend",
+      "motive": "Revenge on the powers that betrayed him",
+      "nemesis": "Lieutenant Robert Maynard"
+    },
+    {
+      "name": "Captain Calico Jack Rackham",
+      "concept": "Smooth-talking schemer with a flair for drama",
+      "skills": [
+        "Persuasion",
+        "Coastal navigation"
+      ],
+      "frailties": [
+        "Indiscipline in moments of pressure"
+      ],
+      "gear": [
+        "Fine-lacquered pistol",
+        "brass spyglass"
+      ],
+      "goal": "Discover and loot the hidden gold of El Dorado",
+      "motive": "Fame, pleasure, and a name to echo in taverns",
+      "nemesis": "Pirate hunter Jonathan Barnet"
+    },
+    {
+      "name": "Governor Don Rafael de Eslava",
+      "concept": "Ruthless strategist of the Spanish Crown",
+      "skills": [
+        "Espionage",
+        "Political manipulation"
+      ],
+      "frailties": [
+        "Arrogance born of old blood"
+      ],
+      "gear": [
+        "Engraved rapier",
+        "coded dispatches"
+      ],
+      "goal": "Expel foreign powers and rule the Caribbean for Spain",
+      "motive": "Honor, ambition, and legacy",
+      "nemesis": "French privateer Olivier Levasseur"
+    },
+    {
+      "name": "Anne Dieu-le-Veut",
+      "concept": "Fierce pirate matriarch with a cause",
+      "skills": [
+        "Brawling",
+        "Ship command"
+      ],
+      "frailties": [
+        "Recklessness in pursuit of loyalty"
+      ],
+      "gear": [
+        "Iron-hooked grapnel",
+        "scarred cutlass"
+      ],
+      "goal": "Liberate her captured husband and unify the pirate fleets",
+      "motive": "Love, vengeance, and a free sea",
+      "nemesis": "Admiral Juan Esteban Ubilla"
+    }
+  ],
+  "monsters": [
+    {
+      "name": "Bull Shark",
+      "concept": "Aggressive coastal predator",
+      "skills": [
+        "Swift strike",
+        "Frenzied attack"
+      ],
+      "frailties": [
+        "Easily baited or driven off with blood and noise"
+      ],
+      "gear": [
+        "None"
+      ],
+      "goal": "Feed on fish, carrion, or wounded prey",
+      "motive": "Instinctual aggression, especially in shallow waters",
+      "nemesis": "Harpooners, noise-makers, and shark-hunters"
+    },
+    {
+      "name": "Saltwater Crocodile",
+      "concept": "Apex ambush predator of estuaries and mangroves",
+      "skills": [
+        "Ambush",
+        "Death roll"
+      ],
+      "frailties": [
+        "Sluggish when cold",
+        "poor endurance at sea"
+      ],
+      "gear": [
+        "None"
+      ],
+      "goal": "Defend territory or feed near river mouths and lagoons",
+      "motive": "Territoriality and hunger",
+      "nemesis": "Fire, nets, and skilled trackers"
+    },
+    {
+      "name": "Sea Wasps (Box Jellyfish)",
+      "concept": "Deadly translucent jellyfish drifting near coasts",
+      "skills": [
+        "Paralytic sting",
+        "Stealth in water"
+      ],
+      "frailties": [
+        "Delicate body",
+        "easily damaged"
+      ],
+      "gear": [
+        "None"
+      ],
+      "goal": "Float and ensnare prey with stinging tentacles",
+      "motive": "Survival and reproduction",
+      "nemesis": "Vinegar, protective gear, shallow water disruption"
+    },
+    {
+      "name": "Boar of the Jungle Interior",
+      "concept": "Wild boar found inland on larger islands",
+      "skills": [
+        "Gore",
+        "Charge",
+        "Thick hide"
+      ],
+      "frailties": [
+        "Blind charging",
+        "spooked by fire"
+      ],
+      "gear": [
+        "None"
+      ],
+      "goal": "Protect its territory and forage for roots and fruit",
+      "motive": "Survival and defense of young",
+      "nemesis": "Dogs, muskets, and fire"
+    },
+    {
+      "name": "Rabid Dog Pack",
+      "concept": "Feral hounds abandoned at ports or left behind",
+      "skills": [
+        "Pack tactics",
+        "Chase"
+      ],
+      "frailties": [
+        "Frightened by coordinated defense or noise"
+      ],
+      "gear": [
+        "None"
+      ],
+      "goal": "Scavenge, hunt weak targets",
+      "motive": "Hunger and survival in the margins of human society",
+      "nemesis": "Torches, blades, trained hunters"
+    },
+    {
+      "name": "Swarm of Rats",
+      "concept": "Infestation aboard ships or in port warehouses",
+      "skills": [
+        "Spread disease",
+        "Gnaw through stores"
+      ],
+      "frailties": [
+        "Vulnerable to traps",
+        "smoke",
+        "and cats"
+      ],
+      "gear": [
+        "None"
+      ],
+      "goal": "Nest, feed, and multiply",
+      "motive": "Scavenging and reproduction",
+      "nemesis": "Ship’s cat, fire, poison"
+    }
+  ],
+  "twist_subjects": null,
+  "twist_actions": null
+}

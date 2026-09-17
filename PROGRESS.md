@@ -56,3 +56,51 @@ Known and accepted:
   them; the ids are unchanged.
 - The prompt-budget game (two packs, a 48 KB source, 30 cast, 40 chapters) renders to about
   95 KB of the 131,072-byte cap.
+
+## Phase 2: `spend_luck`, the character's own packs, and the other eleven
+
+| count     | before | after  | plan target      |
+| --------- | ------ | ------ | ---------------- |
+| `src`     | 9,582  | 9,634  | 9,760 to 9,850   |
+| `tests`   | 11,668 | 11,815 | 11,720 to 11,820 |
+| `qa`      | 2,004  | 2,004  | unchanged        |
+| `scripts` | 333    | 396    | about 290        |
+
+`src` stays under its floor by the same margin phase 1 left: the plan's targets carry
+`written` and the seam `guidance` that phase 1 cut, and this phase adds the 52 lines it
+budgeted. `scripts` lands over because the plan budgeted a cut where the eleven pages needed
+six more readings (below), each with its refusal; the reviews then took every cut they found.
+
+Decisions taken off-plan, all from running the converter on the twelve pages before the brief:
+
+1. **`Names.neutral`.** AP02 prints `#### Neutral Names` and no fourth list; the field is data
+   the page has, rendered as `neutral: …` like the others. The fourth list (`Nicknames`,
+   `Codenames / Call Signs`, `Superhero Names`, `Epithets or Reputation`) is optional.
+2. **Eleven monsters-section titles** in one constant, one per page.
+3. **The SRD's own typos are read, not bridged.** AP04's `# Locations` at level 1 reads as a
+   section whose body still ends at the next `##`; AP09's duplicated, empty `## Adventure Seeds`
+   is skipped because `_found` skips any heading with a blank body, and zero seed rows refuse.
+4. **Locations may be paragraphs** (AP03), and the encounters line is matched in every spelling
+   the pages use, bold and colon placement included, the colon required.
+5. **A rules table row keeps its first cell** when the header names it (`Roll`) and drops it for
+   `D66` or a blank (a grid row number); the rest join with `, `. AP02's starship trait grids
+   and AP03's public-response table reach the master whole; AP01's spell lines are unchanged.
+6. **`ui` filters the SRD out through the engine's `supplement_options`**, not `SRD_PACK`: the
+   package boundary test forbids `ui` importing `engines`, which the plan's step overlooked.
+7. **Only character catalog entries carry `packs`.** The scenario page reads the character's;
+   a scenario entry's would have had no reader before phase 3's seed button.
+8. **`docs/LONER-3E.md` was part B's alone**, "The tools" line included, so no file had two
+   implementers.
+
+Refuted findings: none. Every finding of both reviews (two Opus reviewers; no `codex` on the
+machine) was fixed: the encounters colon made required, the empty rule-table row skipped, the
+duplicated form state dropped, the dead scenario `packs` dropped, the twelve asserted, the
+prompt-budget test reading the engine's directory and `MAX_SUPPLEMENTS`, the docs naming the
+markdown source, and the cuts above.
+
+Known and accepted:
+
+- **The prompt budget with the two largest packs** (`ap05-mystery`, `ap12-cyberpunk`) renders
+  to 110,529 bytes of the 131,072-byte cap, about 20 KB of headroom, down from 95 KB with AP01.
+- **AP01 alone sets `spends_luck`.** No other page prices anything in Luck.
+- **The licence question stays open** for all twelve pages, as the docs say.

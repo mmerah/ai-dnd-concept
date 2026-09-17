@@ -13,6 +13,10 @@ ROLL = (
     "Call this for one closed dramatic question. The engine rolls Chance against "
     "Risk, reads the answer, and moves luck in a conflict."
 )
+SPEND_LUCK = (
+    "A character here spends luck on a cost the selected pack's SPECIAL RULES name, such as a "
+    "spell."
+)
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
@@ -55,6 +59,12 @@ class Drive(Frozen):
 
 class RestoreLuck(Frozen):
     entity_id: Slug = Field(description="Exact id of the player or a character here.")
+
+
+class SpendLuck(Frozen):
+    entity_id: Slug = Field(description="Exact id of the player or a living character here.")
+    amount: int = Field(ge=1, description="The luck spent: the cost the SPECIAL RULES print.")
+    why: str = Field(min_length=1, description="What it buys, in one line, read by the player.")
 
 
 class Roll(Attempt):

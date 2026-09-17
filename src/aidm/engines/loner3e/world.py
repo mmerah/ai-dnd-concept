@@ -108,6 +108,13 @@ class Loner3eCast(Person):
     def refill(self, why: str) -> list[Fact]:
         return self.change(self.luck, self.luck.shortfall, "Luck", why)
 
+    def spend_luck(self, amount: int, why: str) -> list[Fact]:
+        if self.defeated:
+            raise Refusal(f"{self.name} lost their last conflict; nothing to spend.")
+        if amount > self.luck.current:
+            raise Refusal(f"{self.name} has {self.luck.current} luck, not {amount}.")
+        return self.change(self.luck, -amount, "Luck", why)
+
     def lose(self) -> list[Fact]:
         self.defeated = True
         trace = f"{self.mention} is out of luck"

@@ -1,6 +1,6 @@
 import pytest
 
-from aidm.core.creation import MANY, CreationStep, check_picks, picked_many
+from aidm.core.creation import ANSWER_MAX, MANY, CreationStep, check_picks, picked_many
 from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
 
@@ -22,6 +22,14 @@ def test_a_multiple_step_takes_no_answer_or_several_offered_ones() -> None:
 def test_a_multiple_step_refuses_a_part_it_does_not_offer() -> None:
     with pytest.raises(Refusal, match="'supplements' offers no 'three'"):
         check_picks((STEP,), {"supplements": MANY.join(("one", "three"))})
+
+
+def test_the_answer_cap_applies_to_each_part_of_a_multiple_step() -> None:
+    written = CreationStep(id="notes", label="Notes", multiple=True)
+
+    check_picks((written,), {"notes": MANY.join(("x" * 40,) * 3)})
+    with pytest.raises(Refusal, match=f"'notes' takes at most {ANSWER_MAX} characters"):
+        check_picks((written,), {"notes": "x" * (ANSWER_MAX + 1)})
 
 
 def test_an_allows_text_step_accepts_a_typed_answer_but_a_closed_step_still_refuses_one() -> None:

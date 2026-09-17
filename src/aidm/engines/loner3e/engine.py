@@ -9,7 +9,7 @@ from aidm.core.creation import (
     picked,
     picked_many,
 )
-from aidm.core.entities import EngineId, Slug
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact, roll
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
@@ -21,10 +21,12 @@ from aidm.engines.loner3e.tools import (
     DRIVE,
     RESTORE_LUCK,
     ROLL,
+    SPEND_LUCK,
     ChangeTags,
     Drive,
     RestoreLuck,
     Roll,
+    SpendLuck,
 )
 from aidm.engines.loner3e.world import (
     DIE_FACE,
@@ -81,6 +83,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
             master_tool("drive", DRIVE, Drive, self.drive),
             master_tool("restore_luck", RESTORE_LUCK, RestoreLuck, self.restore_luck),
             master_tool("roll", ROLL, Roll, self.roll),
+            master_tool("spend_luck", SPEND_LUCK, SpendLuck, self.spend_luck),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -183,6 +186,14 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Loner3ePack]):
         actor = self.world_of(draft).require_living_here(args.entity_id)
         # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
         return actor.recover("the conflict is behind them")
+
+    def spend_luck(self, draft: Loner3eGame, args: SpendLuck, _rng: Random) -> list[Fact]:
+        if not any(pack.spends_luck for pack in self.packs.chosen(draft.packs)):
+            raise Refusal("no selected pack spends luck")
+        world = self.world_of(draft)
+        world.check_unnamed(args.why)
+        actor = world.require_living_here(args.entity_id)
+        return actor.spend_luck(args.amount, args.why)
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)

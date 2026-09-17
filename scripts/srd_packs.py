@@ -22,7 +22,6 @@ LICENSE_TEMPLATE = (
     "(c) Roberto Bisceglie / Zotiquest Games"
 )
 TITLE_SUFFIX = " Adventure Pack"
-ENCOUNTERS_PREFIX = "Possible encounters:"
 RULE_SUBSECTION_LEVELS = (3, 4)
 BLOCK_LEVEL = 3
 GRID_SIZE = 6
@@ -37,7 +36,27 @@ KNOWN_FIELD_KEYS = (
     "Motive",
     "Nemesis",
 )
-SECTION_LEVELS = (2,)
+MONSTER_SECTIONS = (
+    "Monsters",
+    "Hostile Entities",
+    "Creatures",
+    "Villains",
+    "Opponents",
+    "Persons of Interest",
+    "Field Threats",
+    "Threat Actors",
+    "Denizens of the Wastes",
+    "Wild Encounters",
+    "Frontier Threats",
+)
+NICKNAME_LISTS = (
+    "Nicknames",
+    "Codenames / Call Signs",
+    "Superhero Names",
+    "Epithets or Reputation",
+)
+NUMBERED_FIRST_CELLS = ("D66", "")  # a die number or a grid row number, not a value to keep
+SECTION_LEVELS = (1, 2)  # AP04 writes `# Locations` where every other page writes `## Locations`
 TRAIT_TABLE_LEVELS = (3,)
 NAME_LIST_LEVELS = (3, 4)
 
@@ -45,6 +64,8 @@ HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.*)$")
 FIELD_LINE_PATTERN = re.compile(r"^[-*]\s+\*\*(\w+):?\*\*:?\s*(.*)$")
 STEM_PATTERN = re.compile(r"^AP(\d+)_")
 RULE_BLANK_RUN = re.compile(r"\n{3,}")
+# Bold and colons vary: `Possible encounters:`, `**Encounters**:`, `**Possible Encounter:**`
+ENCOUNTERS_LINE = re.compile(r"^(\*\*)?(possible )?encounters?(:\*\*|\*\*:|:)\s*", re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +97,7 @@ def convert(markdown: str, stem: str) -> Loner3ePack:
         "spends_luck": "Luck cost" in rules,
         "factions": _blocks(headings, lines, "Factions"),
         "npcs": _blocks(headings, lines, "NPCs"),
-        "monsters": _blocks(headings, lines, "Monsters", "Hostile Entities", "Creatures"),
+        "monsters": _blocks(headings, lines, *MONSTER_SECTIONS),
     }
     return parse(Loner3ePack, data)
 
@@ -122,16 +143,33 @@ def _title(headings: Sequence[Heading]) -> str:
     return top.title.removesuffix(TITLE_SUFFIX)
 
 
-def _find(headings: Sequence[Heading], *titles: str, levels: tuple[int, ...]) -> int:
+def _find(
+    headings: Sequence[Heading], lines: Sequence[str], *titles: str, levels: tuple[int, ...]
+) -> int:
+    index = _found(headings, lines, *titles, levels=levels)
+    if index is None:
+        raise Refusal(f"no heading among {titles!r} has a body")
+    return index
+
+
+def _found(
+    headings: Sequence[Heading], lines: Sequence[str], *titles: str, levels: tuple[int, ...]
+) -> int | None:
+    """AP09 prints `## Adventure Seeds` twice, the first empty, so an empty body is skipped."""
     for index, heading in enumerate(headings):
-        if heading.title in titles and heading.level in levels:
+        if heading.title not in titles or heading.level not in levels:
+            continue
+        if any(line.strip() for line in _body(headings, lines, index)):
             return index
-    raise Refusal(f"no heading among {titles!r} found")
+    return None
 
 
 def _section_range(headings: Sequence[Heading], index: int, total_lines: int) -> tuple[int, int]:
-    """The body's (start, end) line bounds: end is the next heading no deeper than this one."""
-    level = headings[index].level
+    """The body's (start, end) line bounds: end is the next heading no deeper than this one.
+
+    A level-1 section still ends at the next `##`, since AP04 writes `# Locations`.
+    """
+    level = max(headings[index].level, 2)
     start = headings[index].index + 1
     for other in headings[index + 1 :]:
         if other.level <= level:
@@ -176,8 +214,13 @@ def _bullet(line: str) -> str:
     return stripped[2:] if stripped[:2] in ("- ", "* ") else ""
 
 
+def _unbulleted(line: str) -> str:
+    """The line's text, bullet marker or not: AP03 writes a location as a paragraph."""
+    return _bullet(line).strip() or line.strip()
+
+
 def _setting(headings: Sequence[Heading], lines: Sequence[str]) -> str:
-    index = _find(headings, "Setting Information", levels=SECTION_LEVELS)
+    index = _find(headings, lines, "Setting Information", levels=SECTION_LEVELS)
     paragraphs = [content for line in _body(headings, lines, index) if (content := _bullet(line))]
     return "\n".join(paragraphs)
 
@@ -185,7 +228,7 @@ def _setting(headings: Sequence[Heading], lines: Sequence[str]) -> str:
 def _trait_table(
     headings: Sequence[Heading], lines: Sequence[str], title: str
 ) -> tuple[DecisionOption, ...]:
-    index = _find(headings, title, levels=TRAIT_TABLE_LEVELS)
+    index = _find(headings, lines, title, levels=TRAIT_TABLE_LEVELS)
     taken: list[Slug] = []
     options: list[DecisionOption] = []
     for row in _grid(_body(headings, lines, index), headings[index].title):
@@ -197,7 +240,18 @@ def _trait_table(
 
 
 def _name_list(headings: Sequence[Heading], lines: Sequence[str], *titles: str) -> tuple[str, ...]:
-    index = _find(headings, *titles, levels=NAME_LIST_LEVELS)
+    return _name_grid(headings, lines, _find(headings, lines, *titles, levels=NAME_LIST_LEVELS))
+
+
+def _optional_name_list(
+    headings: Sequence[Heading], lines: Sequence[str], *titles: str
+) -> tuple[str, ...]:
+    """A page that prints none of these headings has no such list."""
+    index = _found(headings, lines, *titles, levels=NAME_LIST_LEVELS)
+    return () if index is None else _name_grid(headings, lines, index)
+
+
+def _name_grid(headings: Sequence[Heading], lines: Sequence[str], index: int) -> tuple[str, ...]:
     return tuple(
         cell for row in _grid(_body(headings, lines, index), headings[index].title) for cell in row
     )
@@ -207,8 +261,9 @@ def _names(headings: Sequence[Heading], lines: Sequence[str]) -> Names:
     return Names(
         female=_name_list(headings, lines, "Female Names"),
         male=_name_list(headings, lines, "Male Names"),
+        neutral=_optional_name_list(headings, lines, "Neutral Names"),
         surnames=_name_list(headings, lines, "Surnames"),
-        nicknames=_name_list(headings, lines, "Nicknames", "Codenames / Call Signs"),
+        nicknames=_optional_name_list(headings, lines, *NICKNAME_LISTS),
     )
 
 
@@ -243,31 +298,35 @@ def _block(headings: Sequence[Heading], lines: Sequence[str], index: int) -> Lon
 def _blocks(
     headings: Sequence[Heading], lines: Sequence[str], *titles: str
 ) -> tuple[Loner3eBlock, ...]:
-    section = _find(headings, *titles, levels=SECTION_LEVELS)
+    section = _find(headings, lines, *titles, levels=SECTION_LEVELS)
     return tuple(
         _block(headings, lines, child) for child in _nested(headings, lines, section, BLOCK_LEVEL)
     )
 
 
 def _location(headings: Sequence[Heading], lines: Sequence[str], index: int) -> Location:
+    """A body runs as detail until an encounters line; everything after it names encounters."""
     detail_parts: list[str] = []
-    encounters = ""
+    encounter_parts: list[str] = []
+    reached_encounters = False
     for raw in _body(headings, lines, index):
-        content = _bullet(raw)
+        content = _unbulleted(raw)
         if not content:
             continue
-        if content.startswith(ENCOUNTERS_PREFIX):
-            rest = content[len(ENCOUNTERS_PREFIX) :]
-            encounters = rest[1:] if rest.startswith(" ") else rest
-        else:
-            detail_parts.append(content)
+        if match := ENCOUNTERS_LINE.match(content):
+            reached_encounters = True
+            content = content[match.end() :]
+        if content:
+            (encounter_parts if reached_encounters else detail_parts).append(content)
     return Location(
-        label=headings[index].title, detail=" ".join(detail_parts), encounters=encounters
+        label=headings[index].title,
+        detail=" ".join(detail_parts),
+        encounters="; ".join(encounter_parts),
     )
 
 
 def _locations(headings: Sequence[Heading], lines: Sequence[str]) -> tuple[Location, ...]:
-    section = _find(headings, "Locations", levels=SECTION_LEVELS)
+    section = _find(headings, lines, "Locations", levels=SECTION_LEVELS)
     return tuple(
         _location(headings, lines, child)
         for child in _nested(headings, lines, section, BLOCK_LEVEL)
@@ -275,7 +334,8 @@ def _locations(headings: Sequence[Heading], lines: Sequence[str]) -> tuple[Locat
 
 
 def _seeds(headings: Sequence[Heading], lines: Sequence[str]) -> tuple[str, ...]:
-    index = _find(headings, "Adventure Seeds", levels=SECTION_LEVELS)
+    title = "Adventure Seeds"
+    index = _find(headings, lines, title, levels=SECTION_LEVELS)
     rows = [line for line in _body(headings, lines, index) if line.strip().startswith("|")][2:]
     seeds: list[str] = []
     for row in rows:
@@ -283,15 +343,18 @@ def _seeds(headings: Sequence[Heading], lines: Sequence[str]) -> tuple[str, ...]
         if len(cells) < 2:
             raise Refusal(f"seed row {row!r} has no adventure cell")
         seeds.append(cells[1])
+    if not seeds:
+        raise Refusal(f"{title!r} has no seed rows")
     return tuple(seeds)
 
 
 def _consume_rule_table(body: Sequence[str], start: int, out: list[str]) -> int:
+    numbered = _row_cells(body[start])[0] in NUMBERED_FIRST_CELLS
     i = start + 2  # skip the header row and the separator row
     while i < len(body) and body[i].strip().startswith("|"):
         cells = _row_cells(body[i])
-        if len(cells) >= 2:
-            out.append(f"- {cells[1]}")
+        if rest := ", ".join(cell for cell in cells[1:] if cell):
+            out.append(f"- {rest}" if numbered else f"- {cells[0]}: {rest}")
         i += 1
     return i
 
