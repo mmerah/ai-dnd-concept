@@ -5,8 +5,8 @@ Three phases fold the fifteen accepted simplification proposals into the code: f
 machinery (the pack editor's private text format, the `G` type parameter, the launcher's second
 resume rule, a third of the test suite), and the code rules written as the code lives them.
 Every step below was implemented once by a subagent in a throwaway worktree with the four checks
-green, then the plan was reviewed adversarially once; the shapes, the gotchas and the numbers
-come from those runs and that review, not from estimates.
+green, then the plan was reviewed adversarially twice; the shapes, the gotchas and the numbers
+come from those runs and those reviews, not from estimates.
 
 Decided on 2026-09-17 and not re-opened by any phase:
 
