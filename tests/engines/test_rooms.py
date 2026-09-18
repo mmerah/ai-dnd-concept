@@ -37,12 +37,15 @@ def test_a_member_joins_and_leaves_the_party() -> None:
 
 
 def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused() -> None:
-    draft = keep().draft()
+    draft = small_world().draft()
 
     facts = change(ENGINE, draft, "kill", target_id=PLAYER_ID)
 
     assert not draft.world.player.alive
-    assert any(fact.card == "You are dead" for fact in facts)
+    death = [fact for fact in facts if fact.card.startswith("You are dead")]
+    assert len(death) == 1
+    assert death[0].told
+    assert "pack dropped: Rope, Torch" in death[0].card
 
     message = refused(ENGINE, draft, "kill", target_id=PLAYER_ID)
 
@@ -56,16 +59,6 @@ def test_frontier_skips_places_behind_a_locked_way() -> None:
         way.locked = way.to == VAULT
 
     assert world.frontier() == 0
-
-
-def test_killing_the_player_tells_the_pack_that_falls_loose() -> None:
-    draft = small_world().draft()
-
-    facts = change(ENGINE, draft, "kill", target_id=PLAYER_ID)
-
-    dropped = [fact for fact in facts if fact.card == "Pack dropped"]
-    assert len(dropped) == 1
-    assert dropped[0].told
 
 
 def _walked(begun_room: TunnelGoonsGame) -> TunnelGoonsGame:

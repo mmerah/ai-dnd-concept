@@ -172,8 +172,11 @@ class SceneWorld[C: Person](World[C]):
             f"present: {present or '(nobody)'}\nhidden: {hidden or '(nothing)'}"
         )
 
+    def player_line(self) -> str:
+        return self.player.line(rows=self.sheet_rows())
+
     def cast_lines(self) -> str:
-        lines = [self.player.line(rows=self.sheet_rows())]
+        lines = [self.player_line()]
         for entry in self.cast.values():
             where = (
                 "travels with the player" if entry.id in self.party else self.last_seen(entry.id)
@@ -196,7 +199,7 @@ class SceneWorld[C: Person](World[C]):
         if entity.id in self.scene.here:
             raise Refusal(f"{entity.name} is already here")
         if not entity.alive:
-            raise Refusal(f"{entity.name} is dead")
+            raise Refusal(IS_DEAD.format(name=entity.name))
         self.scene.here.append(entity.id)
         trace = f"{entity.mention} arrives"
         return [
@@ -207,9 +210,7 @@ class SceneWorld[C: Person](World[C]):
     def leave(self, entity_id: Slug) -> list[Fact]:
         if entity_id == self.player.id:
             raise Refusal("the player is in every scene; move the story on instead")
-        entity = self.require_here(entity_id)
-        if not entity.alive:
-            raise Refusal(f"{entity.name} is dead")
+        entity = self.require_living_here(entity_id)
         if entity.id in self.party:
             raise Refusal(f"{entity.name} travels with the player and leaves through `leave_party`")
         self.scene.here.remove(entity.id)

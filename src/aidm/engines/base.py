@@ -80,7 +80,9 @@ class Thing(Mutable):
         """`told` only when the player has learned of this thing, so no unknown name leaks."""
         return Fact(trace=trace, told=self.known, card=card, dice=dice)
 
-    def card_line(self, line: str, *, leads: bool) -> str:
+    def card_line(self, line: str, *, leads: bool | None = None) -> str:
+        if leads is None:
+            leads = self.id == PLAYER_ID
         return line if leads else f"{self.name}: {line}"
 
     def change(self, gauge: Gauge, amount: int, label: str, why: str) -> list[Fact]:
@@ -88,12 +90,7 @@ class Thing(Mutable):
         if delta == 0:
             return []
         moved = f"{label} {delta:+d} → {gauge}"
-        return [
-            self.fact(
-                f"{self.mention} {moved} ({why})",
-                card=self.card_line(moved, leads=self.id == PLAYER_ID),
-            )
-        ]
+        return [self.fact(f"{self.mention} {moved} ({why})", card=self.card_line(moved))]
 
     def reveal(self, *, card: str = "") -> list[Fact]:
         if self.known:
@@ -184,7 +181,11 @@ class World[M: Person](Mutable):
         member = self.member_of(entity_id)
         if member is None:
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
-        return self.part(member)
+        if member.id not in self.party:
+            raise Refusal(f"{member.name} does not travel with the player")
+        self.party.remove(member.id)
+        trace = f"{member.tag} no longer travels with the player"
+        return [member.fact(trace, card=f"{member.name} leaves your party")]
 
     def check_unnamed(self, *texts: str) -> None:
         if leaked := sorted(set(named_unmet("\n".join(texts), self.unmet()))):
@@ -210,13 +211,6 @@ class World[M: Person](Mutable):
         self.party.append(member.id)
         trace = f"{member.tag} travels with the player"
         return [member.fact(trace, card=f"{member.name} joins your party")]
-
-    def part(self, member: Person) -> list[Fact]:
-        if member.id not in self.party:
-            raise Refusal(f"{member.name} does not travel with the player")
-        self.party.remove(member.id)
-        trace = f"{member.tag} no longer travels with the player"
-        return [member.fact(trace, card=f"{member.name} leaves your party")]
 
     def sheet_rows(self) -> Rows:
         return self.player.rows()

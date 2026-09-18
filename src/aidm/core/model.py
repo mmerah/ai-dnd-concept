@@ -21,9 +21,6 @@ class ScenarioMeta(Frozen):
     art_style: str = ""  # empty: the engine's own
     voice: str = ""  # empty: the settings' narrator voice
 
-    def with_premise(self, fallback: str) -> Self:
-        return self.model_copy(update={"premise": self.premise or fallback})
-
     def check_drift(self, other: Self) -> None:
         """One rule, so the launcher and the game page never disagree about a stale save."""
         fields = ScenarioMeta.model_fields

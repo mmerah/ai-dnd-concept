@@ -30,8 +30,7 @@ from aidm.engines.engine import Operation, Written
 from aidm.engines.hiring import (
     HIRE,
     HIRE_UNWRITTEN,
-    Hire,
-    file_hire,
+    Hiring,
     hire_target,
     signed_on,
 )
@@ -96,7 +95,7 @@ class Helping(NamedTuple):
     terms: Helper
 
 
-class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPack]):
+class TwentyfourxxEngine(Hiring, SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     authoring = AUTHORING
@@ -125,14 +124,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             )
         if not srd.starting_kit:
             raise ValueError(f"the {self.id!r} srd pack has no starting kit")
-
-    @tool
-    def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
-        """Call this when the player hires a character here to work. The player can also hire a
-        character who already travels with the player. The worldsmith writes the sheet of that
-        character at the end of the turn. Nothing more happens this turn. Give a sheet only to a
-        character hired to work. Do not give a sheet to a character who only travels along."""
-        return file_hire(draft, args.target_id, args.terms)
 
     async def write_hire(
         self, draft: TwentyfourxxGame, commission: Commission, worldsmith: WorldsmithAnswer
@@ -269,7 +260,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
             *section_if("WHAT THIS SCENE IS ABOUT", scene.focus),
-            ("YOU PLAY FOR", world.player.line(rows=world.player.rows())),
+            ("YOU PLAY FOR", world.player.line(gear=False)),
             ("GEAR", _item_lines(world.player.require_sheet().items)),
             *section_if("THE JOB", world.job),
             ("THE SHIP", _item_lines(world.ship)),
@@ -321,9 +312,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         )
 
     def _match_skill(self, known: Mapping[str, SkillDie], wanted: str) -> str | None:
-        folded = _folded(wanted)
+        folded = wanted.casefold().split()
         names = (*known, *(option.name for option in self.packs.srd().skills))
-        return next((name for name in names if _folded(name) == folded), None)
+        return next((name for name in names if name.casefold().split() == folded), None)
 
     @tool
     def change_hindrances(
@@ -504,7 +495,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
         if args.skill:
             label = self.resolve_skill(sheet, args.skill)
-            die = sheet.die(label)
+            die = sheet.skills.get(label, DEFAULT_DIE)
         else:
             label = "unskilled"
             die = DEFAULT_DIE
@@ -612,10 +603,6 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
 
 def _staked(risk: str, *, deadly: bool) -> str:
     return f"{risk} (deadly)" if deadly else risk
-
-
-def _folded(name: str) -> str:
-    return " ".join(name.split()).casefold()
 
 
 def _banded(face: int, low: str, mid: str, high: str) -> str:

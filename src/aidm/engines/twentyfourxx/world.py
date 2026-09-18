@@ -76,9 +76,6 @@ class CrewSheet(Mutable):
     credits: int = Field(default=STARTING_CREDITS, ge=0)
     hindrances: list[str] = Field(default_factory=list)
 
-    def die(self, skill: str) -> int:
-        return self.skills.get(skill, DEFAULT_DIE)
-
     def rows(self) -> Rows:
         skills = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
         return filled(
@@ -124,10 +121,9 @@ class Crewmate(Person):
     def rows(self) -> Rows:
         return self.sheet.rows() if self.sheet is not None else ()
 
-    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
-        """A caller that hands rows renders the sheet itself, gear and all."""
-        if rows is None and self.sheet is not None and (gear := self.sheet.gear_text(ids=True)):
-            detail = "; ".join(part for part in (detail, gear) if part)
+    def line(self, *, rows: Rows | None = None, detail: str = "", gear: bool = True) -> str:
+        if gear and self.sheet is not None and (carried := self.sheet.gear_text(ids=True)):
+            detail = "; ".join(part for part in (detail, carried) if part)
         return super().line(rows=rows, detail=detail)
 
     def required(self) -> str:
@@ -245,6 +241,10 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         gear = self.player.require_sheet().gear_text()
         rows = self.player.rows()
         return (*rows, ("Gear", gear)) if gear else rows
+
+    def player_line(self) -> str:
+        """The gear stands in the sheet rows already, so the line does not repeat it."""
+        return self.player.line(rows=self.sheet_rows(), gear=False)
 
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.hired]

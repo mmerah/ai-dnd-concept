@@ -77,9 +77,7 @@ class Goon(Dweller):
         return (("Health", str(self.hp)), *self.sheet.rows(carried=carried))
 
     def level(self, ability: Ability, boost: Boost) -> list[Fact]:
-        card = self.card_line(
-            self.require_sheet().level_up(ability, boost, self.hp), leads=self.id == PLAYER_ID
-        )
+        card = self.card_line(self.require_sheet().level_up(ability, boost, self.hp))
         return [self.fact(card, card=card)]
 
     def required(self) -> str:

@@ -1,8 +1,11 @@
+from random import Random
+
 from pydantic import Field
 
 from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import AnyGame, Commission
+from aidm.core.tools import tool
 from aidm.engines.base import Person, World
 from aidm.engines.engine import Written
 
@@ -34,6 +37,16 @@ class Hire(Frozen):
         min_length=1,
         description="What they are hired for, and on what terms, as agreed.",
     )
+
+
+class Hiring:
+    @tool
+    def hire(self, draft: AnyGame, args: Hire, _rng: Random) -> list[Fact]:
+        """Call this when the player hires a character here to work. The player can also hire a
+        character who already travels with the player. The worldsmith writes the sheet of that
+        character at the end of the turn. Nothing more happens this turn. Give a sheet only to a
+        character hired to work. Do not give a sheet to a character who only travels along."""
+        return file_hire(draft, args.target_id, args.terms)
 
 
 def require_hireable[M: Person](world: World[M], entity_id: Slug) -> M:
