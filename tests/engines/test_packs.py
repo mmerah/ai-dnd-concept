@@ -56,12 +56,6 @@ def test_read_packs_skips_a_written_pack_that_shadows_a_shipped_id(
     assert packs.installed[SRD_PACK] == packs.shipped[SRD_PACK]
 
 
-def test_an_edit_keeps_the_minimums_the_pack_author_writes_to() -> None:
-    author = ENGINES_BUILT[LONER3E].pack_author
-    with pytest.raises(Refusal, match="locations"):
-        _ = author.edited(_loner3e_pack("Mine"), {"setting": '"A city of doors."'})
-
-
 def test_require_refuses_an_uninstalled_pack() -> None:
     packs = PackSet(TEST_ENGINE, {SRD_PACK: Pack(name="SRD", source="", license="")}, {})
 

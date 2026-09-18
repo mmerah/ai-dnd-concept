@@ -385,11 +385,12 @@ class RoomWorld[N: Dweller](Dungeon[N], World[N]):
         dropped = list(self.carried(actor.id))
         for item in dropped:
             item.on = self.current.id
-        leads = actor is self.player
         if dropped:
             fell = ", ".join(item.mention for item in dropped) + " fell loose here"
-            facts.append(actor.fact(fell, card=actor.card_line("Pack dropped", leads=leads)))
-        card = "You are dead" if leads else f"{actor.name} is dead"
+            facts.append(Fact(trace=fell))
+        card = "You are dead" if actor.id == self.player.id else f"{actor.name} is dead"
+        if shown := [item.name for item in dropped if item.known]:
+            card += f" — pack dropped: {', '.join(shown)}"
         facts.append(actor.fact(f"{actor.mention} is dead", card=card))
         return facts
 

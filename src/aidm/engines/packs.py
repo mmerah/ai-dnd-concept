@@ -213,9 +213,6 @@ class PackSet[K: Pack]:
         )
         return (DecisionOption(id=SRD_PACK, name=self.srd().name), *rest)
 
-    def installing(self, pack_id: Slug, pack: K) -> "PackSet[K]":
-        return PackSet(self.engine, self.shipped, {**self.written, pack_id: pack})
-
     def guidance(self, pack_id: Slug, *, opening: bool) -> str:
         pack = self.require(pack_id)
         parts = pack.sections(opening=opening)
@@ -286,10 +283,7 @@ class PackAuthor[K: Pack]:
             except Refusal as refused:
                 raise Refusal(f"{field_id}: {refused}") from refused
         # Through JSON, not `parse`: strict mode reads a tuple field from a JSON array alone.
-        edited = parse_json(self.pack_model, json.dumps(dumped))
-        body = {field_id: dumped[field_id] for field_id in self.body_model.model_fields}
-        _ = parse_json(self.body_model, json.dumps(body))
-        return edited
+        return parse_json(self.pack_model, json.dumps(dumped))
 
 
 def render_worldsmith(

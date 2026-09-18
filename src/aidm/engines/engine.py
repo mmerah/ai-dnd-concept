@@ -114,7 +114,8 @@ class Engine[W: World[Any], K: Pack](ABC):
         return draft.world.leave_party(args.target_id)
 
     def install_pack(self, pack_id: Slug, pack: K) -> None:
-        self.packs = self.packs.installing(pack_id, pack)
+        packs = self.packs
+        self.packs = PackSet(packs.engine, packs.shipped, {**packs.written, pack_id: pack})
 
     def guidance(self, pack_id: Slug, /, *, opening: bool) -> str:
         block = self.packs.guidance(pack_id, opening=opening)
@@ -180,7 +181,7 @@ class Engine[W: World[Any], K: Pack](ABC):
     ) -> AnyScenario:
         """No check here: `begin` is the one check an opening meets, and `check` always runs it."""
         return self.scenario(
-            meta=meta.with_premise(premise),
+            meta=meta.model_copy(update={"premise": meta.premise or premise}),
             engine=self.id,
             pack_id=pack_id,
             source=source,

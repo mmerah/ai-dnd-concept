@@ -14,8 +14,7 @@ from aidm.engines.engine import Operation, Written
 from aidm.engines.hiring import (
     HIRE,
     HIRE_UNWRITTEN,
-    Hire,
-    file_hire,
+    Hiring,
     hire_target,
     signed_on,
 )
@@ -52,7 +51,7 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 )
 
 
-class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
+class TunnelGoonsEngine(Hiring, RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     authoring = AUTHORING
@@ -68,14 +67,6 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
 
     def operations(self) -> Mapping[Slug, Operation[TunnelGoonsWorld]]:
         return {**super().operations(), HIRE: Operation(self.write_hire, HIRE_UNWRITTEN)}
-
-    @tool
-    def hire(self, draft: TunnelGoonsGame, args: Hire, _rng: Random) -> list[Fact]:
-        """Call this when the player hires a character here to work. The player can also hire a
-        character who already travels with the player. The worldsmith writes the sheet of that
-        character at the end of the turn. Nothing more happens this turn. Give a sheet only to a
-        character hired to work. Do not give a sheet to a character who only travels along."""
-        return file_hire(draft, args.target_id, args.terms)
 
     async def write_hire(
         self, draft: TunnelGoonsGame, commission: Commission, worldsmith: WorldsmithAnswer
@@ -172,9 +163,8 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
         total = rolled.total + sheet.abilities[args.ability] + len(items) - penalty
         success = total >= difficulty
         outcome = "success" if success else "failure"
-        led = actor.card_line(args.ability.capitalize(), leads=actor is world.player)
         line = (
-            f"{args.what} — {led}"
+            f"{args.what} — {actor.card_line(args.ability.capitalize())}"
             + (f" with {', '.join(item.name for item in items)}" if items else "")
             + (f" against {npc.name}" if npc is not None else "")
             + f", {total} vs DS {difficulty} → {outcome}"
