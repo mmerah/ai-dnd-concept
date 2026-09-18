@@ -2,8 +2,9 @@
 
 Done after `PLAN.md`. The target: `src/aidm/engines` reads like code one person wrote. One class
 per thing, its fields written out. One place per tool. A world that writes its own facts. A type
-parameter only on a container that holds the engine's own kind of thing. No family layer, no hook an engine must know exists
-before it can be read top to bottom.
+parameter only on a container that holds the engine's own kind of thing. A family is shared
+functions and a world shape, not a base class with hooks: every engine has the same files and
+reads top to bottom.
 
 This plan adds lines. Every step was prototyped on `3ebf53f` with the four checks green; the sum
 is about **+250 `src`, +250 `tests`**. Prompts, goldens and saves do not change.
@@ -17,32 +18,28 @@ format --check`, `uv run basedpyright`, `UV_CACHE_DIR` unset). Two rules beyond 
 - A copy is fine. Two engines each carrying ten plain lines beat one base carrying a hook, a
   flag or a renamed accessor to share them.
 
-1. **No family layer.** `engines/rooms/` is one engine's. `rooms/world.py` folds into the top of
-   `tunnelgoons/world.py`: `Place`, `Way`, `Prop`, then `Npc` (with `place` itself; `Dweller`
-   goes), then `Dungeon` (`npcs: dict[Slug, Npc]`, no parameter), `MapProposal`,
-   `RegionProposal`, `TunnelGoonsWorld(Dungeon, World[Goon, Npc])`. `rooms/worldsmith.py` folds
-   into `tunnelgoons/worldsmith.py`, `rooms/tools.py` into `tunnelgoons/tools.py`,
-   `rooms/engine.py` into `tunnelgoons/engine.py`: its tool methods (`master_tools` returns
-   `(*super().master_tools(), hire, move_item, unlock_way, move, meanwhile, rest, roll,
-   level_up)` once step 3 lands `hire`), `new_game`, `author`, `act`, `extend`, `write_next`,
-   `install`, `family_sections`, `master_sections`, `narrator_view`, `player_view` as plain
-   methods. `engines/scenes/` keeps `world.py`, `worldsmith.py`, `tools.py` and gains
-   `views.py`: `scene_sections(world)`, `here_sections(world, rules)`, `scene_panels(world)`,
-   pieces each scene engine's `master_sections` and `player_view` place in its own tuple, in
-   the golden's order (24XX puts GEAR, THE JOB, THE SHIP between YOU PLAY FOR and HERE WITH THE
-   PLAYER); `SceneEngine.sheet_sections` and `panels` go. `scenes/engine.py` goes: `next_scene`,
-   `enter`, `leave`, `meanwhile`, `new_game`, `author`, `act`, `write_next`, `install`,
-   `family_sections`, `narrator_view`, `over` become methods on `Loner3eEngine` and
-   `TwentyfourxxEngine`, a copy each. `Engine.family_dir` goes; `__init__` reads one `rules.md`:
-   `rooms/rules.md` and `scenes/rules.md` are appended to each engine's `rules.md` with one
-   newline between and nothing else (`read_cached_text` does not strip; the prompt goldens
-   hold); `rooms/worldsmith.md` moves to `tunnelgoons/`, `scenes/worldsmith.md` is copied into
-   `loner3e/` and `twentyfourxx/`. Tests: `tests/support/fifth.py` and `sixth.py` go. `tests/
-   support/tunnelgoons.py` gains `keep()` building the sixth keep's map (the locked yard→well
-   way, the lantern in the yard) with `Npc(hp=...)` directly and no `begin`, so `tests/engines/
-   test_rooms.py` (19 tests) keeps its ids and counts; its three construction tests subclass
-   `TunnelGoonsEngine` with `directory = tmp_path` over `install_engine_dir`. `test_seam.py`
-   (7 tests) and `test_packs.py` (1) run on the shipped engines through `support/table.py`;
+1. **A family is shared code, not a base class.** `engines/rooms/` and `engines/scenes/` each
+   keep `world.py`, `worldsmith.py`, `tools.py`, `rules.md`, `worldsmith.md` and gain `views.py`;
+   each loses `engine.py`. `rooms/views.py`: `room_sections(world)`, `room_panels(world)`,
+   `room_narrator_view(world)`; `scenes/views.py`: `scene_sections(world)`, `here_sections(
+   world, rules)`, `scene_panels(world)`, `scene_narrator_view(world)`; pieces each engine's
+   `master_sections`, `player_view` and `narrator_view` place in its own tuple, in the golden's
+   order (24XX puts GEAR, THE JOB, THE SHIP between YOU PLAY FOR and HERE WITH THE PLAYER);
+   `SceneEngine.sheet_sections` and `panels` go. What `RoomEngine` held becomes methods on
+   `TunnelGoonsEngine`: the tool methods (`master_tools` returns `(*super().master_tools(),
+   hire, move_item, unlock_way, move, meanwhile, rest, roll, level_up)` once step 3 lands
+   `hire`), `new_game`, `author`, `act`, `extend`, `write_next`, `install`, `family_sections`,
+   and the three views. What `SceneEngine` held becomes methods on `Loner3eEngine` and
+   `TwentyfourxxEngine`, a copy each: `next_scene`, `enter`, `leave`, `meanwhile`, `new_game`,
+   `author`, `act`, `write_next`, `install`, `family_sections`, `narrator_view`, `over`. A
+   next room engine copies Tunnel Goons' methods the way 24XX copied Loner's. `Engine.family_dir`
+   stays: the family's `rules.md` and `worldsmith.md` are read as today; the prompt goldens hold.
+   Tests: `tests/support/fifth.py` and `sixth.py` go. `tests/support/tunnelgoons.py` gains
+   `keep()` building the sixth keep's map (the locked yard→well way, the lantern in the yard)
+   with `Npc(hp=...)` directly and no `begin`, so `tests/engines/test_rooms.py` (19 tests) keeps
+   its ids and counts; its three construction tests subclass `TunnelGoonsEngine` with
+   `directory = tmp_path` over `install_engine_dir`. `test_seam.py` (7 tests) and
+   `test_packs.py` (1) run on the shipped engines through `support/table.py`;
    `test_a_fifth_scene_engine_begins_a_playable_game` goes; `test_a_game_with_no_chapter_open_
    is_refused` uses `game(LONER3E)`; `test_scene_bar.py`'s `AnySceneEngine` alias becomes
    `Loner3eEngine | TwentyfourxxEngine`.
@@ -89,7 +86,7 @@ format --check`, `uv run basedpyright`, `UV_CACHE_DIR` unset). Two rules beyond 
    `Person` (`alive`, `chattiness`, `changed_tags`, `required` returning `"alive"` or `""`, which
    `required_unmet` reads for every engine). `Sheet`, `Sheeted`, `Person.hired`, `hireable`,
    `carried`, the `_player_carries_a_sheet` validator go. Tunnel Goons: `Goon(Person)` with
-   `hp`, `sheet: GoonSheet`, `kit`; `Npc(Person)` with `place`, `hp`, `sheet: GoonSheet | None`
+   `hp`, `sheet: GoonSheet`, `kit`; `Npc(Dweller)` with `hp`, `sheet: GoonSheet | None`
    (description "Leave empty."); `GoonSheet` (`abilities`, `inventory`, `level`) stays as it is;
    `hired` is `self.sheet is not None` on `Npc`; `Npc.required` adds "no sheet" over
    `super().required()`, so the worldsmith writes no hired npc; `require_sheet`,
@@ -101,7 +98,8 @@ format --check`, `uv run basedpyright`, `UV_CACHE_DIR` unset). Two rules beyond 
 5. **Type parameters on containers only.** `Engine[W: World[Any, Any]]`, `Game[W]`,
    `World[P: Person, M: Person]` stays as it is (the `player` and member types have no other
    spelling under `reportIncompatibleVariableOverride`), `SceneWorld[C]`, `SceneProposal[C]`,
-   `NextProposal[C]`, `Scenario[P]`, `Character[P]` stay. `M` and `K` leave `Engine`;
+   `NextProposal[C]`, `Dungeon[N]`, `RoomWorld[P, N]`, `MapProposal[N]`, `RegionProposal[N]`,
+   `Scenario[P]`, `Character[P]` stay. `M` and `K` leave `Engine`;
    `Engine.member` and `Engine.game` go, `restore` and `begin` parse `Game[self.world]`;
    `MasterTool`, `PackSet`, `check_map`, `check_extension`, `check_scene` lose their parameters.
    `PackSet.srd(model)` and `chosen(selection, model)` carry one `isinstance` between them;
@@ -128,18 +126,19 @@ format --check`, `uv run basedpyright`, `UV_CACHE_DIR` unset). Two rules beyond 
    `tests/core/test_tools.py` tests `tools_of` (order, override, missing description);
    `tests/turn/test_decisions.py` builds its ad-hoc tools as a small decorated class.
 7. **Plain words, and the docs.** `engines/seam.py` → `engines/engine.py`; `Generation` →
-   `WorldsmithJob`; `Engine.land` → `Engine.check_and_commit`; `Engine.family_sections` →
-   `Engine.worldsmith_sections`. Saved field names do not change. CLAUDE.md, replacing the
+   `WorldsmithJob`; `Engine.land` → `Engine.check_and_commit`. Saved field names do not change. CLAUDE.md, replacing the
    `Any` rule: "Do not use `Any`. The one exception: `Game[Any]`, `Engine[Any]`, `World[Any,
    Any]`, `Scenario[Any]`, `Character[Any]` where the app holds every engine at once or a class
    is generic on the game state." CLAUDE.md, replacing the engine tool rule: "A tool is a
    method decorated with `@tool`; it resolves ids and rolls dice, and the world method it calls
    changes fields and tells the facts." README.md, `docs/24XX.md`, `docs/LONER-3E.md`: the
    sentences naming `SceneEngine` and the seam say that each engine is its own package and
-   the two scene engines share `engines/scenes/`.
+   each family under `engines/` is
+   shared functions and a world shape with no engine class of its own.
 
-Accepted and left as is: `TunnelGoonsWorld`'s two validators and its `entity()`/`require()`
-unions over `Person | Prop | Place`; the `rows(carried=...)` keyword; the pack `head`/`body`
+Accepted and left as is: `RoomWorld`'s two validators and its `entity()`/`require()` unions over
+`Person | Prop | Place`; the `rows(carried=...)` keyword; the pack `head`/`body`
 authoring split and `opening_sections`.
 
-Done when: the full check is green; `grep -rn "master_tool\|-> list\[Fact\]\|-> tuple\[Fact\|Sheeted\|family_dir\|SceneEngine\|RoomEngine\|hireable\|Written\|Request\b" src tests qa` finds nothing; `src/aidm/engines/rooms/` and `scenes/engine.py` are gone; the counts are in `PROGRESS.md`.
+Done when: the full check is green; `grep -rn "master_tool\|-> list\[Fact\]\|-> tuple\[Fact\|Sheeted\|SceneEngine\|RoomEngine\|hireable\|Written\|Request\b" src tests qa` finds nothing; `engines/rooms/engine.py` and `engines/scenes/engine.py` are gone and the two family
+directories hold the same five files and a `views.py`; the counts are in `PROGRESS.md`.
