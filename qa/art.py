@@ -10,7 +10,7 @@ from hashlib import sha1
 from pathlib import Path
 from typing import override
 
-from aidm.app.media import ICON_RATIO, GeneratedImage, Illustrator
+from aidm.app.present import ICON_RATIO, GeneratedImage, Illustrator
 
 WIDTH = 960
 HEIGHT = 540

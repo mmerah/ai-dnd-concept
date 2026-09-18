@@ -14,7 +14,7 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eGame, outcome_for
 from aidm.engines.scenes.engine import WAY_UNWRITTEN
-from aidm.turn.run import COMMISSION_WAIT, Turn
+from aidm.turn import COMMISSION_WAIT, Turn
 
 MAP = "vault-map"
 FOUND = tool_call("reveal", target_id="vault-map")

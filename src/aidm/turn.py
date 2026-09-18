@@ -1,7 +1,6 @@
 from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
-from pathlib import Path
 from random import Random
 from typing import Protocol, Self
 
@@ -10,14 +9,11 @@ from pydantic import JsonValue
 from aidm.core.creation import option_of
 from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, traced
-from aidm.core.io import read_cached_text
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, SpokenLine
-from aidm.core.prompt import Sections, lines_of, render_history, sections
 from aidm.core.tools import MasterTool
 from aidm.engines.engine import AnyEngine
 
-MASTER_ROLE = Path(__file__).parent / "prompts" / "master.md"
 PAUSED_TO_ASK = 'The rules paused play to ask the player: "{prompt}" '
 RULES_WAIT = "the rules now wait on the player's decision"
 COMMISSION_WAIT = (
@@ -104,15 +100,6 @@ class Turn:
     def landed(self) -> bool:
         return bool(self.facts) or self.draft.pending is not None
 
-    def master_prompt(self) -> str:
-        return render_master(
-            self.engine.instructions,
-            self.engine.master_sections(self.draft),
-            self.draft,
-            self.player_action,
-            notes=self.notes,
-        )
-
     def call(self, name: str, raw: JsonValue) -> str:
         """The one gate every published tool passes; returns what changed as the master reads it."""
         if (ended := self.engine.ending(self.draft)) is not None:
@@ -150,26 +137,3 @@ class Turn:
         self.rng.setstate(dice.getstate())
         self.facts.extend(facts)
         return facts
-
-
-def render_master(
-    instructions: str,
-    engine_sections: Sections,
-    state: AnyGame,
-    action: str,
-    *,
-    notes: Sequence[str] = (),
-) -> str:
-    played = sum(len(chapter.exchanges) for chapter in state.log)
-    return sections(
-        (
-            ("YOUR ROLE", read_cached_text(MASTER_ROLE)),
-            ("THE RULES OF THIS GAME", instructions),
-            ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
-            ("THE SCOPE OF PLAY", state.scenario.scope),
-            (f"RECENT PLAY (this is turn {played + 1})", render_history(state.log)),
-            *engine_sections,
-            ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
-            ("PLAYER ACTION", action),
-        )
-    )

@@ -35,8 +35,8 @@ FORBIDDEN = {package: _forbidden(package) for package in (*LAYERS, *TOPS)}
 
 
 def _source_files(package: str) -> tuple[Path, ...]:
-    target = SOURCE / package
-    files = (target,) if target.is_file() else tuple(target.rglob("*.py"))
+    module = SOURCE / f"{package}.py"
+    files = (module,) if module.is_file() else tuple((SOURCE / package).rglob("*.py"))
     assert files, f"no python files under src/aidm/{package}: renamed without updating the tables?"
     return files
 

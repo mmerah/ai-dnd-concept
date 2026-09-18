@@ -13,7 +13,7 @@ from aidm.core.play import Answer, Interjection, Narration
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Rows, Subject
 from aidm.engines.loner3e.world import Loner3eEntity
-from aidm.turn.run import Tools, Turn
+from aidm.turn import Tools, Turn
 
 
 def _view(subject: Subject) -> NarratorView:

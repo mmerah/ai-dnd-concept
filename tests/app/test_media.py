@@ -1,7 +1,6 @@
 import json
 from asyncio import CancelledError, Event, create_task, gather, sleep
 from collections.abc import Callable, Sequence
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,10 +8,11 @@ from pydantic import SecretStr
 from support.game import TARGET, initialized, with_entity
 from support.table import offline_settings
 
-from aidm.app.media import (
+from aidm.app.present import (
     ICON_DIR,
     GeneratedImage,
     Illustrator,
+    Presenter,
     illustration_request,
     scene_key,
 )
@@ -176,7 +176,7 @@ async def test_a_drawn_icon_still_holds_its_claim_while_the_file_is_written(
         publish(path, write)
 
     monkeypatch.setattr(Illustrator, "_generate", _generate)
-    monkeypatch.setattr("aidm.app.media.publish", _publish)
+    monkeypatch.setattr("aidm.app.present.publish", _publish)
     illustrator = _illustrator(tmp_path / "save.media")
 
     await illustrator.illustrate(scene, player, NARRATION)
@@ -200,7 +200,7 @@ async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(
         }
         return json.dumps(reply).encode()
 
-    monkeypatch.setattr("aidm.app.media.post_bearer", _bad_reply)
+    monkeypatch.setattr("aidm.app.present.post_bearer", _bad_reply)
     illustrator = _illustrator(tmp_path / "save.media")
 
     await illustrator.illustrate(scene, player, NARRATION)
@@ -209,29 +209,27 @@ async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(
     assert illustrator.claims.held == set()
 
 
-async def test_media_off_asks_for_no_art_and_hides_what_an_earlier_run_cached(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_media_off_asks_for_no_art_and_hides_what_an_earlier_run_cached(tmp_path: Path) -> None:
     engine, state = initialized()
     scene = _scene(engine, state)
     player = engine.player_view(state).player
+    off = Presenter.open(
+        offline_settings(tmp_path),
+        FileStore(tmp_path),
+        TARGET.slug,
+        style=STYLE,
+        icon_dirs=(),
+        voice="",
+    )
 
-    async def _refuse(
-        _self: Illustrator, _prompt: str, _ratio: str, _references: Sequence[Path] = ()
-    ) -> GeneratedImage:
-        raise AssertionError("art was requested while media is off")
+    # nothing is cached yet: a gate that let this through would hand back a coroutine
+    assert off.present(scene, player, None) == ()
+    (off.illustrator.saves / ICON_DIR).mkdir(parents=True)
+    (off.illustrator.saves / ICON_DIR / f"{player.id}.png").write_bytes(b"")
+    (off.illustrator.saves / f"{scene_key(scene)}.png").write_bytes(b"")
 
-    monkeypatch.setattr(Illustrator, "_generate", _refuse)
-    off = replace(_illustrator(tmp_path), config=MediaConfig())
-
-    # Nothing is cached yet, so an ungated `illustrate` would reach `_generate`.
-    await off.illustrate(scene, player, NARRATION)
-    (tmp_path / ICON_DIR).mkdir(parents=True)
-    (tmp_path / ICON_DIR / f"{player.id}.png").write_bytes(b"")
-    (tmp_path / f"{scene_key(scene)}.png").write_bytes(b"")
-
-    assert off.scene_art(scene) is None
-    assert off.icon(player.id) is None
+    assert off.illustrator.scene_art(scene) is None
+    assert off.illustrator.icon(player.id) is None
 
 
 def test_illustrator_open_takes_the_passed_style_and_is_disabled_when_media_is_off(

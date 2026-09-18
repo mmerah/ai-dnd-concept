@@ -14,7 +14,7 @@ from aidm.core.tools import NoArgs, tool, tools_of
 from aidm.engines.engine import AnyEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.turn.run import PAUSED_TO_ASK, RULES_WAIT, Turn
+from aidm.turn import PAUSED_TO_ASK, RULES_WAIT, Turn
 
 
 class Broken(Frozen):

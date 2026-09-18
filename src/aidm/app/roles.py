@@ -12,16 +12,24 @@ from aidm.core.facts import Fact, traced
 from aidm.core.io import parse_text, read_cached_text
 from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
-from aidm.core.prompt import Sections, lines_of, recent_history, section_if, sections
+from aidm.core.prompt import (
+    Sections,
+    lines_of,
+    recent_history,
+    render_history,
+    section_if,
+    sections,
+)
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Subject
 from aidm.engines.engine import AnyEngine
-from aidm.turn.run import Turn
+from aidm.turn import Turn
 
 LOGGER = logging.getLogger(__name__)
 
 RETRIES = 1
 PROMPTS_DIR = Path(__file__).parent / "prompts"
+MASTER_ROLE = PROMPTS_DIR / "master.md"
 PAUSED = (
     'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
     "have not yet answered."
@@ -42,8 +50,15 @@ OPENING_NARRATION = (
 
 async def run_master(spawner: Spawner, turn: Turn) -> None:
     """A crashed game master still played the turn, if it applied anything legal first."""
+    prompt = render_master(
+        turn.engine.instructions,
+        turn.engine.master_sections(turn.draft),
+        turn.draft,
+        turn.player_action,
+        notes=turn.notes,
+    )
     try:
-        await spawner.run("master", turn.master_prompt(), None, turn)
+        await spawner.run("master", prompt, None, turn)
     except Refusal as failed:
         if not turn.landed:
             raise
@@ -110,6 +125,31 @@ async def ask[T: BaseModel](
 
 def worldsmith_answer(spawner: Spawner) -> WorldsmithAnswer:
     return partial(ask, spawner, "worldsmith")
+
+
+# The worldsmith's renderer is not here: it stays in engines/ because it needs the engine's own
+# sections.
+def render_master(
+    instructions: str,
+    engine_sections: Sections,
+    state: AnyGame,
+    action: str,
+    *,
+    notes: Sequence[str] = (),
+) -> str:
+    played = sum(len(chapter.exchanges) for chapter in state.log)
+    return sections(
+        (
+            ("YOUR ROLE", read_cached_text(MASTER_ROLE)),
+            ("THE RULES OF THIS GAME", instructions),
+            ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
+            ("THE SCOPE OF PLAY", state.scenario.scope),
+            (f"RECENT PLAY (this is turn {played + 1})", render_history(state.log)),
+            *engine_sections,
+            ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
+            ("PLAYER ACTION", action),
+        )
+    )
 
 
 def render_narrator(

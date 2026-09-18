@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from agents import ScriptedAgents
 from art import PlaceholderIllustrator
 
-from aidm.app import runtime as runtime_module
+from aidm.app import present as present_module
 from aidm.app.runtime import Runtime
 from aidm.config import SERVER_HOST, MediaConfig, Settings
 from aidm.ui import theme
@@ -93,7 +93,7 @@ def main() -> None:
 
 def _draw_offline() -> None:
     """The real illustrator, with the provider call swapped for a gradient."""
-    runtime_module.Illustrator = PlaceholderIllustrator  # pyright: ignore[reportAttributeAccessIssue]
+    present_module.Illustrator = PlaceholderIllustrator  # pyright: ignore[reportAttributeAccessIssue]
 
 
 if __name__ in {"__main__", "__mp_main__"}:

@@ -93,6 +93,7 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any], K: Pack](Engine[W, K]):
         player = world.player
         ways = world.ways.get(world.current.id, ())
         return PlayerView(
+            premise=state.scenario.premise,
             player=player.subject(),
             scene_title=world.current.name,
             situation=world.current.description,

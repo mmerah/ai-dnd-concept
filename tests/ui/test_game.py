@@ -17,7 +17,7 @@ from support.table import (
     updated,
 )
 
-from aidm.app.media import scene_key
+from aidm.app.present import scene_key
 from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, Busy, LaunchTarget
 from aidm.config import MediaConfig, Role
 from aidm.core.entities import Refusal
@@ -31,24 +31,24 @@ from aidm.core.play import (
     SpokenLine,
 )
 from aidm.core.views import PlayerView, Subject
-from aidm.ui.dice import DiceSound
-from aidm.ui.game import (
-    TURN_FAILED,
-    GamePage,
+from aidm.ui.game import TURN_FAILED, GamePage, game_page
+from aidm.ui.transcript import (
     Observed,
+    can_type,
     draft_spent,
-    game_page,
     near_end,
     placeholder,
+    standing_proposal,
     whole_page,
 )
-from aidm.ui.transcript import can_type, standing_proposal
+from aidm.ui.widgets import DiceSound
 
 WREN = Subject(id="player", name="Wren", brief="A quiet scout")
 
 
 def _view(decision: PendingDecision | None = None, ending: str | None = None) -> PlayerView:
     return PlayerView(
+        premise="",
         player=WREN,
         scene_title="The Cloister Walk",
         situation="Rain drums the arcade.",
@@ -130,10 +130,10 @@ def test_draft_spent_is_false_for_an_empty_draft() -> None:
 
 
 def test_only_a_moving_fact_count_spares_the_whole_page() -> None:
-    seen = Observed(phase="master", facts=2, exchanges=1, action=None, ending=None)
+    seen = Observed(working_role="master", facts=2, exchanges=1, action=None, ending=None)
     assert not whole_page(replace(seen, facts=3), seen)
     assert whole_page(replace(seen, facts=3, exchanges=2), seen)
-    assert whole_page(replace(seen, phase=None), seen)
+    assert whole_page(replace(seen, working_role=None), seen)
 
 
 def _screen[G: AnyGame](table: Table[G]) -> GamePage:
@@ -161,7 +161,7 @@ async def test_poll_turn_follows_only_on_the_readers_own_move(
     screen.at_end = False
     screen.own_move = True
 
-    table.service.phase = "master"  # another tab's turn starting: not the reader's move
+    table.service.working_role = "master"  # another tab's turn starting: not the reader's move
     screen.poll_turn()
     assert screen.new_activity.visible is False
 
@@ -170,7 +170,7 @@ async def test_poll_turn_follows_only_on_the_readers_own_move(
     assert screen.new_activity.visible is False
 
     screen.own_move = False
-    table.service.phase = "narrator"
+    table.service.working_role = "narrator"
     screen.poll_turn()
     assert screen.new_activity.visible is True
 
@@ -184,11 +184,11 @@ async def test_a_change_that_lands_nothing_keeps_a_draft_matching_the_last_promp
     screen = _screen(table)
     screen.box.value = "I wait."
 
-    table.service.phase = "master"  # a turn starts elsewhere; nothing has landed yet
+    table.service.working_role = "master"  # a turn starts elsewhere; nothing has landed yet
     screen.poll_turn()
     assert screen.box.value == "I wait."
 
-    table.service.phase = None
+    table.service.working_role = None
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
     screen.poll_turn()
     assert screen.box.value == ""
@@ -215,9 +215,9 @@ async def test_decision_buttons_grey_out_while_a_turn_is_in_flight(
     screen = _screen(table)
     screen.view = _view(decision=_pick(allows_text=False))
 
-    table.service.phase = None
+    table.service.working_role = None
     screen.decision_panel()
-    table.service.phase = "master"
+    table.service.working_role = "master"
     screen.decision_panel()
 
     assert seen == [True, False]
@@ -305,11 +305,11 @@ async def test_restart_item_greys_out_while_a_turn_is_in_flight(
     screen = _screen(table)
     assert screen.restart_item.enabled is True
 
-    table.service.phase = "master"
+    table.service.working_role = "master"
     screen.poll_turn()
     assert screen.restart_item.enabled is False
 
-    table.service.phase = None
+    table.service.working_role = None
     screen.poll_turn()
     assert screen.restart_item.enabled is True
 
@@ -369,8 +369,8 @@ async def test_build_remembers_scene_art_already_on_disk_like_the_clip(
     settings = updated(offline_settings(tmp_path), media=MediaConfig(enabled=True).model_dump())
     table = open_game(tmp_path, settings=settings)
     session = table.service
-    assert session.media.config.enabled
-    art_dir = session.media.saves
+    assert session.presenter.illustrator.config.enabled
+    art_dir = session.presenter.illustrator.saves
     art_dir.mkdir(parents=True, exist_ok=True)
     key = scene_key(session.engine.narrator_view(session.state))
     (art_dir / f"{key}.png").write_bytes(b"")

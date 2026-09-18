@@ -1,6 +1,8 @@
 from collections.abc import Awaitable, Callable, Sequence
+from dataclasses import dataclass, replace
 from functools import partial
 from pathlib import Path
+from typing import Self
 
 from nicegui import ui
 
@@ -8,7 +10,7 @@ from aidm.app.runtime import GameService
 from aidm.config import Role
 from aidm.core.entities import Slug
 from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.play import Exchange, Marked
+from aidm.core.play import DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
 from aidm.ui.widgets import avatar, heading
 
@@ -33,18 +35,53 @@ MARK_LABELS: dict[Marked, str] = {
 DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
 
 
-def can_type(player: PlayerView, phase: Role | None) -> bool:
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Observed:
+    working_role: Role | None
+    facts: int
+    exchanges: int
+    action: DecisionOption | None
+    ending: str | None
+
+    @classmethod
+    def of(cls, session: GameService, view: PlayerView, history: Sequence[Exchange]) -> Self:
+        return cls(
+            working_role=session.working_role,
+            facts=0 if session.turn is None else len(session.turn.facts),
+            exchanges=len(history),
+            action=view.action,
+            ending=view.ending,
+        )
+
+
+def can_type(player: PlayerView, working_role: Role | None) -> bool:
     decision = player.decision
-    return phase is None and (decision is None or decision.allows_text) and player.ending is None
+    return (
+        working_role is None
+        and (decision is None or decision.allows_text)
+        and player.ending is None
+    )
 
 
 def standing_proposal(
-    history: Sequence[Exchange], player: PlayerView, phase: Role | None
+    history: Sequence[Exchange], player: PlayerView, working_role: Role | None
 ) -> Exchange | None:
     newest = history[-1] if history else None
     if newest is None or not newest.proposal:
         return None
-    return newest if can_type(player, phase) and player.decision is None else None
+    return newest if can_type(player, working_role) and player.decision is None else None
+
+
+def placeholder(player: PlayerView, working_role: Role | None) -> str:
+    if player.ending is not None:
+        return "The game is over. Restart it from the menu."
+    if working_role is not None:
+        return f"{STEP_COPY[working_role][0]} is working..."
+    if player.decision is None:
+        return "What do you do?"
+    if player.decision.allows_text:
+        return "The game is waiting on your answer."
+    return "Choose an option above."
 
 
 def chat(
@@ -56,9 +93,9 @@ def chat(
     accept: Callable[[str], Awaitable[None]],
 ) -> None:
     if not history:
-        ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
+        ui.label(view.premise).classes("text-sm italic opacity-70")
     # The live decision widget sits directly below the last exchange, so it needs no pause line.
-    last = history[-1] if history and session.state.pending is not None else None
+    last = history[-1] if history and view.decision is not None else None
     player = view.player
     for exchange in history:
         if exchange.mark:
@@ -73,7 +110,7 @@ def chat(
             bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
         if exchange.decision and exchange is not last:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
-    if (proposed := standing_proposal(history, view, session.phase)) is not None:
+    if (proposed := standing_proposal(history, view, session.working_role)) is not None:
         with ui.row().classes(DECISION_ROW):
             ui.icon("record_voice_over").classes("game-card-icon")
             ui.label(f"{proposed.lines[0].speaker} proposes: {proposed.proposal}").classes(
@@ -96,9 +133,9 @@ def live_turn(session: GameService, view: PlayerView, elapsed: float) -> ui.labe
             card(fact, live=fact is shown[-1])
     elif session.intent:
         bubble(session, player.id, player.name, session.intent, sent=True)
-    if session.phase is None:
+    if session.working_role is None:
         return None
-    return inline_status(session.phase, elapsed)
+    return inline_status(session.working_role, elapsed)
 
 
 def journal(history: Sequence[Exchange]) -> None:
@@ -168,3 +205,21 @@ def inline_status(step: Role, elapsed: float) -> ui.label:
 def clock(seconds: float) -> str:
     minutes, rest = divmod(int(seconds), 60)
     return f"{minutes}:{rest:02d}"
+
+
+def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
+    return size - position - container <= slack
+
+
+def draft_spent(draft: str, newest_prompt: str) -> bool:
+    return bool(draft) and draft == newest_prompt
+
+
+def whole_page(now: Observed, seen: Observed) -> bool:
+    """False when only the fact count moved: the live turn is then the one part that can differ."""
+    return replace(now, facts=0) != replace(seen, facts=0)
+
+
+def rolled_since(facts: Sequence[Fact], seen: int) -> bool:
+    """Whether any told card fact after `seen` carries dice."""
+    return any(fact.dice for fact in cards(facts[seen:]))

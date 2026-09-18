@@ -1,3 +1,4 @@
+import string
 from collections.abc import Awaitable, Callable, Generator, Sequence
 from contextlib import contextmanager
 from functools import partial
@@ -14,7 +15,22 @@ from aidm.ui import theme
 
 DM_ICON = "auto_stories"
 GAME_ROUTE = "/game/{scenario}/{character}"
+DICE_SOUND = Path(__file__).parent / "roll.mp3"
+DICE_SOUND_ROUTE = "/dice/roll.mp3"
+BLANK = string.whitespace + (
+    "\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"
+    "\u200b\u200c\u200d\u2060\ufeff"
+)
 _media_routes: dict[Path, str] = {}
+
+
+class DiceSound(ui.element, component="dice_sound.js"):
+    def __init__(self) -> None:
+        super().__init__()
+        self._props["src"] = DICE_SOUND_ROUTE
+
+    def play(self) -> None:
+        self.run_method("play")
 
 
 def game_path(target: LaunchTarget) -> str:
@@ -108,6 +124,11 @@ def labeled_value(label: str, value: str) -> None:
     with ui.element("div").classes("game-stat" + (" game-stat-long" if len(value) > 28 else "")):
         ui.label(label).classes("game-stat-label")
         ui.label(value or "—").classes("game-stat-value")
+
+
+def typed(box: ui.input | ui.textarea) -> str:
+    """What the player typed, with every kind of blank trimmed off both ends."""
+    return (box.value or "").strip(BLANK)
 
 
 def decision_widget(

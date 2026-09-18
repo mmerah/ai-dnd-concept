@@ -113,6 +113,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
         world = state.world
         player = world.player
         return PlayerView(
+            premise=state.scenario.premise,
             player=player.subject(),
             scene_title=world.scene.title,
             situation=world.scene.situation,

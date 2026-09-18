@@ -27,6 +27,7 @@ from aidm.ui.widgets import (
     page_body,
     page_header,
     page_intro,
+    typed,
     warn,
 )
 
@@ -98,7 +99,7 @@ class CharacterForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
-        theme.set_look(self.runtime.engines[self.engine_id].look)
+        theme.set_look(self.runtime.engine(self.engine_id).look)
         # The pack and the steps come from the engine, so an answer to the old ones means nothing.
         self.pack_id = self.runtime.default_pack
         self.picks.clear()
@@ -117,7 +118,7 @@ class CharacterForm:
         self.answered()
 
     def answered(self) -> None:
-        engine = self.runtime.engines[self.engine_id]
+        engine = self.runtime.engine(self.engine_id)
         drop_stale(engine.creation_steps(self.pack_id, self.picks), self.picks)
         self.steps.refresh()
         self.preview.refresh()
@@ -125,14 +126,14 @@ class CharacterForm:
     def field(self, step: CreationStep) -> None:
         given = picked(self.picks, step.id)
         if not step.options:
-            typed = ui.input(
+            box = ui.input(
                 label=step.name,
                 placeholder=step.hint or "In your own words",
                 value=given,
                 on_change=partial(self.write, step.id),
             )
             # Rebuilding the whole form on blur would destroy the field Tab just moved to.
-            typed.on("blur", self.preview.refresh)
+            box.on("blur", self.preview.refresh)
             return
         # Quasar returns typed text as its own key, so a typed answer only lands on a keyed label.
         options = {
@@ -153,13 +154,13 @@ class CharacterForm:
             chosen.props(f'hint="{step.hint}"')
 
     def create(self) -> None:
-        title = (self.name.value or "").strip()
+        title = typed(self.name)
         if not title:
             warn("Name the character.")
             return
         try:
-            made = self.runtime.engines[self.engine_id].create_character(
-                title, (self.brief.value or "").strip(), self.pack_id, self.picks
+            made = self.runtime.engine(self.engine_id).create_character(
+                title, typed(self.brief), self.pack_id, self.picks
             )
             self.runtime.library.write_character(made)
         except Refusal as refused:
@@ -170,19 +171,20 @@ class CharacterForm:
 
     @ui.refreshable_method
     def steps(self) -> None:
-        engine = self.runtime.engines[self.engine_id]
-        _pack_select(engine.packs.options(), self.pack_id, self.choose_pack)
-        for step in engine.creation_steps(self.pack_id, self.picks):
+        _pack_select(
+            self.runtime.engine(self.engine_id).packs.options(), self.pack_id, self.choose_pack
+        )
+        for step in self.runtime.engine(self.engine_id).creation_steps(self.pack_id, self.picks):
             self.field(step)
 
     @ui.refreshable_method
     def preview(self) -> None:
-        engine = self.runtime.engines[self.engine_id]
+        engine = self.runtime.engine(self.engine_id)
         try:
             preview = engine.preview_character(
                 engine.create_character(
-                    (self.name.value or "").strip() or "Unnamed",
-                    (self.brief.value or "").strip(),
+                    typed(self.name) or "Unnamed",
+                    typed(self.brief),
                     self.pack_id,
                     self.picks,
                 )
@@ -241,21 +243,22 @@ class ScenarioForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
-        theme.set_look(self.runtime.engines[self.engine_id].look)
+        theme.set_look(self.runtime.engine(self.engine_id).look)
         self.pack_id = self.runtime.default_pack
         self.character_fields.refresh()
         self._set_style_placeholder()
         self.button_row.refresh()
 
     def _set_style_placeholder(self) -> None:
-        engine = self.runtime.engines[self.engine_id]
-        self.style.props(f'placeholder="Leave empty for: {engine.art_style}"')
+        art_style = self.runtime.engine(self.engine_id).art_style
+        self.style.props(f'placeholder="Leave empty for: {art_style}"')
 
     @ui.refreshable_method
     def character_fields(self) -> None:
-        engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
-        _pack_select(engine.packs.options(), self.pack_id, self.choose_pack)
+        _pack_select(
+            self.runtime.engine(self.engine_id).packs.options(), self.pack_id, self.choose_pack
+        )
         self.seed_button = ui.button("Roll a seed", icon="casino", on_click=self.roll_seed).props(
             "outline dense"
         )
@@ -271,7 +274,7 @@ class ScenarioForm:
         self.seed_button.set_visibility(bool(self.seeds()))
 
     def seeds(self) -> tuple[str, ...]:
-        return self.runtime.engines[self.engine_id].packs.require(self.pack_id).seeds
+        return self.runtime.engine(self.engine_id).packs.require(self.pack_id).seeds
 
     def roll_seed(self) -> None:
         """A starting point the player edits; the seed is never stored on its own."""
@@ -291,9 +294,9 @@ class ScenarioForm:
                 ui.label("Make a character first.").classes("text-sm text-negative")
 
     async def write(self) -> None:
-        title = (self.title.value or "").strip()
-        premise = (self.premise.value or "").strip()
-        scope = (self.scope.value or "").strip()
+        title = typed(self.title)
+        premise = typed(self.premise)
+        scope = typed(self.scope)
         character_id = self.character.value
         document = self.upload.document
         if not title or not scope or not (premise or document) or character_id is None:
@@ -304,8 +307,8 @@ class ScenarioForm:
             title=title,
             premise=premise,
             scope=scope,
-            art_style=(self.style.value or "").strip(),
-            voice=(self.voice.value or "").strip(),
+            art_style=typed(self.style),
+            voice=typed(self.voice),
         )
         try:
             character_id = content_id(character_id)
@@ -359,11 +362,11 @@ class PackForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
-        theme.set_look(self.runtime.engines[self.engine_id].look)
+        theme.set_look(self.runtime.engine(self.engine_id).look)
 
     async def write(self) -> None:
-        name = (self.name.value or "").strip()
-        premise = (self.premise.value or "").strip()
+        name = typed(self.name)
+        premise = typed(self.premise)
         document = self.upload.document
         if not name or not (premise or document):
             warn("A name, and a premise or a document.")
@@ -371,7 +374,7 @@ class PackForm:
         self.button.props("loading")
         try:
             pack_id = await self.runtime.new_pack(
-                self.engine_id, name, premise, document, (self.license.value or "").strip()
+                self.engine_id, name, premise, document, typed(self.license)
             )
         except Refusal as refused:
             alert(str(refused))
@@ -388,8 +391,7 @@ def character_page(runtime: Runtime) -> None:
 
 
 def scenario_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
-    ScenarioForm(runtime, catalog).build()
+    ScenarioForm(runtime, runtime.catalog()).build()
 
 
 def new_pack_page(runtime: Runtime) -> None:
@@ -401,7 +403,7 @@ def _form_page(
     runtime: Runtime, engine_id: EngineId, *, eyebrow: str, title: str, lead: str
 ) -> Generator[None]:
     """The shape every create form wears: header, body, intro, one card."""
-    page_header(title, look=runtime.engines[engine_id].look)
+    page_header(title, look=runtime.engine(engine_id).look)
     with page_body():
         page_intro(eyebrow, title, lead)
         with ui.card().classes("w-full"):
@@ -412,7 +414,7 @@ def _engine_select(
     runtime: Runtime, chosen: EngineId, on_change: Callable[[ValueChangeEventArguments[str]], None]
 ) -> None:
     ui.select(
-        options={engine.id: engine.title for engine in runtime.engines.values()},
+        options=runtime.engine_options(),
         value=chosen,
         label="Rules",
         on_change=on_change,

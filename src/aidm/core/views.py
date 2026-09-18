@@ -112,6 +112,7 @@ class NarratorView(Frozen):
 class PlayerView(Frozen):
     """What the pages read: scene art and subjects live on the narrator view, not here."""
 
+    premise: str
     player: Subject
     scene_title: str
     situation: str

@@ -8,7 +8,7 @@ from aidm.config import ProviderConfig, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse_json
 from aidm.core.io import decode
 from aidm.core.tools import MasterTool, schema_of
-from aidm.turn.run import Tools
+from aidm.turn import Tools
 
 
 class _Echoed(BaseModel):

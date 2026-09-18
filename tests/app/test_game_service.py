@@ -24,7 +24,7 @@ from support.table import (
 from aidm.app.roles import REQUESTED
 from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, Busy, GameService, LaunchTarget, Runtime
 from aidm.config import Role
-from aidm.core.entities import Refusal
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Commission, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer
@@ -163,7 +163,17 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
     await table.service.open()
 
     assert table.service.state.exchanges() == ()
-    assert not table.service.busy
+    assert table.service.working_role is None
+
+
+async def test_working_clears_the_role_even_when_the_work_refuses(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+
+    with pytest.raises(Refusal):
+        async with table.service.working("master"):
+            raise Refusal("x")
+
+    assert table.service.working_role is None
 
 
 async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
@@ -173,7 +183,7 @@ async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
     with pytest.raises(OSError):
         _ = await play_turn(table, "I take the map.")
 
-    assert (table.service.busy, table.service.turn) == (False, None)
+    assert (table.service.working_role, table.service.turn) == (None, None)
 
 
 async def test_a_turn_whose_narrator_never_answers_still_lands_and_saves_the_facts(
@@ -427,7 +437,7 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
     assert exchange.mark == "interjection"
     assert [line.speaker_id for line in exchange.lines] == [member.id]
     assert exchange.proposal == "I check the airlock seal."
-    assert table.service.phase is None
+    assert table.service.working_role is None
 
 
 async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None:
@@ -613,3 +623,18 @@ async def test_act_hushes_before_it_asks_the_worldsmith_to_write(
 
     assert calls[0] == "hush"
     assert "worldsmith" in calls
+
+
+def test_pack_boxes_refuses_an_unknown_engine_or_pack_and_reports_a_shipped_pack_as_read_only(
+    tmp_path: Path,
+) -> None:
+    runtime = Runtime(offline_settings(tmp_path))
+
+    with pytest.raises(Refusal, match="no rules"):
+        runtime.pack_boxes(EngineId("no-such-engine"), "srd")
+
+    with pytest.raises(Refusal, match="not installed"):
+        runtime.pack_boxes(runtime.default_engine, "no-such-pack")
+
+    _, written, _ = runtime.pack_boxes(runtime.default_engine, runtime.default_pack)
+    assert written is False
