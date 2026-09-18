@@ -222,7 +222,7 @@ def _filed_under_another_stem(tmp_path: Path) -> BadSave:
 
 def _playing_an_uninstalled_pack(tmp_path: Path) -> BadSave:
     settings = offline_settings(tmp_path)
-    FileStore(tmp_path).write(TARGET.slug, updated(_opening_state(settings), packs=("srd", "gone")))
+    FileStore(tmp_path).write(TARGET.slug, updated(_opening_state(settings), pack_id="gone"))
     return settings, ENGINES_BUILT, TARGET.slug
 
 
@@ -236,7 +236,7 @@ def _that_will_not_restore(tmp_path: Path) -> BadSave:
     state = _opening_state(settings)
     FileStore(tmp_path).write(TARGET.slug, state)
     broken = state.model_dump(mode="json")
-    broken["payload"]["cast"]["ghost"] = {"name": "Ghost"}
+    broken["world"]["cast"]["ghost"] = {"name": "Ghost"}
     _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
     return settings, ENGINES_BUILT, "unopenable"
 
@@ -253,9 +253,9 @@ def _that_is_not_utf8(tmp_path: Path) -> BadSave:
     [
         (_playing_another_engine, "its scenario or character is gone"),
         (_filed_under_another_stem, "filed under another name"),
-        (_playing_an_uninstalled_pack, "packs not installed for 'loner3e': ['gone']"),
+        (_playing_an_uninstalled_pack, "pack 'gone' is not installed for 'loner3e'"),
         (_whose_scenario_drifted, "save scenario differs from the one on disk in: title"),
-        (_that_will_not_restore, "payload.cast.ghost.id: Field required"),
+        (_that_will_not_restore, "world.cast.ghost.id: Field required"),
         (_that_is_not_utf8, "binary.json cannot be read"),
     ],
     ids=(
@@ -324,7 +324,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
         scope="One crossing, before the tide turns.",
         art_style="woodcut",
     )
-    name = await runtime.new_scenario(LONER3E, meta, None, ("srd",), "kael")
+    name = await runtime.new_scenario(LONER3E, meta, None, "srd", "kael")
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
     assert "these name nobody" in spawner.prompts[1][1]
@@ -333,8 +333,8 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     catalog = _catalog(settings, runtime.engines)
     state = runtime.session(catalog.target(name, "kael")).state
     assert (name, len(state.exchanges())) == ("the-sunken-bell", 0)
-    assert state.payload.run.title == "The Bell Under the Water"
-    assert state.payload.player.name == "Kael"
+    assert state.world.run.title == "The Bell Under the Water"
+    assert state.world.player.name == "Kael"
     assert state.source.startswith("PREMISE:")
     world = json.loads((settings.scenarios_dir / name / "world.json").read_text(encoding=ENCODING))
     assert world["meta"]["art_style"] == "woodcut"
@@ -359,37 +359,12 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
             LONER3E,
             ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
             None,
-            ("srd",),
+            "srd",
             "kael",
         )
 
     assert "filed under" not in str(failed.value)
     assert not scenarios.exists()
-
-
-async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_path: Path) -> None:
-    """The mismatch is caught before the worldsmith is spawned, not after it has written."""
-    characters = tmp_path / "characters"
-    shutil.copytree(REPOSITORY_ROOT / "characters", characters)
-    sheet = characters / "kael" / "loner3e.json"
-    widened = json.loads(sheet.read_text(encoding=ENCODING)) | {"packs": ["srd", "ap01-fantasy"]}
-    sheet.write_text(json.dumps(widened), encoding=ENCODING)
-    settings = offline_settings(tmp_path, tmp_path / "scenarios").model_copy(
-        update={"characters_dir": characters}
-    )
-    spawner = ScriptedSpawner()
-    runtime = Runtime(settings, spawner=spawner)
-
-    with pytest.raises(Refusal, match="this scenario plays srd"):
-        _ = await runtime.new_scenario(
-            LONER3E,
-            ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
-            None,
-            ("srd",),
-            "kael",
-        )
-
-    assert spawner.prompts == []
 
 
 async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Path) -> None:
@@ -401,7 +376,7 @@ async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Pat
         LONER3E,
         ScenarioMeta(title="The Sunken Bell", premise="", scope="One crossing."),
         SOURCE_MD,
-        ("srd",),
+        "srd",
         "kael",
     )
 

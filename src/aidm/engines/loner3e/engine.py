@@ -82,12 +82,12 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
             master_tool("spend_luck", SPEND_LUCK, SpendLuck, self.spend_luck),
         )
 
-    def creation_steps(self, packs: tuple[Slug, ...], picks: Picks) -> tuple[CreationStep, ...]:
-        chosen = self.packs.chosen(packs)
-        concepts = tuple(entry for pack in chosen for entry in pack.concepts)
-        skills = tuple(option for pack in chosen for option in pack.skills)
-        frailties = tuple(option for pack in chosen for option in pack.frailties)
-        gear = tuple(option for pack in chosen for option in pack.gear)
+    def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
+        played = self.packs.played(pack_id)
+        concepts = tuple(entry for pack in played for entry in pack.concepts)
+        skills = tuple(option for pack in played for option in pack.skills)
+        frailties = tuple(option for pack in played for option in pack.frailties)
+        gear = tuple(option for pack in played for option in pack.gear)
         return (
             CreationStep(
                 id="concept",
@@ -112,10 +112,10 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         )
 
     def build_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+        self, name: str, brief: str, pack_id: Slug, picks: Picks
     ) -> Loner3eCharacter:
-        steps = self.creation_steps(packs, picks)
-        # The steps already carry the options pooled across the chosen packs.
+        steps = self.creation_steps(pack_id, picks)
+        # The steps already carry the SRD's options and the chosen pack's.
         by_id = {step.id: step for step in steps}
 
         def taken(step_id: Slug) -> str:
@@ -135,16 +135,16 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
             goal=picked(picks, "goal"),
             motive=picked(picks, "motive"),
         )
-        return self.sheet_character(name, sheet, packs)
+        return self.sheet_character(name, sheet)
 
     def master_sections(self, state: Loner3eGame) -> Sections:
-        packs = self.packs.chosen(state.packs)
+        packs = self.packs.played(state.pack_id)
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         entries = tuple(
             entry for pack in packs for entry in (*pack.skills, *pack.frailties, *pack.gear)
         )
         spelled: dict[str, str] = {}
-        for member in self.world_of(state).here():
+        for member in state.world.here():
             spelled.update(
                 pack_meanings(
                     entries,
@@ -159,32 +159,32 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         )
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(*args.gained)
         actor = world.require_living_here(args.actor_id)
         return actor.change_tags(args.kind, args.gained, args.lost)
 
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(args.goal, args.motive, args.nemesis)
         actor = world.require_living_here(args.actor_id)
         return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_living_here(args.actor_id)
+        actor = draft.world.require_living_here(args.actor_id)
         # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
         return actor.recover("the conflict is behind them")
 
     def spend_luck(self, draft: Loner3eGame, args: SpendLuck, _rng: Random) -> list[Fact]:
-        if not any(pack.spends_luck for pack in self.packs.chosen(draft.packs)):
-            raise Refusal("no selected pack spends luck")
-        world = self.world_of(draft)
+        if not self.packs.require(draft.pack_id).spends_luck:
+            raise Refusal("this pack does not spend luck")
+        world = draft.world
         world.check_unnamed(args.why)
         actor = world.require_living_here(args.actor_id)
         return actor.spend_luck(args.amount, args.why)
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(args.what, args.edge)
         actor = world.require_living_here(args.actor_id)
         opponent = None

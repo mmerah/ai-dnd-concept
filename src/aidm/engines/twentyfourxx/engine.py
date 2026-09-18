@@ -111,7 +111,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     def __init__(self, written: Path) -> None:
         super().__init__(written)
-        srd = self.packs.srd()  # the checks the model made before a supplement shape relaxed it
+        srd = self.packs.srd()
         if len(srd.skills) != SKILL_COUNT:
             raise ValueError(
                 f"the {self.id!r} srd pack lists {len(srd.skills)} skills, not {SKILL_COUNT}"
@@ -122,7 +122,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     async def write_sheet(
         self, draft: TwentyfourxxGame, member: Crewmate, terms: str, worldsmith: WorldsmithAnswer, /
     ) -> str:
-        packs = self.packs.chosen(draft.packs)
+        packs = self.packs.played(draft.pack_id)
         lines = [pack.specialty_lines() for pack in packs]
         lines.append(f"Skills: {', '.join(option.label for option in self.packs.srd().skills)}")
         prompt = self.render_request(
@@ -140,7 +140,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         )
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
-        world_of = self.world_of
         return (
             *super().master_tools(),
             master_tool(
@@ -151,7 +150,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             master_tool("repair_item", REPAIR_ITEM, RepairItem, self.repair_item),
             master_tool("spend", SPEND, Spend, self.spend),
             master_tool(
-                "take_lead", TAKE_LEAD, TakeLead, lambda d, a, _: world_of(d).take_lead(a.actor_id)
+                "take_lead", TAKE_LEAD, TakeLead, lambda d, a, _: d.world.take_lead(a.actor_id)
             ),
             master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
             master_tool("defend", DEFEND, Defend, self.defend),
@@ -160,8 +159,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             master_tool("job", JOB, Job, self.job),
         )
 
-    def creation_steps(self, packs: tuple[Slug, ...], picks: Picks) -> tuple[CreationStep, ...]:
-        specialties, origins = self._offered(packs)
+    def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
+        specialties, origins = self._offered(pack_id)
         # The rules fix the seventeen skills; a pack adds specialties and origins, not skills.
         skills = self.packs.srd().skills
         steps = [CreationStep(id="specialty", label="Specialty", options=specialties)]
@@ -207,9 +206,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return tuple(steps)
 
     def build_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+        self, name: str, brief: str, pack_id: Slug, picks: Picks
     ) -> TwentyfourxxCharacter:
-        offered_specialties, offered_origins = self._offered(packs)
+        offered_specialties, offered_origins = self._offered(pack_id)
         specialty = chosen_option(offered_specialties, picked(picks, "specialty"))
         origin = chosen_option(offered_origins, picked(picks, "origin"))
 
@@ -258,14 +257,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                 items=items_from_kits(kits),
             ),
         )
-        return self.sheet_character(name, player, packs)
+        return self.sheet_character(name, player)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Gear", sheet.gear_text()))
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
-        world = self.world_of(state)
+        world = state.world
         job = world.job
         return (
             ("GEAR", _item_lines(world.player.require_sheet().items)),
@@ -274,7 +273,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         )
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
-        world = self.world_of(state)
+        world = state.world
         job = world.job
         job_panel = (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
         ship_panel = Panel(
@@ -308,36 +307,36 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     def change_hindrances(
         self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
     ) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(*args.gained)
         return world.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
 
     def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(args.name)
         return world.require_actor(args.actor_id).gain_item(
             args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
         )
 
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_actor(args.actor_id)
+        actor = draft.world.require_actor(args.actor_id)
         return actor.require_sheet().drop_item(args.item_id, actor)
 
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         actor = world.require_actor(args.actor_id)
         return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
 
     def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(args.why)
         return world.require_actor(args.actor_id).spend(args.amount, args.why)
 
     def ship_upgrade(self, draft: TwentyfourxxGame, args: ShipUpgrade, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).upgrade_ship(args.function_id)
+        return draft.world.upgrade_ship(args.function_id)
 
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(args.hindrance)
         return world.defend(args.actor_id, args.item_id, args.hindrance)
 
@@ -346,16 +345,16 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         self._succession(draft)
         return facts
 
-    def _offered(self, packs: tuple[Slug, ...]) -> tuple[tuple[Specialty, ...], tuple[Origin, ...]]:
-        chosen = self.packs.chosen(packs)
+    def _offered(self, pack_id: Slug) -> tuple[tuple[Specialty, ...], tuple[Origin, ...]]:
+        played = self.packs.played(pack_id)
         return (
-            tuple(option for pack in chosen for option in pack.specialties),
-            tuple(option for pack in chosen for option in pack.origins),
+            tuple(option for pack in played for option in pack.specialties),
+            tuple(option for pack in played for option in pack.origins),
         )
 
     def _succession(self, draft: TwentyfourxxGame) -> None:
         """`kill` and `roll` are the two tools that can kill the lead."""
-        world = self.world_of(draft)
+        world = draft.world
         if world.player.alive or not (members := world.sheeted_members()):
             return
         draft.pending = PendingDecision(
@@ -376,10 +375,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     def over(self, state: TwentyfourxxGame) -> str | None:
         """A dead lead with a hired member alive is a succession, not an ending."""
-        return None if self.world_of(state).sheeted_members() else super().over(state)
+        return None if state.world.sheeted_members() else super().over(state)
 
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         actor = world.require_actor(args.actor_id)
         helper = args.helped_by
         world.check_unnamed(
@@ -485,14 +484,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             case "find":
                 return self._find(draft, args.where, rng)
             case "take":
-                world = self.world_of(draft)
+                world = draft.world
                 world.check_unnamed(args.terms)
                 return world.take_job(args.terms)
             case "finish":
                 return self._finish(draft, args.raises, rng)
 
     def _find(self, draft: TwentyfourxxGame, where: str, rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(where)
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
@@ -508,7 +507,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return [rolled.fact, world.player.fact(line, card=line, dice=(rolled.event,))]
 
     def _finish(self, draft: TwentyfourxxGame, raises: Sequence[Raise], rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         if not world.job:
             raise Refusal("no job is open to finish")
         world.check_unnamed(*(raise_.skill for raise_ in raises))

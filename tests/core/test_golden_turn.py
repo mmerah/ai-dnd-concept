@@ -45,7 +45,7 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
         [fact.model_dump(mode="json") for fact in table.facts],
     )
     # Only a party spawns the interjection; an engine with none leaves the answer unused.
-    if table.service.engine.world_of(table.state).members():
+    if table.state.world.members():
         golden(
             FIXTURES / "prompts" / engine_id / "interjection.txt",
             masked(table.spawner.prompt("narrator", 1)),

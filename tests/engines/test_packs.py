@@ -1,31 +1,19 @@
 from pathlib import Path
 
 import pytest
-from support import sixth
-from support.table import (
-    ENGINES_BUILT,
-    LIBRARY,
-    LONER3E,
-    SCENARIO_MODELS,
-    TWENTYFOURXX,
-    narrowed,
-    scenario_for,
-)
+from support.table import ENGINES_BUILT, LONER3E, TWENTYFOURXX, narrowed
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING
-from aidm.core.model import Character
 from aidm.core.play import DecisionOption
-from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.worldsmith import Loner3eBlock, Loner3ePack
-from aidm.engines.packs import MAX_SUPPLEMENTS, SRD_PACK, Names, Pack, PackSet, read_packs
+from aidm.engines.packs import SRD_PACK, Names, Pack, PackSet, read_packs
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.worldsmith import (
     OriginProposal,
     SpecialtyProposal,
     TwentyfourxxHead,
-    TwentyfourxxPack,
 )
 
 TEST_ENGINE = EngineId("test")
@@ -83,46 +71,6 @@ def test_read_packs_skips_a_written_file_that_is_not_a_pack(
     assert "mine" in packs.installed
 
 
-def test_new_game_refuses_a_character_made_from_an_unselected_pack() -> None:
-    engine = ENGINES_BUILT[LONER3E]
-    scenario_id = scenario_for(LONER3E)
-    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    character = LIBRARY.read_character("kael", engine.id, engine.character)
-    stranded = character.model_copy(update={"packs": (SRD_PACK, "other")})
-
-    with pytest.raises(Refusal, match="'kael' was made with srd, other"):
-        engine.begin(scenario_id, scenario, stranded)
-
-
-def test_new_game_accepts_a_character_made_from_a_subset_of_the_scenarios_packs() -> None:
-    engine = ENGINES_BUILT[LONER3E]
-    scenario_id = scenario_for(LONER3E)
-    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    wider = scenario.model_copy(update={"packs": (SRD_PACK, "ap01-fantasy")})
-    character = LIBRARY.read_character("kael", engine.id, engine.character)
-
-    assert engine.begin(scenario_id, wider, character).packs == wider.packs
-
-
-def test_select_refuses_two_packs_that_define_the_same_id() -> None:
-    engine = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
-    packs = PackSet(engine.id, {**engine.packs.installed, "twin": engine.packs.srd()}, {})
-
-    with pytest.raises(Refusal, match="both define"):
-        packs.select((SRD_PACK, "twin"))
-
-
-def test_check_addable_refuses_a_pack_that_could_not_be_played_beside_the_srd() -> None:
-    packs = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine).packs
-    twin = packs.srd().model_copy(update={"name": "Twin"})
-
-    with pytest.raises(Refusal, match="is a shipped pack"):
-        packs.check_addable(SRD_PACK, _loner3e_pack("Fake SRD"))
-    with pytest.raises(Refusal, match="both define"):
-        packs.check_addable("twin", twin)
-    packs.check_addable("mine", _loner3e_pack("Mine"))
-
-
 def test_installing_leaves_the_set_it_was_called_on_unchanged() -> None:
     packs = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine).packs
 
@@ -132,15 +80,6 @@ def test_installing_leaves_the_set_it_was_called_on_unchanged() -> None:
     assert "mine" in added.installed
     assert "mine" not in packs.written
     assert "mine" not in packs.installed
-
-
-def test_select_refuses_more_than_max_supplements_beside_the_srd() -> None:
-    srd = Pack(name="SRD", source="", license="")
-    extra = Pack(name="Extra", source="", license="")
-    packs = PackSet(TEST_ENGINE, {SRD_PACK: srd, "one": extra, "two": extra, "three": extra}, {})
-
-    with pytest.raises(Refusal, match=f"at most {MAX_SUPPLEMENTS} packs"):
-        packs.select((SRD_PACK, "one", "two", "three"))
 
 
 def test_sections_shows_adventure_seeds_only_at_the_opening() -> None:
@@ -186,62 +125,58 @@ def test_loner3e_pack_sections_render_trait_tags_and_factions() -> None:
     )
 
 
-def test_pack_set_guidance_starts_with_pack_for_a_selection() -> None:
+def test_pack_set_guidance_starts_with_pack_for_the_pack_it_reads() -> None:
     pack = Pack(name="Test", source="", license="", setting="A quiet border town.")
     packs = PackSet(TEST_ENGINE, {SRD_PACK: pack}, {})
 
-    assert packs.guidance((SRD_PACK,), opening=False).startswith("PACK: Test")
+    assert packs.guidance(SRD_PACK, opening=False).startswith("PACK: Test")
 
 
-def test_rules_sections_is_empty_unless_the_pack_writes_rules() -> None:
+def test_rules_section_is_empty_unless_the_pack_writes_rules() -> None:
     plain = Pack(name="Test", source="", license="")
     with_rules = Pack(name="Test", source="", license="", rules="Spend Luck to reroll once.")
     plain_packs = PackSet(TEST_ENGINE, {SRD_PACK: plain}, {})
     written_packs = PackSet(TEST_ENGINE, {SRD_PACK: with_rules}, {})
 
-    assert plain_packs.rules_sections((SRD_PACK,)) == ()
-    assert written_packs.rules_sections((SRD_PACK,)) == (
+    assert plain_packs.rules_section(SRD_PACK) == ()
+    assert written_packs.rules_section(SRD_PACK) == (
         ("SPECIAL RULES: Test", "Spend Luck to reroll once."),
     )
 
 
-def test_a_twentyfourxx_supplement_carries_no_skills_of_its_own() -> None:
-    engine = narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine)
-    packs = PackSet(
-        engine.id,
-        {**engine.packs.installed, "extra": TwentyfourxxPack(name="Extra", source="", license="")},
-        {},
-    )
-
-    assert packs.select((SRD_PACK, "extra")) == (SRD_PACK, "extra")
-
-
-def test_the_seam_admits_a_character_no_wider_than_the_scenario(tmp_path: Path) -> None:
-    engine = sixth.installed(tmp_path)
-    engine.install_pack("mine", Pack(name="Mine", source="", license=""))
-    made_with = Character[Person](
-        id="wren",
-        engine=engine.id,
-        packs=("mine",),
-        payload=Person(id=PLAYER_ID, name="Wren", brief="A quiet scout", known=True),
-    )
-    packless = made_with.model_copy(update={"packs": ()})
-
-    engine.admit(("mine",), packless)
-
-    with pytest.raises(Refusal, match="this scenario plays no pack"):
-        engine.admit((), made_with)
-
-
-def test_seeds_lists_the_selected_packs_seeds_in_order() -> None:
+def test_seeds_lists_the_packs_own_seeds() -> None:
     first = Pack(name="First", source="", license="", seeds=("A vanished caravan.",))
     second = Pack(name="Second", source="", license="", seeds=("A debt come due.",))
     packs = PackSet(TEST_ENGINE, {SRD_PACK: first, "second": second}, {})
 
-    assert packs.seeds(()) == ()
-    assert packs.seeds(("second", SRD_PACK)) == (
-        "A debt come due.",
-        "A vanished caravan.",
+    assert packs.seeds(SRD_PACK) == ("A vanished caravan.",)
+    assert packs.seeds("second") == ("A debt come due.",)
+
+
+def test_require_refuses_an_uninstalled_pack() -> None:
+    packs = PackSet(TEST_ENGINE, {SRD_PACK: Pack(name="SRD", source="", license="")}, {})
+
+    with pytest.raises(Refusal, match="is not installed"):
+        packs.require("gone")
+
+
+def test_played_reads_the_srd_once_then_the_chosen_pack() -> None:
+    srd = Pack(name="SRD", source="", license="")
+    second = Pack(name="Second", source="", license="")
+    packs = PackSet(TEST_ENGINE, {SRD_PACK: srd, "second": second}, {})
+
+    assert packs.played(SRD_PACK) == (srd,)
+    assert packs.played("second") == (srd, second)
+
+
+def test_options_lists_the_srd_first() -> None:
+    srd = Pack(name="SRD", source="", license="")
+    second = Pack(name="Second", source="", license="")
+    packs = PackSet(TEST_ENGINE, {"second": second, SRD_PACK: srd}, {})
+
+    assert packs.options() == (
+        DecisionOption(id=SRD_PACK, label="SRD"),
+        DecisionOption(id="second", label="Second"),
     )
 
 
@@ -259,4 +194,5 @@ def test_a_twentyfourxx_head_never_gives_two_picks_the_same_id() -> None:
 
     made = engine.pack_of(head, None, name="Test", origin="", license="")
 
-    assert made.defined_ids() == ("face", "face-2", "face-3")
+    made_ids = tuple(option.id for option in (*made.specialties, *made.origins))
+    assert made_ids == ("face", "face-2", "face-3")

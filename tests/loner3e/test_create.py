@@ -24,7 +24,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
         "gear-2": "chalk-and-wire",
     }
     created = ENGINE.create_character(
-        "Fen", "A wandering scribe with too many questions.", (SRD_PACK,), picks
+        "Fen", "A wandering scribe with too many questions.", SRD_PACK, picks
     )
     library = Library(tmp_path, tmp_path)
     library.write_character(created)
@@ -42,40 +42,39 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     assert made.luck.current == LUCK_MAX
 
 
-def test_a_chosen_supplement_pools_its_options_and_lands_on_the_character() -> None:
-    packs = (SRD_PACK, "ap01-fantasy")
-    picks = _answered(packs, {"skill-1": "swordsmanship"})
-    created = ENGINE.create_character("Fen", "A wandering scribe.", packs, picks)
-    assert "Swordsmanship" in created.payload.tagged("skill")
-    assert created.packs == packs
+def test_a_chosen_pack_pools_its_options_into_the_character() -> None:
+    pack_id = "ap01-fantasy"
+    picks = _answered(pack_id, {"skill-1": "swordsmanship"})
+    created = ENGINE.create_character("Fen", "A wandering scribe.", pack_id, picks)
+    assert "Swordsmanship" in created.sheet.tagged("skill")
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
-    legal = _answered((SRD_PACK,), {})
+    legal = _answered(SRD_PACK, {})
     with pytest.raises(Refusal, match="no creation step"):
-        ENGINE.create_character("Fen", "", (SRD_PACK,), {**legal, "class": "fighter"})
+        ENGINE.create_character("Fen", "", SRD_PACK, {**legal, "class": "fighter"})
     with pytest.raises(Refusal, match="is unanswered"):
         ENGINE.create_character(
-            "Fen", "", (SRD_PACK,), {key: value for key, value in legal.items() if key != "gear-2"}
+            "Fen", "", SRD_PACK, {key: value for key, value in legal.items() if key != "gear-2"}
         )
     with pytest.raises(Refusal, match="offers no"):
-        ENGINE.create_character("Fen", "", (SRD_PACK,), {**legal, "frailty": "unwritten"})
+        ENGINE.create_character("Fen", "", SRD_PACK, {**legal, "frailty": "unwritten"})
     with pytest.raises(Refusal, match="is unanswered"):
-        ENGINE.create_character("Fen", "", (SRD_PACK,), {**legal, "concept": "  "})
-    created = ENGINE.create_character("Fen", "", (SRD_PACK,), legal)
+        ENGINE.create_character("Fen", "", SRD_PACK, {**legal, "concept": "  "})
+    created = ENGINE.create_character("Fen", "", SRD_PACK, legal)
     library = Library(tmp_path, tmp_path)
     library.write_character(created)
     with pytest.raises(Refusal, match="already exists"):
         library.write_character(created)
 
 
-def _answered(packs: tuple[Slug, ...], chosen: Picks) -> Picks:
+def _answered(pack_id: Slug, chosen: Picks) -> Picks:
     """Answers each step with its first option, so later steps appear as earlier ones land."""
     picks = dict(chosen)
     while step := next(
         (
             candidate
-            for candidate in ENGINE.creation_steps(packs, picks)
+            for candidate in ENGINE.creation_steps(pack_id, picks)
             if candidate.id not in picks
         ),
         None,
@@ -85,11 +84,9 @@ def _answered(packs: tuple[Slug, ...], chosen: Picks) -> Picks:
 
 
 def test_the_second_skill_step_drops_what_the_first_one_took() -> None:
-    steps = {
-        step.id: step for step in ENGINE.creation_steps((SRD_PACK,), {"skill-1": "quiet-hands"})
-    }
+    steps = {step.id: step for step in ENGINE.creation_steps(SRD_PACK, {"skill-1": "quiet-hands"})}
     assert "quiet-hands" not in {option.id for option in steps["skill-2"].options}
     assert "quiet-hands" in {option.id for option in steps["skill-1"].options}
-    legal = _answered((SRD_PACK,), {})
+    legal = _answered(SRD_PACK, {})
     with pytest.raises(Refusal, match="offers no"):
-        _ = ENGINE.create_character("Fen", "", (SRD_PACK,), {**legal, "skill-2": legal["skill-1"]})
+        _ = ENGINE.create_character("Fen", "", SRD_PACK, {**legal, "skill-2": legal["skill-1"]})

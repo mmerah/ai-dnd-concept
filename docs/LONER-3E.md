@@ -68,7 +68,7 @@ Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 - `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
   `change_tags` (an actor's gear or condition tags), `drive` (goal, motive, nemesis),
   `restore_luck` (refill an actor's Luck and clear their defeat once the conflict is behind them)
-  and `spend_luck` (pay a cost a selected pack's special rules print, such as a spell).
+  and `spend_luck` (pay a cost the chosen pack's special rules print, such as a spell).
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
   bring down on this place. The last two end the turn.
@@ -101,7 +101,8 @@ a rule of this one.
 4. **`packs/srd.json`'s starter tables are this repo's, not the SRD's.** The concepts, skills,
    frailties and gear in that pack are written for this repo; Loner 3e publishes no such tables.
    Only the twist subject and action columns are the SRD's, and the pack's `license` line already
-   says so.
+   says so. A creation table is the SRD's entries followed by the chosen pack's, so the starter
+   tables are offered beside an Adventure Pack's.
 5. **The party.** The solo SRD has no party; here `join_party` and `leave_party` mark who
    travels with the player, and the party follows into the next scene. Post-game growth is the
    SRD's own step, written with `change_tags` and `drive` when the adventure closes: no advance is

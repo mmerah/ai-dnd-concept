@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +22,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOption, SpokenLine
+from aidm.core.play import Chapter, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.prompt import Sections, sections
 from aidm.core.tools import MasterTool, master_tool, schema_text
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
@@ -31,7 +31,6 @@ from aidm.engines.packs import (
     BODY_ASK,
     HEAD_ASK,
     PROVENANCE,
-    SRD_PACK,
     Pack,
     PackBody,
     PackHead,
@@ -116,10 +115,9 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
 
     def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
         """Each layer adds its own after `super()`'s: the seam, then the family, then the engine."""
-        world_of = self.world_of
         return (
             master_tool(
-                "reveal", REVEAL, Reveal, lambda d, a, _: world_of(d).reveal_hidden(a.target_id)
+                "reveal", REVEAL, Reveal, lambda d, a, _: d.world.reveal_hidden(a.target_id)
             ),
             master_tool("kill", KILL, Kill, self.kill),
             master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
@@ -133,13 +131,13 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
 
     def kill(self, draft: Game[W], args: Kill, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).kill(args.target_id)
+        return draft.world.kill(args.target_id)
 
     def join_party(self, draft: Game[W], args: JoinParty, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).join_party(args.target_id)
+        return draft.world.join_party(args.target_id)
 
     def leave_party(self, draft: Game[W], args: LeaveParty, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).leave_party(args.target_id)
+        return draft.world.leave_party(args.target_id)
 
     async def write_sheet(
         self, _draft: Game[W], _member: M, _terms: str, _worldsmith: WorldsmithAnswer, /
@@ -147,7 +145,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         raise ValueError(f"the {self.id!r} engine hires nobody")
 
     def hire(self, draft: Game[W], args: Hire, _rng: Random) -> list[Fact]:
-        member = self.world_of(draft).require_hireable(args.target_id)
+        member = draft.world.require_hireable(args.target_id)
         draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
         trace = (
             f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
@@ -160,9 +158,9 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
     ) -> Written:
         if request.target is None:
             raise Refusal("a hire request names no target")
-        member = self.world_of(draft).require_hireable(request.target)
+        member = draft.world.require_hireable(request.target)
         summary = await self.write_sheet(draft, member, request.detail, worldsmith)
-        world = self.world_of(draft)
+        world = draft.world
         facts = world.join(member) if member.id not in world.party else []
         trace = f"{member.mention} signs on — {summary}"
         facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
@@ -193,7 +191,6 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
 
     async def author_pack(
         self,
-        pack_id: Slug,
         *,
         name: str,
         source: str,
@@ -207,7 +204,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
             return self.pack_of(from_head, from_body, name=name, origin=origin, license=license)
 
         def check_head(answer: PackHead) -> None:
-            self.packs.check_addable(pack_id, built(answer, None))
+            built(answer, None)
 
         head = await worldsmith(
             self.render_worldsmith(source, "", (), HEAD_ASK, self.authoring, self.head),
@@ -239,30 +236,9 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         # Through JSON, not `parse`: strict mode reads a tuple field from a JSON array alone.
         return parse_json(self.pack, json.dumps(dumped))
 
-    def supplement_options(self) -> tuple[DecisionOption, ...]:
-        return tuple(
-            DecisionOption(id=key, label=pack.name) for key, pack in self.packs.supplements()
-        )
-
-    def select_packs(self, supplements: Sequence[Slug]) -> tuple[Slug, ...]:
-        """The packs a choice selects, in order: every game plays its engine's SRD."""
-        return self.packs.select((SRD_PACK, *supplements))
-
-    def seeds(self, packs: tuple[Slug, ...]) -> tuple[str, ...]:
-        return self.packs.seeds(packs)
-
-    def admit(self, packs: tuple[Slug, ...], character: AnyCharacter) -> None:
-        """Refuse packs that cannot start a game and a character these packs cannot start."""
-        self.packs.select(packs)
-        if not set(character.packs) <= set(packs):
-            raise Refusal(
-                f"{character.id!r} was made with {', '.join(character.packs)}; "
-                f"this scenario plays {', '.join(packs) or 'no pack'}"
-            )
-
-    def guidance(self, selection: tuple[Slug, ...], /, *, opening: bool) -> str:
-        packs = self.packs.guidance(selection, opening=opening)
-        return f"{self.authoring}\n\n{packs}" if packs else self.authoring
+    def guidance(self, pack_id: Slug, /, *, opening: bool) -> str:
+        block = self.packs.guidance(pack_id, opening=opening)
+        return f"{self.authoring}\n\n{block}" if block else self.authoring
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()
@@ -276,7 +252,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
                 sheet=member.rows(),
                 chattiness=member.chattiness,
             )
-            for member in self.world_of(state).members()
+            for member in state.world.members()
         )
 
     def restore(self, raw: str) -> Game[W]:
@@ -286,7 +262,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         if state.generation is not None:
             raise Refusal("the save carries a pending generation request")
         self.validate(state)
-        self.packs.select(state.packs)
+        self.packs.require(state.pack_id)
         return state
 
     def tool(self, name: str) -> MasterTool[Game[W]]:
@@ -327,15 +303,13 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
             )
         )
 
-    def sheet_character(
-        self, name: str, payload: BaseModel, packs: tuple[Slug, ...]
-    ) -> AnyCharacter:
-        return self.character(id=slug(name, ()), engine=self.id, packs=packs, payload=payload)
+    def sheet_character(self, name: str, sheet: BaseModel) -> AnyCharacter:
+        return self.character(id=slug(name, ()), engine=self.id, sheet=sheet)
 
     def build_scenario(
         self,
         meta: ScenarioMeta,
-        packs: tuple[Slug, ...],
+        pack_id: Slug,
         draft: BaseModel,
         source: str,
         premise: str,
@@ -344,9 +318,9 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         return self.scenario(
             meta=meta.with_premise(premise),
             engine=self.id,
-            packs=packs,
+            pack_id=pack_id,
             source=source,
-            payload=draft,
+            opening=draft,
         )
 
     def close(
@@ -382,10 +356,10 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         return draft.commit()
 
     def tick(self, draft: Game[W], *, counted: bool) -> None:
-        self.world_of(draft).tick(counted=counted)
+        draft.world.tick(counted=counted)
 
     def disarm(self, state: Game[W]) -> None:
-        self.world_of(state).disarm()
+        state.world.disarm()
 
     def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> Game[W]:
         if scenario.engine != self.id:
@@ -398,7 +372,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
                 f"{character.id!r} is written for the {character.engine!r} rules, "
                 f"which the {self.id!r} engine does not play"
             )
-        self.admit(scenario.packs, character)
+        self.packs.require(scenario.pack_id)
         state = parse(
             self.game,
             {
@@ -406,30 +380,25 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
                 "character_id": character.id,
                 "scenario": scenario.meta,
                 "engine": self.id,
-                "packs": scenario.packs,
+                "pack_id": scenario.pack_id,
                 "source": scenario.source,
-                "payload": self.new_game(scenario, character),
+                "world": self.new_game(scenario, character),
             },
         )
         self.open_chapter(state)
         return self.land(state)
 
-    def world_of(self, state: Game[W]) -> W:
-        return state.payload
-
     def player_of(self, character: AnyCharacter) -> P:
-        if character.payload.id != PLAYER_ID or not character.payload.known:
+        if character.sheet.id != PLAYER_ID or not character.sheet.known:
             raise Refusal("a character sheet is the player's: id 'player', known")
-        return deepcopy(character.payload)
+        return deepcopy(character.sheet)
 
     def over(self, state: Game[W]) -> str | None:
-        return "You died." if not self.world_of(state).player.alive else None
+        return "You died." if not state.world.player.alive else None
 
-    def create_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
-    ) -> AnyCharacter:
-        check_picks(self.creation_steps(packs, picks), picks)
-        return self.build_character(name, brief, packs, picks)
+    def create_character(self, name: str, brief: str, pack_id: Slug, picks: Picks) -> AnyCharacter:
+        check_picks(self.creation_steps(pack_id, picks), picks)
+        return self.build_character(name, brief, pack_id, picks)
 
     def validate(self, state: Game[W]) -> None:
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
@@ -438,16 +407,12 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         request = state.generation
         if request is not None and request.operation not in self.requests:
             raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
-        if SRD_PACK not in state.packs:
-            raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")
 
     @abstractmethod
-    def creation_steps(
-        self, packs: tuple[Slug, ...], picks: Picks, /
-    ) -> tuple[CreationStep, ...]: ...
+    def creation_steps(self, pack_id: Slug, picks: Picks, /) -> tuple[CreationStep, ...]: ...
     @abstractmethod
     def build_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks, /
+        self, name: str, brief: str, pack_id: Slug, picks: Picks, /
     ) -> AnyCharacter: ...
     @abstractmethod
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W: ...
@@ -464,7 +429,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: tuple[Slug, ...],
+        pack_id: Slug,
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario: ...

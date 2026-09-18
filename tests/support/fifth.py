@@ -46,21 +46,18 @@ class FifthEngine(SceneEngine[Person, FifthState, Pack]):
     pack = Pack
     world = FifthState
 
-    def creation_steps(self, _packs: tuple[Slug, ...], _picks: Picks) -> tuple[CreationStep, ...]:
+    def creation_steps(self, _pack_id: Slug, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
 
-    def build_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], _picks: Picks
-    ) -> AnyCharacter:
+    def build_character(self, name: str, brief: str, _pack_id: Slug, _picks: Picks) -> AnyCharacter:
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
-            packs=packs,
-            payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
+            sheet=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
     def master_sections(self, state: FifthGame) -> Sections:
-        return (("SCENE", self.world_of(state).run.title),)
+        return (("SCENE", state.world.run.title),)
 
 
 def engine_at(tmp_path: Path) -> type[FifthEngine]:
@@ -84,8 +81,8 @@ def scenario() -> FifthScenario:
             scope="One evening at the taproom, start to close.",
         ),
         engine=FIFTH,
-        packs=("srd",),
-        payload=SceneProposal[Person](
+        pack_id="srd",
+        opening=SceneProposal[Person](
             place="taproom",
             title="The Taproom",
             focus="Who is asking after Wren?",

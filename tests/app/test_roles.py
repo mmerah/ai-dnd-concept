@@ -73,7 +73,7 @@ def test_companions_returns_the_partys_members_with_their_rows() -> None:
     )
     state = with_entity(state, member)
     draft = state.draft()
-    draft.payload.party.append(member.id)
+    draft.world.party.append(member.id)
     state = draft.commit()
 
     assert engine.companions(state) == (

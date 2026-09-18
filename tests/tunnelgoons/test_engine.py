@@ -27,8 +27,8 @@ def _tunnelgoons_game() -> tuple[AnyEngine, TunnelGoonsGame]:
 
 def test_the_shipped_game_begins_on_the_maps_start_with_the_starting_items() -> None:
     _, state = _tunnelgoons_game()
-    assert state.packs == ("srd",)
-    world = state.payload
+    assert state.pack_id == "srd"
+    world = state.world
     assert world.visits[0] == world.current.id
     assert {item.name for item in world.carried(world.player.id)} == {
         "Pry Bar (melee weapon)",
@@ -38,7 +38,7 @@ def test_the_shipped_game_begins_on_the_maps_start_with_the_starting_items() -> 
 
 
 def test_creation_steps_cover_the_abilities_and_the_three_items() -> None:
-    steps = ENGINE.creation_steps((SRD_PACK,), {})
+    steps = ENGINE.creation_steps(SRD_PACK, {})
     assert [step.id for step in steps] == [
         "brute",
         "skulker",
@@ -52,21 +52,16 @@ def test_creation_steps_cover_the_abilities_and_the_three_items() -> None:
 
 
 def test_create_character_on_the_legal_path() -> None:
-    character = ENGINE.create_character("Kael", "A wiry scavenger", (SRD_PACK,), PICKS)
-    assert character.payload.kit == ("Rope", "Torch", "Melee Weapon (dagger)")
-    assert character.payload.require_sheet().abilities == {"brute": 1, "skulker": 1, "erudite": 1}
-
-
-def test_create_character_records_the_packs_it_was_made_with() -> None:
-    character = ENGINE.create_character("Kael", "A wiry scavenger", (SRD_PACK,), PICKS)
-    assert character.packs == (SRD_PACK,)
+    character = ENGINE.create_character("Kael", "A wiry scavenger", SRD_PACK, PICKS)
+    assert character.sheet.kit == ("Rope", "Torch", "Melee Weapon (dagger)")
+    assert character.sheet.require_sheet().abilities == {"brute": 1, "skulker": 1, "erudite": 1}
 
 
 def test_a_sum_not_equal_to_three_is_refused() -> None:
     """Each pick is legal on its own, so only the sheet's own rule can say no, and it must read."""
     with pytest.raises(Refusal, match="share exactly 3 points"):
         _ = ENGINE.create_character(
-            "Kael", "A wiry scavenger", (SRD_PACK,), dict(PICKS, brute="3", skulker="3")
+            "Kael", "A wiry scavenger", SRD_PACK, dict(PICKS, brute="3", skulker="3")
         )
 
 
@@ -74,22 +69,22 @@ def test_a_missing_item_is_refused() -> None:
     bad = dict(PICKS)
     del bad["item-2"]
     with pytest.raises(Refusal, match="unanswered"):
-        _ = ENGINE.create_character("Kael", "A wiry scavenger", (SRD_PACK,), bad)
+        _ = ENGINE.create_character("Kael", "A wiry scavenger", SRD_PACK, bad)
 
 
 def test_an_unnameable_item_is_refused_at_creation() -> None:
     bad = dict(PICKS, **{"item-3": "???"})
     with pytest.raises(Refusal, match="makes no id"):
-        _ = ENGINE.create_character("Kael", "A wiry scavenger", (SRD_PACK,), bad)
+        _ = ENGINE.create_character("Kael", "A wiry scavenger", SRD_PACK, bad)
 
 
 def test_preview_character_rows() -> None:
-    character = ENGINE.create_character("Kael", "A wiry scavenger", (SRD_PACK,), PICKS)
+    character = ENGINE.create_character("Kael", "A wiry scavenger", SRD_PACK, PICKS)
     rows = ENGINE.preview_character(character)
     assert ("Items", "Rope, Torch, Melee Weapon (dagger)") in rows
 
 
-def test_an_installed_pack_offers_its_items_and_lands_on_the_character() -> None:
+def test_an_installed_pack_offers_its_items_at_creation() -> None:
     engine = TunnelGoonsEngine(NO_PACKS)
     engine.packs = PackSet(
         engine.id,
@@ -99,9 +94,5 @@ def test_an_installed_pack_offers_its_items_and_lands_on_the_character() -> None
         },
         {},
     )
-    packs = (SRD_PACK, "mine")
 
-    assert engine.creation_steps(packs, PICKS)[-1].hint.endswith("Lamp")
-
-    character = engine.create_character("Kael", "A wiry scavenger", packs, PICKS)
-    assert character.packs == packs
+    assert engine.creation_steps("mine", PICKS)[-1].hint.endswith("Lamp")

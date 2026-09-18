@@ -38,7 +38,7 @@ def _twentyfourxx_sheeted(game: AnyGame) -> AnyGame:
 
 def _tunnelgoons_sheeted(game: AnyGame) -> AnyGame:
     tunnelgoons_game = narrowed(game, TunnelGoonsGame)
-    tunnelgoons_game.payload.npcs[TUNNELGOONS_MIRA].sheet = GoonSheet(
+    tunnelgoons_game.world.npcs[TUNNELGOONS_MIRA].sheet = GoonSheet(
         abilities={"brute": 1, "skulker": 1, "erudite": 1}
     )
     return game
@@ -91,7 +91,7 @@ async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party(case: Hi
     draft = case.game().draft()
     generation = Generation(operation=HIRE, detail=TERMS, target=case.member)
     written = await case.engine.advance(draft, generation, stub_worldsmith(case.answer))
-    world = case.engine.world_of(draft)
+    world = draft.world
     member = world.require_member_here(case.member)
     assert member.hired
     assert case.member in world.party

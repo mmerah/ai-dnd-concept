@@ -1,10 +1,7 @@
 {
   "id": "kael",
   "engine": "twentyfourxx",
-  "packs": [
-    "srd"
-  ],
-  "payload": {
+  "sheet": {
     "id": "player",
     "name": "Kael",
     "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",

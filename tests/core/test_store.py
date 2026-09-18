@@ -42,18 +42,18 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
 
 def test_a_save_without_the_clock_fields_still_loads(tmp_path: Path) -> None:
     engine, state = initialized()
-    payload = json.loads(state.model_dump_json())
-    del payload["payload"]["turns_played"]
-    del payload["payload"]["meanwhile_due"]
-    write_text(tmp_path / "stale.json", json.dumps(payload))
+    dumped = json.loads(state.model_dump_json())
+    del dumped["world"]["turns_played"]
+    del dumped["world"]["meanwhile_due"]
+    write_text(tmp_path / "stale.json", json.dumps(dumped))
     store = FileStore(tmp_path)
 
     raw = store.read("stale")
 
     assert raw is not None
     restored = engine.restore(raw)
-    assert restored.payload.turns_played == 0
-    assert restored.payload.meanwhile_due is False
+    assert restored.world.turns_played == 0
+    assert restored.world.meanwhile_due is False
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -130,7 +130,7 @@ def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Pat
     library.write_character(updated(filed, engine=MIRROR))
 
     rows = [
-        (name, engine, header.payload.name)
+        (name, engine, header.sheet.name)
         for name, engine, header in library.read_characters((LONER3E, MIRROR))
     ]
 
@@ -143,12 +143,12 @@ def test_a_character_written_for_a_second_engine_must_keep_its_name(tmp_path: Pa
     library = Library(tmp_path, tmp_path)
     library.write_character(filed)
 
-    renamed = updated(filed, engine=MIRROR, payload=updated(filed.payload, name="Mira"))
+    renamed = updated(filed, engine=MIRROR, sheet=updated(filed.sheet, name="Mira"))
     with pytest.raises(Refusal, match="is 'Kael', not 'Mira'"):
         library.write_character(renamed)
 
     library.write_character(updated(filed, engine=MIRROR))
-    assert library.read_character("kael", engine.id, engine.character).payload.name == "Kael"
+    assert library.read_character("kael", engine.id, engine.character).sheet.name == "Kael"
 
 
 def test_read_characters_skips_a_stray_file_and_a_non_slug_folder(tmp_path: Path) -> None:

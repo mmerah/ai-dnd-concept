@@ -5,7 +5,7 @@ from aidm.engines.rooms.world import Prop
 
 def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
     state = small_world()
-    world = state.payload
+    world = state.world
     world.visits.append(HALL)
     sections = dict(ENGINE.master_sections(state))
     assert "Robo Mantis" in sections["HIDDEN HERE (the player has not found these)"]
@@ -14,7 +14,7 @@ def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
 
 def test_master_sections_lists_an_item_an_npc_here_is_holding() -> None:
     state = small_world()
-    world = state.payload
+    world = state.world
     on_a_string = "mira-key"
     world.items[on_a_string] = Prop(
         id=on_a_string, name="Mira's Key", brief="On a string", known=True, on=MIRA
@@ -25,7 +25,7 @@ def test_master_sections_lists_an_item_an_npc_here_is_holding() -> None:
 
 def test_entity_line_marks_a_dead_npc_and_the_players_carried_over_score() -> None:
     state = small_world()
-    world = state.payload
+    world = state.world
     world.npcs[MIRA].alive = False
     assert "(dead)" in world.line(world.npcs[MIRA]).splitlines()[0]
     assert "inventory: 2/8" in world.line(world.player).lower()

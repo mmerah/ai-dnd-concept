@@ -11,4 +11,4 @@ def draft() -> TwentyfourxxGame:
 
 @pytest.fixture
 def world(draft: TwentyfourxxGame) -> TwentyfourxxWorld:
-    return draft.payload
+    return draft.world

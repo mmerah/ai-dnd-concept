@@ -1,21 +1,13 @@
 import json
 import logging
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import (
-    EngineId,
-    Frozen,
-    Refusal,
-    Slug,
-    check_unique,
-    content_id,
-    slug,
-)
+from aidm.core.entities import EngineId, Frozen, Refusal, Slug, content_id, slug
 from aidm.core.io import read_model
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, section_if, sections
@@ -26,7 +18,6 @@ DASH = " — "  # parts a label from its detail (`Labelled`, `Pack.sections`); i
 SEPARATOR = ", "  # parts one name from the next in the NAMES line; nowhere inside a name
 PROVENANCE = frozenset(("name", "source", "license"))  # the pack's own; no box edits it
 SRD_PACK: Slug = "srd"
-MAX_SUPPLEMENTS = 2  # two packs in play beside the source fill the worldsmith's command line
 SOURCE_BOUND = (
     "Everything comes from SOURCE MATERIAL, its premise and, when it holds one, its document; "
     "nothing outside it."
@@ -108,10 +99,6 @@ class Pack(Frozen):
     rules: str = ""  # special rules as prose, read by the master alone
     locations: tuple[Location, ...] = ()
     seeds: tuple[str, ...] = ()
-
-    def defined_ids(self) -> tuple[Slug, ...]:
-        """The option ids this pack defines; two selected packs may not share one."""
-        return ()
 
     def counts(self) -> tuple[tuple[str, int], ...]:
         """What the home page counts; an engine puts its tables before the kit's."""
@@ -207,54 +194,42 @@ class PackSet[K: Pack]:
             raise ValueError(f"the {self.engine!r} engine ships no {SRD_PACK!r} pack")
         return found
 
-    def supplements(self) -> tuple[tuple[Slug, K], ...]:
-        return tuple((key, pack) for key, pack in self.installed.items() if key != SRD_PACK)
+    def require(self, pack_id: Slug) -> K:
+        found = self.installed.get(pack_id)
+        if found is None:
+            raise Refusal(f"pack {pack_id!r} is not installed for {self.engine!r}")
+        return found
 
-    def chosen(self, selection: tuple[Slug, ...]) -> tuple[K, ...]:
-        return tuple(self.installed[pack_id] for pack_id in selection)
+    def played(self, pack_id: Slug) -> tuple[K, ...]:
+        """The packs a creation table is read from: the SRD, then the chosen pack; the SRD once."""
+        srd = self.srd()
+        return (srd,) if pack_id == SRD_PACK else (srd, self.require(pack_id))
 
-    def select(self, ids: Sequence[Slug]) -> tuple[Slug, ...]:
-        check_unique("selected pack ids", ids)
-        if missing := sorted(set(ids) - set(self.installed)):
-            raise Refusal(f"packs not installed for {self.engine!r}: {missing}")
-        supplements = [pack_id for pack_id in ids if pack_id != SRD_PACK]
-        if len(supplements) > MAX_SUPPLEMENTS:
-            raise Refusal(f"a game plays at most {MAX_SUPPLEMENTS} packs beside the SRD")
-        defined: dict[Slug, Slug] = {}
-        for pack_id in ids:
-            defines = set(self.installed[pack_id].defined_ids())
-            if shared := sorted(defines & defined.keys()):
-                raise Refusal(f"{pack_id!r} and {defined[shared[0]]!r} both define {shared[0]!r}")
-            defined.update(dict.fromkeys(defines, pack_id))
-        return tuple(ids)
+    def options(self) -> tuple[DecisionOption, ...]:
+        """The SRD first, then the rest of `installed` in order; id and `pack.name`."""
+        rest = tuple(
+            DecisionOption(id=pack_id, label=pack.name)
+            for pack_id, pack in self.installed.items()
+            if pack_id != SRD_PACK
+        )
+        return (DecisionOption(id=SRD_PACK, label=self.srd().name), *rest)
 
     def installing(self, pack_id: Slug, pack: K) -> "PackSet[K]":
         """A new set: the same shipped packs, `written` with this one added or replaced."""
         return PackSet(self.engine, self.shipped, {**self.written, pack_id: pack})
 
-    def check_addable(self, pack_id: Slug, pack: K) -> None:
-        """Refuse a pack that could not be selected beside the SRD, before anything is written."""
-        if pack_id in self.shipped:
-            raise Refusal(f"{pack_id!r} is a shipped pack")
-        self.installing(pack_id, pack).select((SRD_PACK, pack_id))
+    def guidance(self, pack_id: Slug, *, opening: bool) -> str:
+        """One `PACK:` block for `require(pack_id)`, or "" when it has no sections."""
+        pack = self.require(pack_id)
+        parts = pack.sections(opening=opening)
+        return f"PACK: {pack.name}\n\n{sections(parts)}" if parts else ""
 
-    def guidance(self, selection: tuple[Slug, ...], *, opening: bool) -> str:
-        blocks = [
-            f"PACK: {pack.name}\n\n{sections(parts)}"
-            for pack in self.chosen(selection)
-            if (parts := pack.sections(opening=opening))
-        ]
-        return "\n\n".join(blocks)
+    def rules_section(self, pack_id: Slug) -> Sections:
+        pack = self.require(pack_id)
+        return ((f"SPECIAL RULES: {pack.name}", pack.rules),) if pack.rules else ()
 
-    def rules_sections(self, selection: tuple[Slug, ...]) -> Sections:
-        return tuple(
-            (f"SPECIAL RULES: {pack.name}", pack.rules)
-            for pack in self.chosen(selection)
-            if pack.rules
-        )
-
-    def seeds(self, selection: tuple[Slug, ...]) -> tuple[str, ...]:
-        return tuple(seed for pack in self.chosen(selection) for seed in pack.seeds)
+    def seeds(self, pack_id: Slug) -> tuple[str, ...]:
+        return self.require(pack_id).seeds
 
 
 def block_line(name: str, brief: str, *fields: tuple[str, str]) -> str:

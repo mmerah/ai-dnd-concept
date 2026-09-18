@@ -83,7 +83,7 @@ def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
 def test_the_next_scene_prompt_carries_the_scene_as_it_stands() -> None:
     engine, state = game(LONER3E)
     assert isinstance(engine, Loner3eEngine)
-    run = narrowed(state, Loner3eGame).payload.run
+    run = narrowed(state, Loner3eGame).world.run
 
     prompt = engine.render_next(state, "Down the stair.")
 
@@ -98,13 +98,13 @@ def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_cle
 
     assert MEANWHILE_NUDGE not in engine.render_next(draft, "Down the stair.")
 
-    draft.payload.meanwhile_due = True
+    draft.world.meanwhile_due = True
     assert MEANWHILE_NUDGE in engine.render_next(draft, "Down the stair.")
 
     scene = NextProposal[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
     engine.install(draft, scene)
 
-    assert draft.payload.meanwhile_due is False
+    assert draft.world.meanwhile_due is False
 
 
 def test_apply_scene_with_an_empty_arc_keeps_the_worlds_arc() -> None:
@@ -191,9 +191,9 @@ def test_an_action_the_scene_no_longer_offers_is_refused_and_notes_nothing() -> 
 def test_a_party_member_prints_under_the_party_and_not_here() -> None:
     engine, state = game(LONER3E)
     draft = narrowed(state, Loner3eGame).draft()
-    draft.payload.party.append(MARA)
+    draft.world.party.append(MARA)
 
-    assert "Mara[mara]" not in draft.payload.here_lines()
+    assert "Mara[mara]" not in draft.world.here_lines()
 
     view = engine.narrator_view(draft)
 
@@ -223,14 +223,14 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     engine = ENGINES_BUILT[LONER3E]
     scenario_id = scenario_for(LONER3E)
     scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    before = scenario.payload.model_dump()
+    before = scenario.opening.model_dump()
     character = LIBRARY.read_character("kael", engine.id, engine.character)
     draft = engine.begin(scenario_id, scenario, character)
-    world = narrowed(draft, Loner3eGame).payload
+    world = narrowed(draft, Loner3eGame).world
 
     world.cast[MARA].name = "Someone else"
 
-    assert scenario.payload.model_dump() == before
+    assert scenario.opening.model_dump() == before
 
 
 def test_join_party_on_the_players_own_id_refuses() -> None:

@@ -71,7 +71,7 @@ def _draft(**fields: object) -> SceneProposal[Crewmate]:
 def _built(draft: SceneProposal[Crewmate]) -> AnyScenario:
     return ENGINE.build_scenario(
         ScenarioMeta(title="Loading Bay", premise="", scope="One tense night shift."),
-        ("srd",),
+        "srd",
         draft,
         "",
         draft.situation,

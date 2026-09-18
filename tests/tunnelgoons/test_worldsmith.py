@@ -46,7 +46,7 @@ def _region() -> RegionProposal[Npc]:
 
 
 def _wide_region() -> MapProposal[Npc]:
-    canon = _tunnelgoons_game().payload
+    canon = _tunnelgoons_game().world
     return MapProposal[Npc](
         places=canon.places,
         ways=canon.ways,
@@ -61,13 +61,13 @@ def test_a_one_place_map_with_no_ways_passes_the_map_bar_and_builds() -> None:
 
     built = ENGINE.build_scenario(
         ScenarioMeta(title="Only", premise="", scope="One room, one visit."),
-        ("srd",),
+        "srd",
         THIN,
         "source",
         "d",
     )
 
-    assert built.payload.start == ONLY
+    assert built.opening.start == ONLY
 
 
 def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None:
@@ -77,12 +77,12 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
         start=HIDDEN,
         recap="They found a hidden way and pushed through it.",
     )
-    check_extension(extension, draft.payload)
+    check_extension(extension, draft.world)
 
     ENGINE.install(draft, extension)
 
-    assert not draft.payload.places[HIDDEN].known
-    assert draft.payload.way(draft.payload.current.id, HIDDEN) is not None
+    assert not draft.world.places[HIDDEN].known
+    assert draft.world.way(draft.world.current.id, HIDDEN) is not None
 
 
 def test_the_shipped_scenario_passes_the_map_bar() -> None:
@@ -127,7 +127,7 @@ def test_check_map_refuses_an_npc_at_zero_hp() -> None:
 
 
 def test_check_extension_refuses_an_item_planted_on_the_player() -> None:
-    world = _tunnelgoons_game().payload
+    world = _tunnelgoons_game().world
     extension = RegionProposal[Npc](
         places={HIDDEN: Place(id=HIDDEN, name="Hidden", brief="b", known=False, description="d")},
         items={"planted": Prop(id="planted", name="Planted", brief="b", known=True, on=PLAYER_ID)},
@@ -145,13 +145,13 @@ def test_check_extension_refuses_a_place_naming_an_unknown_thing_elsewhere() -> 
     )
     extension.places[FAR_HALL].description = "Far Item Two lies beyond."
     with pytest.raises(Refusal, match="do not name"):
-        check_extension(extension, _tunnelgoons_game().payload)
+        check_extension(extension, _tunnelgoons_game().world)
 
 
 def test_check_extension_accepts_an_unknown_place_naming_itself() -> None:
     extension = _region()
     extension.places[FAR_HALL].description = "Far Hall is a ruin."
-    check_extension(extension, _tunnelgoons_game().payload)
+    check_extension(extension, _tunnelgoons_game().world)
 
 
 def _hiding_gremlin(
@@ -180,7 +180,7 @@ def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None
 
 
 def test_an_extension_hiding_a_dweller_named_in_brief_is_refused() -> None:
-    world = _tunnelgoons_game().payload
+    world = _tunnelgoons_game().world
     extension = _hiding_gremlin(
         HIDDEN, known=False, brief="A Gremlin waits in the dark.", description="d"
     )
@@ -265,7 +265,7 @@ def test_check_map_refuses_an_item_on_the_player_naming_a_hidden_dweller() -> No
 
 def test_attach_joins_at_the_current_place_and_the_world_validates() -> None:
     state = small_world()
-    world = state.payload
+    world = state.world
     anchor = world.current.id
 
     region = _region()
@@ -293,7 +293,7 @@ def test_a_region_reusing_an_id_already_in_the_world_is_refused() -> None:
     )
 
     with pytest.raises(Refusal, match="not already in the world"):
-        check_extension(reused, state.payload)
+        check_extension(reused, state.world)
 
 
 def test_more_map_is_offered_only_once_every_place_is_known() -> None:
@@ -301,24 +301,24 @@ def test_more_map_is_offered_only_once_every_place_is_known() -> None:
     assert ENGINE.player_view(state).action is None
 
     draft = state.draft()
-    for place in draft.payload.places.values():
+    for place in draft.world.places.values():
         place.known = True
     assert ENGINE.player_view(draft.commit()).action == MORE_MAP
 
 
 def test_install_on_a_game_from_the_engine() -> None:
     draft = _tunnelgoons_game().draft()
-    anchor = draft.payload.current.id
+    anchor = draft.world.current.id
 
     ENGINE.install(draft, _region())
 
-    assert FAR_HALL in draft.payload.places
-    assert draft.payload.way(anchor, FAR_HALL) is not None
+    assert FAR_HALL in draft.world.places
+    assert draft.world.way(anchor, FAR_HALL) is not None
 
 
 def test_attach_appends_unknown_ways_both_directions() -> None:
     state = small_world()
-    world = state.payload
+    world = state.world
     anchor = world.current.id
     region = _region()
 

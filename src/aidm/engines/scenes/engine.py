@@ -74,12 +74,12 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
         # Copied: a restart reopens the same scenario file.
-        draft: SceneProposal[C] = scenario.payload.model_copy(deep=True)
+        draft: SceneProposal[C] = scenario.opening.model_copy(deep=True)
         check_scene(draft)
         return self.world.opening(draft, self.player_of(character))
 
     def master_sections(self, state: Game[W]) -> Sections:
-        world = self.world_of(state)
+        world = state.world
         scene = world.run
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
@@ -90,14 +90,14 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *section_if("THE ARC (the player has not found this)", world.arc),
-            *self.packs.rules_sections(state.packs),
+            *self.packs.rules_section(state.pack_id),
         )
 
     def sheet_sections(self, _state: Game[W]) -> Sections:
         return ()
 
     def family_sections(self, draft: Game[W]) -> Sections:
-        world = self.world_of(draft)
+        world = draft.world
         return (
             ("SCENES SO FAR", render_history(draft.log)),
             ("THE WHOLE CAST", world.cast_lines()),
@@ -105,7 +105,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         )
 
     def narrator_view(self, state: Game[W]) -> NarratorView:
-        world = self.world_of(state)
+        world = state.world
         scene = world.run
         here = list(world.here())
         return NarratorView(
@@ -120,7 +120,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         )
 
     def player_view(self, state: Game[W]) -> PlayerView:
-        world = self.world_of(state)
+        world = state.world
         player = world.player
         me = player.subject()
         return PlayerView(
@@ -141,11 +141,10 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         )
 
     def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
-        world_of = self.world_of
         return (
             *super().master_tools(),
-            master_tool("enter", ENTER, Enter, lambda d, a, _: world_of(d).enter(a.target_id)),
-            master_tool("leave", LEAVE, Leave, lambda d, a, _: world_of(d).leave(a.target_id)),
+            master_tool("enter", ENTER, Enter, lambda d, a, _: d.world.enter(a.target_id)),
+            master_tool("leave", LEAVE, Leave, lambda d, a, _: d.world.leave(a.target_id)),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
         )
 
@@ -154,7 +153,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
             draft.generation = Generation(operation=DEPARTURE, detail=args.pursuit)
             return [SCENE_LEFT]
         if not args.complication:
-            return self.world_of(draft).offer()
+            return draft.world.offer()
         draft.generation = Generation(operation=COMPLICATION, detail=args.complication)
         return [
             Fact(
@@ -164,12 +163,12 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         ]
 
     def act(self, draft: Game[W], action: Slug, _words: str) -> None:
-        if action != MOVE_ON.id or not self.world_of(draft).run.offered:
+        if action != MOVE_ON.id or not draft.world.run.offered:
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
 
     def render_next(self, draft: Game[W], intent: str) -> str:
-        world = self.world_of(draft)
+        world = draft.world
         if world.arc:
             intent += (
                 f"\n\nThe arc as last written:\n{world.arc}\n"
@@ -179,7 +178,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
             intent += f"\n\n{MEANWHILE_NUDGE}"
         return self.render_request(
             draft,
-            guidance=self.guidance(draft.packs, opening=False),
+            guidance=self.guidance(draft.pack_id, opening=False),
             intent=intent,
             answer=NextProposal[self.member],
         )
@@ -187,14 +186,14 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
     ) -> NextProposal[C]:
-        world = self.world_of(draft)
+        world = draft.world
         prompt = self.render_next(draft, intent)
         return await worldsmith(
             prompt, NextProposal[self.member], lambda answer: check_scene(answer, world)
         )
 
     def install(self, draft: Game[W], scene: SceneProposal[C]) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         if isinstance(scene, NextProposal):
             draft.log[-1].recap = scene.recap
         world.apply_scene(scene)
@@ -210,14 +209,14 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: tuple[Slug, ...],
+        pack_id: Slug,
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
         def built(draft: SceneProposal[C]) -> AnyScenario:
-            return self.build_scenario(meta, packs, draft, source, draft.situation)
+            return self.build_scenario(meta, pack_id, draft, source, draft.situation)
 
-        guidance = self.guidance(packs, opening=True)
+        guidance = self.guidance(pack_id, opening=True)
         model = SceneProposal[self.member]
         prompt = self.render_worldsmith(
             source, meta.scope, self.opening_sections, OPENING, guidance, model
@@ -234,7 +233,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
     async def depart(
         self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
-        left = self.world_of(draft).run.title
+        left = draft.world.run.title
         exchanges = draft.exchanges()
         # The master's `pursuit` is free text; the narrator reads the player's own words instead.
         asked = exchanges[-1].words if exchanges else ""

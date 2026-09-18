@@ -51,7 +51,7 @@ def test_a_free_text_step_keeps_its_answer_which_the_page_keys_by_label() -> Non
     engine = ENGINES_BUILT[TWENTYFOURXX]
     picks = dict(ANDROID) | {"increase-1": "Piloting"}
 
-    drop_stale(engine.creation_steps(("srd",), picks), picks)
+    drop_stale(engine.creation_steps("srd", picks), picks)
 
     assert picks["increase-1"] == "Piloting"
 
@@ -60,6 +60,6 @@ def test_a_constrained_step_still_loses_an_answer_it_no_longer_offers() -> None:
     engine = ENGINES_BUILT[TWENTYFOURXX]
     picks = dict(ANDROID) | {"body": "not-on-offer"}
 
-    drop_stale(engine.creation_steps(("srd",), picks), picks)
+    drop_stale(engine.creation_steps("srd", picks), picks)
 
     assert "body" not in picks

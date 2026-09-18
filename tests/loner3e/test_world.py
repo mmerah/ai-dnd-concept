@@ -22,7 +22,7 @@ def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
     assert "at least one" in refused(draft, "change_tags", actor_id=PLAYER_ID, kind="gear")
 
     traces = changed(draft, "change_tags", actor_id=PLAYER_ID, kind="gear", gained=["Rusty Key"])
-    assert "Rusty Key" in draft.payload.player.tagged("gear")
+    assert "Rusty Key" in draft.world.player.tagged("gear")
     assert traces[0].endswith("gear +Rusty Key")
 
     assert "already carries" in refused(
@@ -32,11 +32,11 @@ def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
     traces = changed(
         draft, "change_tags", actor_id=PLAYER_ID, kind="condition", gained=["Listening"]
     )
-    assert "Listening" in draft.payload.player.tagged("condition")
+    assert "Listening" in draft.world.player.tagged("condition")
     assert traces[0].endswith("condition +Listening")
 
     traces = changed(draft, "change_tags", actor_id=PLAYER_ID, kind="condition", lost=["Listening"])
-    assert "Listening" not in draft.payload.player.tagged("condition")
+    assert "Listening" not in draft.world.player.tagged("condition")
     assert traces[0].endswith("condition -Listening")
 
     assert "carries no condition" in refused(
@@ -57,7 +57,7 @@ def test_drive_writes_what_play_revealed() -> None:
     draft = state.draft()
 
     traces = changed(draft, "drive", actor_id=PLAYER_ID, goal="Get out of the ruin alive")
-    assert draft.payload.player.goal == "Get out of the ruin alive"
+    assert draft.world.player.goal == "Get out of the ruin alive"
     assert "goal: Get out of the ruin alive" in traces[0]
 
     assert "goal, a motive or a nemesis" in refused(draft, "drive", actor_id=PLAYER_ID)
@@ -71,18 +71,18 @@ def test_tick_twist_turns_over_on_the_third_call_and_resets() -> None:
     _, state = initialized()
     draft = state.draft()
 
-    assert draft.payload.tick_twist() is False
-    assert draft.payload.twist.current == 1
-    assert draft.payload.tick_twist() is False
-    assert draft.payload.twist.current == TIES_PER_TWIST - 1
-    assert draft.payload.tick_twist() is True
-    assert draft.payload.twist.current == 0
+    assert draft.world.tick_twist() is False
+    assert draft.world.twist.current == 1
+    assert draft.world.tick_twist() is False
+    assert draft.world.twist.current == TIES_PER_TWIST - 1
+    assert draft.world.tick_twist() is True
+    assert draft.world.twist.current == 0
 
 
 def test_the_cast_lines_say_who_the_player_has_met() -> None:
     _, state = initialized()
 
-    lines = state.payload.cast_lines().splitlines()
+    lines = state.world.cast_lines().splitlines()
 
     assert any(line.strip() == "met; last seen in: The Abbot's Study" for line in lines)
     assert any(line.strip() == "unmet; last seen in: The Abbot's Study" for line in lines)

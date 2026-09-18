@@ -29,8 +29,8 @@ def test_a_sixth_room_engine_begins_a_playable_game(
         panel for panel in room_engine.player_view(begun_room).panels if panel.title == "Ways out"
     )
     assert [row.label for row in ways_out.rows] == ["Yard"]
-    begun_room.payload.move(YARD, ())
-    assert begun_room.payload.visits == [GATE, YARD]
+    begun_room.world.move(YARD, ())
+    assert begun_room.world.visits == [GATE, YARD]
 
 
 def test_a_member_joins_and_leaves_the_party(
@@ -40,11 +40,11 @@ def test_a_member_joins_and_leaves_the_party(
 
     _ = change(room_engine, draft, "join_party", target_id=WARDEN)
 
-    assert WARDEN in draft.payload.party
+    assert WARDEN in draft.world.party
 
     _ = change(room_engine, draft, "leave_party", target_id=WARDEN)
 
-    assert draft.payload.party == []
+    assert draft.world.party == []
 
 
 def test_leave_party_on_a_non_member_is_refused(
@@ -58,7 +58,7 @@ def test_leave_party_on_a_non_member_is_refused(
 
 
 def test_require_member_here_refuses_an_unknown_co_located_npc(begun_room: SixthGame) -> None:
-    world = begun_room.payload
+    world = begun_room.world
     world.npcs[WARDEN].known = False
 
     with pytest.raises(Refusal, match="not here with the player"):
@@ -66,7 +66,7 @@ def test_require_member_here_refuses_an_unknown_co_located_npc(begun_room: Sixth
 
 
 def test_a_room_world_refuses_an_npc_filed_under_the_player_id(begun_room: SixthGame) -> None:
-    world = begun_room.payload
+    world = begun_room.world
     decoy = world.npcs[WARDEN].model_copy(update={"id": PLAYER_ID})
 
     with pytest.raises(ValueError, match="duplicate"):
@@ -81,7 +81,7 @@ def test_a_room_world_refuses_an_npc_filed_under_the_player_id(begun_room: Sixth
 
 
 def test_an_item_on_the_player_must_be_known(begun_room: SixthGame) -> None:
-    world = begun_room.payload
+    world = begun_room.world
     hidden = world.items[LANTERN].model_copy(update={"on": PLAYER_ID, "known": False})
 
     with pytest.raises(ValueError, match="unknown to them"):
@@ -98,7 +98,7 @@ def test_an_item_on_the_player_must_be_known(begun_room: SixthGame) -> None:
 def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    world = begun_room.payload
+    world = begun_room.world
     key = "warden-key"
     world.items[key] = Prop(id=key, name="Key", brief="A rusty key", known=True, on=WARDEN)
     world.party.append(WARDEN)
@@ -123,7 +123,7 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(
 
     facts = change(room_engine, draft, "kill", target_id=PLAYER_ID)
 
-    assert not draft.payload.player.alive
+    assert not draft.world.player.alive
     assert any(fact.card == "You are dead" for fact in facts)
 
     message = refused(room_engine, draft, "kill", target_id=PLAYER_ID)
@@ -132,7 +132,7 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(
 
 
 def test_move_does_not_clear_an_authored_lock_on_the_way_back(begun_room: SixthGame) -> None:
-    world = begun_room.payload
+    world = begun_room.world
     world.ways[YARD].append(Way(to=GATE, locked=True))
 
     world.move(YARD, ())
@@ -142,7 +142,7 @@ def test_move_does_not_clear_an_authored_lock_on_the_way_back(begun_room: SixthG
     assert back.locked
 
 
-def test_a_room_game_validates_the_packs_it_plays(
+def test_a_room_game_validates_the_pack_it_plays(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
     room_engine.packs = PackSet(
@@ -151,37 +151,37 @@ def test_a_room_game_validates_the_packs_it_plays(
         {},
     )
 
-    played = updated(begun_room, packs=(SRD_PACK, "mine"))
-    assert room_engine.restore(played.model_dump_json()).packs == (SRD_PACK, "mine")
+    played = updated(begun_room, pack_id="mine")
+    assert room_engine.restore(played.model_dump_json()).pack_id == "mine"
 
-    with pytest.raises(Refusal, match="packs not installed"):
-        _ = room_engine.restore(updated(played, packs=(SRD_PACK, "gone")).model_dump_json())
+    with pytest.raises(Refusal, match="is not installed"):
+        _ = room_engine.restore(updated(played, pack_id="gone").model_dump_json())
 
 
 def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     engine = ENGINES_BUILT[TUNNELGOONS]
     scenario_id = scenario_for(TUNNELGOONS)
     scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
-    before = scenario.payload.model_dump()
+    before = scenario.opening.model_dump()
     character = LIBRARY.read_character("kael", engine.id, engine.character)
     draft = engine.begin(scenario_id, scenario, character)
-    world = narrowed(draft, TunnelGoonsGame).payload
+    world = narrowed(draft, TunnelGoonsGame).world
 
     next(iter(world.npcs.values())).name = "Someone else"
 
-    assert scenario.payload.model_dump() == before
+    assert scenario.opening.model_dump() == before
 
 
 def _walked(begun_room: SixthGame) -> SixthGame:
     """At CELLAR, having walked GATE and YARD: every power has something legal."""
-    begun_room.payload.move(YARD, ())
-    begun_room.payload.move(CELLAR, ())
+    begun_room.world.move(YARD, ())
+    begun_room.world.move(CELLAR, ())
     return begun_room.draft()
 
 
 def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
     """One armed call spending every power: the warden walks, the lantern moves, a way shuts."""
-    draft.payload.meanwhile_due = True
+    draft.world.meanwhile_due = True
     return change(
         engine,
         draft,
@@ -202,7 +202,7 @@ def test_meanwhile_moves_all_three_things_in_one_call(
 
     _ = _all_three(room_engine, draft)
 
-    world = draft.payload
+    world = draft.world
     assert world.npcs[WARDEN].place == YARD
     assert world.items[LANTERN].on == GATE
     way = world.way(GATE, YARD)
@@ -231,7 +231,7 @@ def test_meanwhile_never_reaches_the_narrator(
 
 def test_meanwhile_refusals(room_engine: SixthEngine, begun_room: SixthGame) -> None:
     draft = _walked(begun_room)
-    world = draft.payload
+    world = draft.world
 
     assert NOTHING_OFFSCREEN in refused(
         room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to_id=YARD
@@ -305,24 +305,24 @@ def test_the_armed_flag_is_spent_only_on_a_counted_tick(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
     draft = _walked(begun_room)
-    draft.payload.meanwhile_due = True
+    draft.world.meanwhile_due = True
 
     room_engine.tick(draft, counted=True)
 
-    assert not draft.payload.meanwhile_due
+    assert not draft.world.meanwhile_due
 
-    draft.payload.meanwhile_due = True
+    draft.world.meanwhile_due = True
 
     room_engine.tick(draft, counted=False)
 
-    assert draft.payload.meanwhile_due
+    assert draft.world.meanwhile_due
 
 
 def test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
     draft = begun_room.draft()
-    world = draft.payload
+    world = draft.world
     assert world.elsewhere() == []
     assert not world.can_move_offscreen()
 
@@ -343,7 +343,7 @@ def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_
     begun_room: SixthGame,
 ) -> None:
     draft = _walked(begun_room)
-    world = draft.payload
+    world = draft.world
     world.npcs[WARDEN].place = CELLAR
     world.items[LANTERN].on = WARDEN
     way = world.way(GATE, YARD)
@@ -357,7 +357,7 @@ def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_pl
     begun_room: SixthGame,
 ) -> None:
     draft = _walked(begun_room)
-    world = draft.payload
+    world = draft.world
     world.items[LANTERN].on = WELL
     world.npcs[WARDEN].place = WELL
     way = world.way(GATE, YARD)
@@ -376,7 +376,7 @@ def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(
     draft = _walked(begun_room)
     assert ELSEWHERE not in dict(room_engine.master_sections(draft))
 
-    draft.payload.meanwhile_due = True
+    draft.world.meanwhile_due = True
 
     section = dict(room_engine.master_sections(draft))[ELSEWHERE]
 
@@ -392,7 +392,7 @@ def test_the_arc_reaches_the_master_and_the_worldsmith_and_nobody_else(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
     arc = "The Warden answers to the Gremlin Queen."
-    begun_room.payload.arc = arc
+    begun_room.world.arc = arc
 
     written = room_engine.render_request(
         begun_room, intent="More map.", guidance="", answer=MapProposal[Dweller]

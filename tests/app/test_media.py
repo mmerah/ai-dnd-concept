@@ -57,7 +57,7 @@ def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
     engine, state = initialized()
     state = _placed(_placed(state, "Brass Warden", known=True), "Pale Watcher", known=False)
     request = illustration_request(_scene(engine, state), NARRATION, STYLE)
-    assert state.payload.run.title in request
+    assert state.world.run.title in request
     assert "Brass Warden" in request
     assert "A brass warden." in request
     assert NARRATION in request
@@ -70,7 +70,7 @@ def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
     assert scene_key(_scene(engine, _placed(state, "Pale Watcher", known=False))) == key
     assert scene_key(_scene(engine, _placed(state, "Brass Warden", known=True))) == key
     draft = state.draft()
-    draft.payload.run.place = "cloister"
+    draft.world.run.place = "cloister"
     assert scene_key(_scene(engine, draft.commit())) != key
 
 

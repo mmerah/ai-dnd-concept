@@ -11,4 +11,4 @@ def draft() -> TunnelGoonsGame:
 
 @pytest.fixture
 def world(draft: TunnelGoonsGame) -> TunnelGoonsWorld:
-    return draft.payload
+    return draft.world

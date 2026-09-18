@@ -7,7 +7,7 @@ from support.game import character, initialized, loner_sheet, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
 from aidm.config import RoleConfig
-from aidm.core.entities import EngineId, Frozen, Refusal, parse, parse_json
+from aidm.core.entities import EngineId, Frozen, Refusal, parse_json
 from aidm.core.io import Library
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eWorld
@@ -46,7 +46,7 @@ def test_a_doubled_key_in_a_character_file_is_refused(tmp_path: Path) -> None:
 
 def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
     _, state = initialized()
-    world = state.payload
+    world = state.world
 
     with pytest.raises(ValidationError, match="filed under"):
         _ = updated(world, cast={"someone-else": world.player.model_dump(round_trip=True)})
@@ -65,13 +65,13 @@ def _with_run(world: Loner3eWorld, **changes: object) -> Loner3eWorld:
 def test_the_party_rules_refuse_the_dead_and_the_doubled() -> None:
     _, state = initialized()
     dead = state.draft()
-    dead.payload.require(MARA).alive = False
-    dead.payload.party.append(MARA)
+    dead.world.require(MARA).alive = False
+    dead.world.party.append(MARA)
     with pytest.raises(Refusal, match="cannot travel with the player"):
         _ = dead.commit()
 
     twice = state.draft()
-    twice.payload.party.extend((MARA, MARA))
+    twice.world.party.extend((MARA, MARA))
     with pytest.raises(Refusal, match="duplicate party"):
         _ = twice.commit()
 
@@ -79,7 +79,7 @@ def test_the_party_rules_refuse_the_dead_and_the_doubled() -> None:
 def test_an_unknown_party_id_is_refused_by_the_base_validator() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.payload.party.append("ghost")
+    draft.world.party.append("ghost")
     with pytest.raises(Refusal, match="travels with the player but is not known"):
         _ = draft.commit()
 
@@ -87,7 +87,7 @@ def test_an_unknown_party_id_is_refused_by_the_base_validator() -> None:
 def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.payload.party.append(draft.payload.player.id)
+    draft.world.party.append(draft.world.player.id)
     with pytest.raises(Refusal, match="cannot travel with themselves"):
         _ = draft.commit()
 
@@ -95,9 +95,9 @@ def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None
 def test_entity_and_scene_ids_use_one_grammar() -> None:
     _, state = initialized()
     with pytest.raises(ValidationError, match="pattern"):
-        _ = updated(state.payload.require(MARA), id="bell_tower")
+        _ = updated(state.world.require(MARA), id="bell_tower")
     with pytest.raises(ValidationError, match="pattern"):
-        _ = updated(state.payload.run, here=["study_1"])
+        _ = updated(state.world.run, here=["study_1"])
 
 
 def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:
@@ -123,16 +123,6 @@ def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -
         _ = library.read_character("mira", engine.id, engine.character)
 
 
-def test_a_character_file_that_names_one_pack_twice_is_refused(tmp_path: Path) -> None:
-    doubled = json.dumps(json.loads(character().model_dump_json()) | {"packs": ["srd", "srd"]})
-    (tmp_path / "kael").mkdir()
-    _ = (tmp_path / "kael" / f"{LONER3E}.json").write_text(doubled, encoding="utf-8")
-
-    engine = ENGINES_BUILT[LONER3E]
-    with pytest.raises(Refusal, match="duplicate packs"):
-        _ = Library(tmp_path, tmp_path).read_character("kael", engine.id, engine.character)
-
-
 def _luck(state: Loner3eGame) -> int:
     return loner_sheet(state, PLAYER_ID).luck.current
 
@@ -148,10 +138,10 @@ def test_a_rules_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     assert _luck(state) == LUCK_MAX
 
 
-def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
+def test_a_save_whose_world_the_engine_rejects_is_refused() -> None:
     engine, state = initialized()
     raw = state.model_dump(mode="json")
-    raw["payload"]["cast"]["ghost"] = {"name": "Ghost"}
+    raw["world"]["cast"]["ghost"] = {"name": "Ghost"}
     with pytest.raises(Refusal):
         _ = engine.restore(json.dumps(raw))
 
@@ -159,21 +149,9 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
 def test_a_save_naming_a_pack_no_longer_installed_is_refused() -> None:
     engine, state = initialized()
     raw = state.model_dump(mode="json")
-    raw["packs"] = ["srd", "gone"]
-    with pytest.raises(Refusal, match="not installed"):
+    raw["pack_id"] = "gone"
+    with pytest.raises(Refusal, match="is not installed"):
         _ = engine.restore(json.dumps(raw))
-
-
-def test_a_scenario_or_a_character_without_packs_is_refused() -> None:
-    raw = scenario().model_dump(mode="json")
-    del raw["packs"]
-    with pytest.raises(Refusal, match="packs"):
-        _ = parse(ENGINES_BUILT[LONER3E].scenario, raw)
-
-    raw = character().model_dump(mode="json")
-    del raw["packs"]
-    with pytest.raises(Refusal, match="packs"):
-        _ = parse(ENGINES_BUILT[LONER3E].character, raw)
 
 
 def test_a_save_from_other_rules_is_refused_before_it_is_read() -> None:

@@ -76,15 +76,14 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
         return member.sign_on(answer.abilities)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
-        world_of = self.world_of
         return (
             *super().master_tools(),
-            master_tool("rest", REST, NoArgs, lambda d, _a, _: world_of(d).rest()),
+            master_tool("rest", REST, NoArgs, lambda d, _a, _: d.world.rest()),
             master_tool("roll", ROLL, Roll, self.roll),
             master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
         )
 
-    def creation_steps(self, packs: tuple[Slug, ...], _picks: Picks) -> tuple[CreationStep, ...]:
+    def creation_steps(self, pack_id: Slug, _picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(
             CreationStep(
                 id=ability,
@@ -94,7 +93,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
             )
             for ability in ABILITIES
         )
-        hint = ", ".join(name for pack in self.packs.chosen(packs) for name in pack.items)
+        hint = ", ".join(name for pack in self.packs.played(pack_id) for name in pack.items)
         item_steps = tuple(
             CreationStep(id=f"item-{number}", label=f"Item {number}", hint=hint)
             for number in range(1, STARTING_ITEMS + 1)
@@ -102,7 +101,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
         return (*ability_steps, *item_steps)
 
     def build_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], picks: Picks
+        self, name: str, brief: str, _pack_id: Slug, picks: Picks
     ) -> TunnelGoonsCharacter:
         abilities: dict[Ability, int] = {
             ability: int(picked(picks, ability)) for ability in ABILITIES
@@ -118,7 +117,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
             kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
         sheet.unpack_kit(())
-        return self.sheet_character(name, sheet, packs)
+        return self.sheet_character(name, sheet)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character)
@@ -128,7 +127,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
         return player.unpack_kit(taken)
 
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         world.check_unnamed(args.what)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
@@ -170,7 +169,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsWorld, TunnelGoonsPack]
         return facts
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
-        world = self.world_of(draft)
+        world = draft.world
         actor = world.require_actor(args.actor_id)
         if actor.require_sheet().level > 1:
             raise Refusal(f"{actor.name} has already levelled up")

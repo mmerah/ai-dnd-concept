@@ -20,6 +20,7 @@ from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.views import Chattiness, PlayerView
+from aidm.engines.packs import SRD_PACK
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import NO_TURN, RESTART, Turn
@@ -347,6 +348,11 @@ class Runtime:
     def default_engine(self) -> EngineId:
         return next(iter(self.engines))
 
+    @property
+    def default_pack(self) -> Slug:
+        """Every engine ships it, so the create pages start there."""
+        return SRD_PACK
+
     async def close(self) -> None:
         for session in list(self._sessions.values()):
             await session.close()
@@ -357,19 +363,19 @@ class Runtime:
         engine_id: EngineId,
         meta: ScenarioMeta,
         document: Path | None,
-        packs: tuple[Slug, ...],
+        pack_id: Slug,
         character_id: Slug,
     ) -> Slug:
         engine = self.engines[engine_id]
         character = self.library.read_character(character_id, engine.id, engine.character)
-        engine.admit(packs, character)
+        engine.packs.require(pack_id)
         source = await to_thread(given_text, meta.premise, document)
         name = slug(meta.title, self.library.scenario_ids())
 
         def check(built: AnyScenario) -> None:
             engine.begin(name, built, character)
 
-        scenario = await engine.author(meta, source, packs, worldsmith(self.spawner), check)
+        scenario = await engine.author(meta, source, pack_id, worldsmith(self.spawner), check)
         self.library.write_scenario(name, scenario)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
@@ -387,7 +393,6 @@ class Runtime:
             else f"written in this app from {document.name}"
         )
         pack = await engine.author_pack(
-            pack_id,
             name=name,
             source=source,
             origin=origin,
@@ -408,7 +413,6 @@ class Runtime:
         if pack is None:
             raise Refusal(f"no written pack {pack_id!r} for {engine_id!r}")
         rebuilt = engine.edited(pack, values)
-        engine.packs.check_addable(pack_id, rebuilt)
         self.packs.write(engine.id, pack_id, rebuilt)
         engine.install_pack(pack_id, rebuilt)
         LOGGER.info("pack rewritten: engine=%s slug=%s", engine.id, pack_id)

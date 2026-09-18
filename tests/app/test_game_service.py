@@ -211,8 +211,8 @@ def _scene(**changes: object) -> str:
 
 async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    place = table.state.payload.run.place
-    here_before = list(table.state.payload.run.here)
+    place = table.state.world.run.place
+    here_before = list(table.state.world.run.here)
     table.spawner.answers["worldsmith"] = [_scene()]
 
     state = await play_turn(
@@ -226,8 +226,8 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     assert len(exchanges) == 2
     assert exchanges[0].words == "I keep watch on the study door."
     assert exchanges[1].mark == "story"
-    assert state.payload.run.place == place
-    assert all(entity_id in state.payload.cast for entity_id in here_before)
+    assert state.world.run.place == place
+    assert all(entity_id in state.world.cast for entity_id in here_before)
     assert [role for role, _ in table.spawner.prompts] == ["master", "worldsmith", "narrator"]
     assert state.generation is None
 
@@ -254,7 +254,7 @@ async def test_a_write_requested_after_something_told_ends_the_narration_there(
 
 async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    table.state.payload.player.luck.current = 2
+    table.state.world.player.luck.current = 2
     table.service.save(table.state)
     table.spawner.answers["worldsmith"] = [_scene()]
 
@@ -267,14 +267,14 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
 
     installed = state.exchanges()[-1]
     assert installed.mark == "story"
-    assert state.payload.player.luck.current == 2
+    assert state.world.player.luck.current == 2
 
 
 async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
     tmp_path: Path,
 ) -> None:
     table = open_game(tmp_path)
-    title = table.state.payload.run.title
+    title = table.state.world.run.title
 
     state = await play_turn(
         table,
@@ -288,7 +288,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
         "Nothing new came down on this place after all. You are still where you were."
     )
     assert state.generation is None
-    assert state.payload.run.title == title
+    assert state.world.run.title == title
 
 
 async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> None:
@@ -355,12 +355,12 @@ async def test_a_complication_after_an_offer_clears_it_only_once_installed(
     _ = await play_turn(table, "I have what I came for.", the_way_on())
 
     state = await play_turn(table, "I keep watch.", complication)
-    assert state.payload.run.offered
+    assert state.world.run.offered
 
     table.spawner.answers["worldsmith"] = [_scene()]
     state = await play_turn(table, "I keep watching.", complication, arrival="Torchlight.")
-    assert not state.payload.run.offered
-    assert state.payload.run.title == "The Abbot's Study, Disturbed"
+    assert not state.world.run.offered
+    assert state.world.run.title == "The Abbot's Study, Disturbed"
 
 
 async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
@@ -376,7 +376,7 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
 
     assert table.service.engine.over(state) is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
-    assert len(state.payload.runs) == 1
+    assert len(state.world.runs) == 1
     assert state.generation is None
     assert table.saved().generation is None
 
@@ -401,7 +401,7 @@ def _party_of_one(service: GameService) -> Loner3eCast:
     )
     state = with_entity(service.state, member)
     draft = state.draft()
-    draft.payload.party.append(member.id)
+    draft.world.party.append(member.id)
     service.save(draft.commit())
     return member
 
@@ -590,7 +590,7 @@ async def test_act_hushes_before_it_asks_the_worldsmith_to_write(
     """`_grow` alone can run 900s; a stale narrator spawn must not outlive the write."""
     table = open_table(tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame)
     draft = table.state.draft()
-    for place in draft.payload.places.values():
+    for place in draft.world.places.values():
         place.known = True
     table.service.save(draft.commit())
     calls: list[str] = []

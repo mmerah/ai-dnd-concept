@@ -140,7 +140,7 @@ def test_drive_refuses_naming_someone_unmet_who_is_not_in_this_scene() -> None:
     """The sheet row outlives the scene that wrote it, so the screen is the whole cast."""
     _, state = initialized()
     draft = with_entity(state, HIDDEN).draft()
-    draft.payload.run.here.remove(HIDDEN.id)
+    draft.world.run.here.remove(HIDDEN.id)
     kael = loner_sheet(draft, PLAYER_ID)
 
     assert "not met" in refused(
@@ -149,10 +149,10 @@ def test_drive_refuses_naming_someone_unmet_who_is_not_in_this_scene() -> None:
     assert kael.nemesis == ""
 
 
-def test_spend_luck_is_refused_when_no_selected_pack_spends_it() -> None:
+def test_spend_luck_is_refused_when_the_pack_does_not_spend_it() -> None:
     _, state = initialized()
 
-    assert "no selected pack spends luck" in refused(
+    assert "this pack does not spend luck" in refused(
         ENGINE, state.draft(), "spend_luck", actor_id=PLAYER_ID, amount=2, why="A ward"
     )
 
@@ -160,7 +160,7 @@ def test_spend_luck_is_refused_when_no_selected_pack_spends_it() -> None:
 def test_spend_luck_above_the_pool_is_refused_naming_it() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.packs = ("srd", "ap01-fantasy")
+    draft.pack_id = "ap01-fantasy"
     fantasy = draft.commit()
 
     assert "has 6 luck, not 10" in refused(
@@ -171,7 +171,7 @@ def test_spend_luck_above_the_pool_is_refused_naming_it() -> None:
 def test_spend_luck_lands_one_fact_and_no_defeat() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.packs = ("srd", "ap01-fantasy")
+    draft.pack_id = "ap01-fantasy"
     fantasy = draft.commit()
 
     facts = change(

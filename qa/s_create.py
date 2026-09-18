@@ -84,14 +84,14 @@ def body(s: Session) -> None:
     page.wait_for_timeout(600)
     s.check(any("Name the character." in n for n in notifications(page)), "empty name not refused")
 
-    # Loner: a supplement pack, then dependent skill and gear picks pooled across both.
+    # Loner: a chosen pack, then dependent skill and gear picks pooled over the SRD and it.
     page.goto(BASE + "/create")
     page.wait_for_timeout(800)
     text(page, "Name", "Wren")
-    select(page, "Packs", "AP01 Fantasy")
+    select(page, "Pack", "AP01 Fantasy")
     page.keyboard.press("Escape")
     page.wait_for_timeout(400)
-    s.shot(page, "loner-supplements")
+    s.shot(page, "loner-pack")
     text(page, "Write a one-line concept", "A quiet scout")
     text(page, "What does your character want?", "Out")
     text(page, "Why do they want it?", "Debt")
@@ -187,8 +187,8 @@ def body(s: Session) -> None:
     page.wait_for_timeout(1000)
     select(page, "Rules", "TUNNEL GOONS")
     s.check(
-        page.locator(".q-select", has_text="Packs").count() == 0,
-        "a room engine offers table sets",
+        page.locator(".q-select", has_text="Pack").count() == 0,
+        "a room engine offers packs",
     )
     text(page, "Title", "The Sunken Bell")
     text(page, "Scope", "One crossing.")

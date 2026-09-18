@@ -5,7 +5,6 @@ from aidm.app.spawn import PROMPT_MAX_BYTES
 from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.packs import MAX_SUPPLEMENTS
 
 PACKS_DIR = ENGINES_BUILT[LONER3E].directory / "packs"
 SOURCE_BYTES = 48_000
@@ -22,7 +21,7 @@ def test_a_heavy_game_still_fits_the_command_line() -> None:
     state = narrowed(raw_state, Loner3eGame)
 
     draft = state.draft()
-    draft.packs = ("srd", *_heaviest_packs())
+    draft.pack_id = _heaviest_pack()
     draft.source = "x" * SOURCE_BYTES
     draft.log = _chapters()
     state = draft.commit()
@@ -36,10 +35,9 @@ def test_a_heavy_game_still_fits_the_command_line() -> None:
     assert len(prompt.encode()) < PROMPT_MAX_BYTES
 
 
-def _heaviest_packs() -> tuple[str, ...]:
-    """The worst case a shelf of packs can hand the prompt: its largest files."""
-    paths = sorted(PACKS_DIR.glob("ap*.json"), key=lambda path: path.stat().st_size)
-    return tuple(path.stem for path in paths[-MAX_SUPPLEMENTS:])
+def _heaviest_pack() -> str:
+    """The worst case a pack can hand the prompt: the largest file on the shelf."""
+    return max(PACKS_DIR.glob("ap*.json"), key=lambda path: path.stat().st_size).stem
 
 
 def _chapters() -> list[Chapter]:

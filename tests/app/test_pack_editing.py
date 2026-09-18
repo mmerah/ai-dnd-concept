@@ -12,23 +12,6 @@ from aidm.engines.loner3e.worldsmith import Loner3ePack
 MINE: Slug = "mine"
 SHIPPED: Slug = "ap01-fantasy"
 SETTING = "The sea took the lower town and left the towers standing in it."
-SRD_SKILL = {"id": "quiet-hands", "label": "Quiet Hands", "detail": ""}
-
-
-def test_a_trait_that_collides_with_the_srd_is_refused_and_nothing_is_written(
-    tmp_path: Path,
-) -> None:
-    runtime = _runtime(tmp_path)
-    installed, on_disk = _written(runtime), _file(tmp_path).read_text()
-    values = _values(runtime, MINE)
-    # Rewritten, not added: the table is already as long as the rules allow.
-    values["skills"] = json.dumps([SRD_SKILL, *json.loads(values["skills"])[1:]])
-
-    with pytest.raises(Refusal, match="quiet-hands"):
-        runtime.rewrite_pack(LONER3E, MINE, values)
-
-    assert _written(runtime) == installed
-    assert _file(tmp_path).read_text() == on_disk
 
 
 def test_a_shipped_pack_cannot_be_rewritten(tmp_path: Path) -> None:
