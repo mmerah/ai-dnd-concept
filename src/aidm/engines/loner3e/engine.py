@@ -51,7 +51,7 @@ from aidm.engines.loner3e.worldsmith import (
 from aidm.engines.scenes.engine import SceneEngine
 
 
-class Loner3eEngine(SceneEngine[Loner3eWorld, Loner3ePack]):
+class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     authoring = AUTHORING

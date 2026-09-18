@@ -17,13 +17,15 @@ Decided on 2026-09-18 and not re-opened by any phase:
 - **Facts are returned, not accumulated.** NEXT-PLAN step 2 (`World.facts` and `World.tell`) is
   cut. A method that changes the world returns the facts it wrote; the caller sees the data
   leave and arrive. No hidden list, no clearing sites.
-- **`SceneEngine` stays as the scene loop; `RoomEngine` goes.** Two engines share the scene loop
-  (`next_scene`, `act`, `depart`, `complicate`, `install`, `write_next`, `author`), and a fix to
-  how a crossing is written is made once. Its hooks (`sheet_sections`, `panels`,
-  `opening_sections`) go: 24XX writes its `master_sections` and `player_view` whole, about 34
-  lines, because a section tuple is layout each engine owns, where the crossing is behaviour.
-  One engine plays rooms, so `RoomEngine`'s body becomes `TunnelGoonsEngine`'s; the `rooms/`
-  world, tools, checks and prompt files stay as the family's shared code.
+- **`SceneEngine` stays as the scene loop; `RoomEngine` stays as the room loop.** Two engines
+  share the scene loop (`next_scene`, `act`, `depart`, `complicate`, `install`, `write_next`,
+  `author`), and a fix to how a crossing is written is made once. Its hooks (`sheet_sections`,
+  `panels`, `opening_sections`) go: 24XX writes its `master_sections` and `player_view` whole,
+  about 34 lines, because a section tuple is layout each engine owns, where the crossing is
+  behaviour. The two families keep one shape: `rooms/engine.py` holds `RoomEngine`, the room
+  loop, as `scenes/engine.py` holds `SceneEngine`, although one engine plays rooms today
+  (decided 2026-09-18 after phase 3 first landed without it; `PROGRESS.md` has the record).
+  `TunnelGoonsEngine` keeps only what is its own: creation, the kit, its dice and its hires.
 - **A character carries no pack.** The pack is chosen on the creation page to offer tables; the
   sheet then carries labels and needs no pack. A scenario carries one `pack_id`; a game plays
   the scenario's. Any character of an engine plays any scenario of that engine.
@@ -283,19 +285,19 @@ about −120. No golden moves.
    `tests/support/golden_turn.py` (`draft.world.scenes.insert(0, Scene(...))`) and the tests
    follows.
 
-### Part B: one engine plays rooms; the scene loop has no hooks
+### Part B: the two loops have no hooks
 
-2. **`RoomEngine` becomes `TunnelGoonsEngine`.** Delete `engines/rooms/engine.py`. Its methods
-   move onto `TunnelGoonsEngine` (`tunnelgoons/engine.py`): `new_game` (with `starting_items`
-   inlined: `self.world.opening(draft, player, player.unpack_kit(taken))`), `family_sections`,
-   `master_sections`, `narrator_view`, `player_view`, `author`, `act`, `extend`, `advance`,
-   `master_tools` (one tuple: the seam's four, then `move_item`, `unlock_way`, `move`,
-   `meanwhile`, `hire`, `rest`, `roll`, `level_up`: phase 2's published order, so the golden
-   holds), `move_item`, `meanwhile`, `write_next`, `install`; `unwritten` is one literal;
-   `family_dir = Path(__file__).parents[1] / "rooms"`. `EXTEND`, `MORE_MAP` and `MAP_UNWRITTEN`
-   move to `rooms/tools.py`; `opening_sections` becomes `OPENING_SECTIONS` in
-   `rooms/worldsmith.py` beside `MAP_ASK`. `rooms/rules.md` and `rooms/worldsmith.md` are read
-   as today, so the prompt goldens hold.
+2. **`RoomEngine` keeps the room loop, without hooks.** `rooms/engine.py`: `RoomEngine[W:
+   RoomWorld[Any, Any], K: Pack]` keeps `family_sections`, `master_sections`, `narrator_view`,
+   `player_view`, `author`, `act`, `advance`, `master_tools` (the seam's four, then `move_item`,
+   `unlock_way`, `move`, `meanwhile`), `move_item`, `meanwhile`, `write_next`, `install`;
+   `EXTEND`, `MORE_MAP` and `MAP_UNWRITTEN` stay its module constants. Delete `starting_items`
+   and `RoomEngine.new_game`: `TunnelGoonsEngine.new_game` reads `self.world.opening(draft,
+   player, player.unpack_kit(taken))` whole, the kit being the Goon's. `opening_sections`
+   becomes `OPENING_SECTIONS` in `rooms/worldsmith.py` beside `MAP_ASK`. `rooms/rules.md` and
+   `rooms/worldsmith.md` are read as today, so the prompt goldens hold. (As first landed, the
+   phase deleted `rooms/engine.py` and moved its body onto `TunnelGoonsEngine`; the maintainer
+   reversed that the same day, for one shape across the two families.)
 3. **`SceneEngine` keeps the loop.** `scenes/engine.py`: delete `sheet_sections`, `panels`;
    `opening_sections` → `OPENING_SECTIONS` in `scenes/worldsmith.py` beside `OPENING`.
    `TwentyfourxxEngine.master_sections` and `player_view` are written whole, in the golden's
@@ -311,9 +313,11 @@ about −120. No golden moves.
    stays concrete in the base with the id/known refusal (one home for that string); each engine
    overrides with `player = super().player_of(character)`, one `isinstance` against its own
    class, refusing `f"{character.id!r} is not a {self.title} sheet"`, and returns the narrowed
-   player. `SceneEngine[W: SceneWorld[Any], K: Pack]` with `member: type[Person]` for
-   `NextProposal[self.member]` and `SceneProposal[self.member]` (checked: flows into
-   `check_scene` and `world.apply_scene` with no new `Any`). `check_scene`, `check_map`,
+   player. `SceneEngine[C: Person, W: SceneWorld[Any], K: Pack]` with `member: type[C]` for
+   `NextProposal[self.member]` and `SceneProposal[self.member]`, and `RoomEngine[N: Dweller, W:
+   RoomWorld[Any, Any], K: Pack]` with `member: type[N]`: the loop's proposal models are
+   containers of the engine's own kind, so `install` takes that kind and no other (a
+   `SceneProposal[Person]` would type into a 24XX world otherwise). `check_scene`, `check_map`,
    `check_extension` keep their parameters. `MasterTool[G]` stays until phase 4. `AnyEngine =
    Engine[Any, Any]`. The `Loner3eGame = Game[Loner3eWorld]` aliases stay.
    `tests/core/test_golden_turn.py` line 23: `state_type=Game[ENGINES_BUILT[engine_id].world]`.
@@ -332,10 +336,10 @@ about −120. No golden moves.
    tests subclass `TunnelGoonsEngine` with `directory = tmp_path` over `install_engine_dir`.
    `tests/engines/test_scene_bar.py`: `AnySceneEngine` → `Loner3eEngine | TwentyfourxxEngine`.
 
-Done when: the full check is green; `grep -rn "SceneRun\|\.runs\b\|RoomEngine\|
-sheet_sections\|def panels\|opening_sections\|fifth\|sixth\|\.member\b" src tests qa` finds
-only `SceneEngine.member`; `engines/rooms/` holds `world.py`, `tools.py`, `worldsmith.py`,
-`rules.md`, `worldsmith.md` and nothing else.
+Done when: the full check is green; `grep -rn "SceneRun\|\.runs\b\|sheet_sections\|
+def panels\|opening_sections\|fifth\|sixth\|\.member\b" src tests qa` finds only
+`SceneEngine.member` and `RoomEngine.member`, and `grep -rn starting_items src` nothing;
+`rooms/engine.py` and `scenes/engine.py` read alike top to bottom.
 
 ## Phase 4: tools and words
 
@@ -371,7 +375,8 @@ reflowed a description.
    becomes a two-line method (`reveal`, `enter`, `leave`, `unlock_way`, `move`, `take_lead`,
    `rest`). Definition order is the published order: `Loner3eEngine.spend_luck` below `roll`;
    `TwentyfourxxEngine.hire` first among its own, then `change_hindrances` … `take_lead` between
-   `spend` and `ship_upgrade` … `job`; `TunnelGoonsEngine` as phase 3 listed. Regenerate the
+   `spend` and `ship_upgrade` … `job`; `RoomEngine` `move_item`, `unlock_way`, `move`,
+   `meanwhile`, then `TunnelGoonsEngine` `hire`, `rest`, `roll`, `level_up`. Regenerate the
    three `tests/core/fixtures/schemas/*/master_tools.json` and confirm no change but a
    description that `cleandoc` reflowed. Tests: `tests/core/test_tools.py` tests `tools_of`
    (order across the MRO, an unmarked override, a missing docstring, a third parameter that is
@@ -392,13 +397,14 @@ reflowed a description.
    engine tool rule with: "A tool is an engine method marked `@tool`; its docstring is what the
    master reads. It resolves ids and rolls dice, and the world or entity method it calls
    changes fields and returns the facts." In "How the game is built", after "The engine owns
-   the world": "An engine is one class with its fields and tools written out; `SceneEngine` is
-   the scene loop two engines share, and `rooms/` is the world shape and tools one engine
-   plays."
+   the world": "An engine is one class with its fields and tools written out; `SceneEngine`
+   and `RoomEngine` are the two loops, one per family, and an engine adds its own tools to
+   one of them."
 5. **The docs.** README paragraph 29: the sentences naming `SceneEngine` say that `SceneEngine`
-   is the scene loop Loner and 24XX share, and that Tunnel Goons is one class over the `rooms/`
-   world. `docs/24XX.md` line 106 and `docs/LONER-3E.md` line 141 keep their `SceneEngine`
-   sentence; `docs/TUNNEL-GOONS.md` names `TunnelGoonsEngine` over `engines/rooms/`.
+   is the scene loop Loner and 24XX share, and `RoomEngine` the room loop Tunnel Goons plays.
+   `docs/24XX.md` line 106 and `docs/LONER-3E.md` line 141 keep their `SceneEngine` sentence;
+   `docs/TUNNEL-GOONS.md` line 70 gains the same sentence for `RoomEngine` in
+   `src/aidm/engines/rooms/`.
 
 Done when: the full check is green; `grep -rn "master_tool\|_TOOL\b\|Generation\|\.land(\|
 picture()\|family_sections\|Loner3eCast\|engines.seam" src tests qa` finds nothing; every

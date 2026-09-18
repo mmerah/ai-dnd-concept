@@ -108,7 +108,7 @@ class Helping(NamedTuple):
     terms: Helper
 
 
-class TwentyfourxxEngine(SceneEngine[TwentyfourxxWorld, TwentyfourxxPack]):
+class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     authoring = AUTHORING

@@ -104,16 +104,25 @@ Counts, `find <dir> -name '*.py' | xargs cat | wc -l`:
 
 | dir   | before | after | change |
 | ----- | -----: | ----: | -----: |
-| src   |  10462 | 10457 |     −5 |
-| tests |  11964 | 11795 |   −169 |
+| src   |  10462 | 10477 |    +15 |
+| tests |  11964 | 11811 |   −153 |
 | qa    |   2020 |  2020 |      0 |
 
-All three parts landed as planned; no golden moved. Reviewed by two independent Opus reviewers
+All three parts landed as planned; no golden moved. The counts are after the reversal below
+(as first landed, `src` 10457 and `tests` 11795). Reviewed by two independent Opus reviewers
 (no `codex` on the machine). `src` is far off the −150 estimate: the plan counted the test
 engines' support under `src`, where they never were (`tests/support/fifth.py` and `sixth.py` are
-the −169 in `tests`), and `rooms/engine.py`'s body moved onto `TunnelGoonsEngine` line for line.
-The `src` cut left is the two hooks, `RoomEngine`'s class header and `starting_items`, against
-24XX's two whole methods.
+the −169 in `tests`), and the room loop's body is the same size wherever it sits. The `src` cut
+left is the two hooks and `starting_items`, against 24XX's two whole methods.
+
+Reversed the same day, after the phase first landed as `fa72ecb`: `RoomEngine` is back in
+`rooms/engine.py` as `RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack]`, the twin of
+`SceneEngine[C, W, K]`, because the two families keep one shape: what `scenes/engine.py` does,
+`rooms/engine.py` does. `TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack])` keeps
+`new_game` (the Goon's kit), its creation, `player_of`, its dice and its hires. `EXTEND`,
+`MORE_MAP` and `MAP_UNWRITTEN` are `rooms/engine.py`'s constants, as `DEPARTURE`, `MOVE_ON` and
+`WAY_UNWRITTEN` are `scenes/engine.py`'s. The plan's standing decision and phase 4's sentences
+are amended to match.
 
 Decisions taken off-plan:
 
@@ -121,15 +130,21 @@ Decisions taken off-plan:
   `Engine.player_as(character, sheet)`: the id/known refusal, one `isinstance`, the
   "is not a … sheet" refusal, the copy. Each engine's `player_of` is one line over it. Both
   reviews found the plan's three copies of the override and its string.
-- `EXTEND`, `MORE_MAP` and `MAP_UNWRITTEN` sit in `tunnelgoons/engine.py`, not `rooms/tools.py`:
-  an operation slug, a decision option and a failed-write fact are not tools, and that is where
-  the scene family keeps `DEPARTURE`, `MOVE_ON` and `WAY_UNWRITTEN`. `OPENING_SECTIONS` stays in
-  `rooms/worldsmith.py` beside `MAP_ASK`, as the scene family's sits beside `OPENING`.
-- `TunnelGoonsEngine.extend` is inlined into `advance`: two statements, one caller.
+- `EXTEND`, `MORE_MAP` and `MAP_UNWRITTEN` are not in `rooms/tools.py`: an operation slug, a
+  decision option and a failed-write fact are not tools; they sit beside the loop that reads
+  them, as `DEPARTURE`, `MOVE_ON` and `WAY_UNWRITTEN` sit beside `SceneEngine`. `OPENING_SECTIONS`
+  is in `rooms/worldsmith.py` beside `MAP_ASK`, as the scene family's sits beside `OPENING`.
+- `extend` is inlined into `advance`: two statements, one caller.
 - `test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count` seeds `turns_played = 1`:
   the sixth engine's `tempo` was 6, Tunnel Goons' is 4, and the old seed of 3 reached it.
-- `tests/engines/test_scenes.py` builds its two castless drafts as `NextProposal[Person]`, the
-  type `install` now takes; `Loner3eCast` is invariant in `SceneProposal`.
+- The loop classes keep the member parameter: `SceneEngine[C, W, K]` and `RoomEngine[N, W, K]`,
+  `member: type[C]` / `type[N]`, `install` and `write_next` typed on it. The plan's `member:
+  type[Person]` let a `SceneProposal[Person]` type into a 24XX world (both reviews found it,
+  and the restored `RoomEngine` hit it at once: a `RegionProposal[Npc]` refused `install`'s
+  `RegionProposal[Dweller]`). The member and the world are tied by the subclass's declaration,
+  not by the bound: `W: SceneWorld[C]` makes basedpyright read `self.world.opening` through the
+  erased bound and refuse `SceneProposal[C]` (three errors), so `W: SceneWorld[Any]` stays.
+  `Engine[W, K]` itself is as planned.
 
 Review findings refuted:
 
@@ -137,11 +152,6 @@ Review findings refuted:
   through free builders or world methods": the plan's standing decision (its second bullet, and
   "Copies are fine"). 24XX's sections and panels splice into the middle of the family's tuples,
   so any shared builder takes the insert as a parameter, which is the hook the phase removes.
-- "`install(scene: SceneProposal[Person])` accepts a plain-`Person` cast into a 24XX world; the
-  old `C` guaranteed otherwise": in play the proposal reaching `install` is what the worldsmith
-  parsed against `NextProposal[self.member]`, the engine's own cast class; the old `C` was never
-  tied to `W` (`SceneWorld[Any]`), so `apply_scene` took any cast before too; `Game.commit`
-  re-parses. Both reviews said no fix exists without the parameter the plan drops.
 - "Drop `P` from `RoomWorld[P, N]`, one subclass is left": `rooms/world.py` cannot name `Goon`;
   `tunnelgoons/` imports `rooms/`, and imports flow one way.
 
@@ -149,5 +159,6 @@ Known and accepted:
 
 - `TwentyfourxxEngine.master_sections` and `player_view` carry the family's order by hand; the
   golden `prompts/twentyfourxx/master.txt` is what catches a drift.
-- A test can hand `install` a `SceneProposal[Person]` whose cast is not the engine's; `commit`
-  refuses it, not `install`.
+- `RoomEngine` is a base with one subclass, against "no abstraction until two things need it":
+  the room loop keeps its own file and class so the two families read alike, by the
+  maintainer's call.
