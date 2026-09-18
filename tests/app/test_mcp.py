@@ -15,7 +15,7 @@ from aidm.config import Role
 from aidm.core.entities import EngineId
 from aidm.core.play import Answer
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.turn import Tools
+from aidm.turn import Turn
 
 BASE_URL = "http://localhost:8123"
 REVEAL_VAULT_MAP: dict[str, object] = {"name": "reveal", "arguments": {"target_id": "vault-map"}}
@@ -48,7 +48,7 @@ class HttpMaster:
     change_result: Result | None = None
 
     async def run(
-        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
     ) -> RunResult:
         del prompt, conversation, tools
         if role != "master":

@@ -10,7 +10,7 @@ from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.play import Answer, Narration
-from aidm.turn import Tools, Turn
+from aidm.turn import Turn
 
 
 @dataclass(slots=True)
@@ -18,7 +18,7 @@ class _AlwaysRefuses:
     calls: int = 0
 
     async def run(
-        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
     ) -> RunResult:
         del role, prompt, conversation, tools
         self.calls += 1
@@ -61,7 +61,7 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
 
     class _Spawner:
         async def run(
-            self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+            self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
         ) -> RunResult:
             del role, tools
             asked.append((prompt, conversation))
@@ -79,7 +79,7 @@ async def test_a_spawn_that_refuses_once_still_gets_its_one_retry() -> None:
 
     class _Spawner:
         async def run(
-            self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+            self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
         ) -> RunResult:
             del role, prompt, tools
             attempts.append(conversation)
@@ -96,7 +96,7 @@ async def test_a_spawn_that_refuses_once_still_gets_its_one_retry() -> None:
 async def test_answered_nothing_usable_does_not_quote_the_checks_message() -> None:
     class _Spawner:
         async def run(
-            self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+            self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
         ) -> RunResult:
             del role, prompt, tools
             return RunResult('{"lines": []}', conversation or "abc-123")

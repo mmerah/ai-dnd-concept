@@ -94,10 +94,6 @@ class GameService:
         return self.target.slug
 
     @property
-    def speaking(self) -> bool:
-        return self._speaking is not None and not self._speaking.done()
-
-    @property
     def unopened(self) -> bool:
         return self.working_role is None and not self.state.exchanges()
 

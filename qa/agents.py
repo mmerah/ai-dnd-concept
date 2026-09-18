@@ -27,7 +27,7 @@ from aidm.app.runtime import Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
-from aidm.turn import Tools
+from aidm.turn import Turn
 
 LOGGER = logging.getLogger("qa.agents")
 
@@ -67,7 +67,7 @@ class ScriptedAgents:
     scenes: "count[int]" = field(default_factory=lambda: count(1))
 
     async def run(
-        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
     ) -> RunResult:
         del tools
         spoken = Spoken(role=role, prompt=prompt, answer="")

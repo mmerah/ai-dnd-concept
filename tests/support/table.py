@@ -21,7 +21,7 @@ from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.engine import AnyEngine
 from aidm.engines.registry import build_engines
-from aidm.turn import Tools
+from aidm.turn import Turn
 
 # One tool call as a scripted game master makes it.
 type Call = tuple[str, dict[str, JsonValue]]
@@ -121,7 +121,7 @@ class ScriptedSpawner:
     hooks: list[Callable[[Role, str], Awaitable[None]]] = field(default_factory=list)
 
     async def run(
-        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
     ) -> RunResult:
         del conversation, tools
         for hook in self.hooks:

@@ -1,4 +1,6 @@
+import asyncio
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 import pytest
@@ -94,19 +96,29 @@ async def test_a_prompt_over_the_cap_is_refused_before_any_command_is_built() ->
         )
 
 
-async def test_a_crashed_roles_raw_output_never_reaches_the_player(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def _faked(output: bytes, returncode: int) -> Callable[..., Awaitable[object]]:
     class FakeProcess:
-        returncode = 3
+        def __init__(self) -> None:
+            self.returncode = returncode
+            self.stdout = asyncio.StreamReader()
+            self.stdout.feed_data(output)
+            self.stdout.feed_eof()
 
-        async def communicate(self) -> tuple[bytes, bytes]:
-            return b"HIDDEN HERE the arc", b""
+        async def wait(self) -> int:
+            return returncode
 
     async def fake_create(*_argv: str, **_kwargs: object) -> FakeProcess:
         return FakeProcess()
 
-    monkeypatch.setattr(spawn.subprocess, "create_subprocess_exec", fake_create)
+    return fake_create
+
+
+async def test_a_crashed_roles_raw_output_never_reaches_the_player(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        spawn.subprocess, "create_subprocess_exec", _faked(b"HIDDEN HERE the arc", 3)
+    )
     config = RoleConfig(model="opus", effort="high")
 
     with pytest.raises(Refusal, match="master exited 3") as failed:
@@ -155,3 +167,12 @@ def test_the_child_environment_holds_nothing_but_the_allowlist(
     assert "A_KEY_NO_ROLE_SHOULD_SEE" not in env
     assert env["PATH"] == "/bin"
     assert env["ANTHROPIC_API_KEY"] == "k"
+
+
+async def test_a_role_that_floods_its_output_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(spawn, "OUTPUT_MAX_BYTES", 16)
+    monkeypatch.setattr(spawn.subprocess, "create_subprocess_exec", _faked(b"x" * 64, 0))
+    config = RoleConfig(model="opus", effort="high")
+
+    with pytest.raises(Refusal, match="master printed more than 16 bytes"):
+        _ = await run_cli("master", config, _StubDriver(("aidm-flooding",)), 1, "PLAY", None)

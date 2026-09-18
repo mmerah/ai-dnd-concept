@@ -1,3 +1,4 @@
+import logging
 from typing import Literal
 
 from httpx import HTTPError, HTTPStatusError
@@ -8,7 +9,9 @@ from aidm.config import ProviderConfig, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse_json
 from aidm.core.io import decode
 from aidm.core.tools import MasterTool, schema_of
-from aidm.turn import Tools
+from aidm.turn import Turn
+
+LOGGER = logging.getLogger(__name__)
 
 
 class _Echoed(BaseModel):
@@ -48,7 +51,7 @@ class _Completion(Loose):
 
 
 async def run_builtin(
-    role: Role, config: RoleConfig, provider: ProviderConfig, prompt: str, tools: Tools | None
+    role: Role, config: RoleConfig, provider: ProviderConfig, prompt: str, tools: Turn | None
 ) -> tuple[str, int]:
     """Stateless: nothing resumes, and a retry sends the whole prompt again."""
     try:
@@ -59,7 +62,7 @@ async def run_builtin(
 
 
 async def _converse(
-    role: Role, config: RoleConfig, provider: ProviderConfig, prompt: str, tools: Tools | None
+    role: Role, config: RoleConfig, provider: ProviderConfig, prompt: str, tools: Turn | None
 ) -> tuple[str, int]:
     messages: list[JsonValue] = [{"role": "user", "content": prompt}]
     published: list[JsonValue] = (
@@ -82,7 +85,7 @@ async def _converse(
     )
 
 
-def _answer(tools: Tools, call: _ToolCall) -> str:
+def _answer(tools: Turn, call: _ToolCall) -> str:
     """A refusal is a result the model reads and continues from, not an error."""
     try:
         return tools.call(call.function.name, decode(call.function.arguments))
@@ -122,5 +125,8 @@ def _declared(tool: MasterTool) -> JsonValue:
 
 def _detail(failed: HTTPError) -> str:
     if isinstance(failed, HTTPStatusError):
-        return f"{failed.response.status_code}: {failed.response.text[-500:]}"
+        status, body = failed.response.status_code, failed.response.text.strip()
+        LOGGER.warning("the provider answered %s: %s", status, body)
+        first = body.splitlines()[0][:120] if body else ""
+        return f"{status}: {first}" if first else str(status)
     return str(failed)

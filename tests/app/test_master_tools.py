@@ -217,9 +217,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
         pid = 1234
         returncode = None
 
-        async def communicate(self) -> tuple[bytes, bytes]:
-            await asyncio.Future()
-            return b"", b""
+        stdout = asyncio.StreamReader()
 
         async def wait(self) -> int:
             reaped.append(self.pid)

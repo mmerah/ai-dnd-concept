@@ -1,8 +1,8 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from random import Random
-from typing import Protocol, Self
+from typing import Self
 
 from pydantic import JsonValue
 
@@ -26,11 +26,6 @@ ANSWERED_BY_OPTION = (
 NO_TURN = "no turn is open. The player starts a turn from the page. Wait until you start again."
 GAME_OVER = "The game is over. The player restarts from the page."
 RESTART = "The game continues only after a restart."
-
-
-class Tools(Protocol):
-    def published_tools(self) -> Sequence[MasterTool]: ...
-    def call(self, name: str, raw: JsonValue) -> str: ...
 
 
 @dataclass(slots=True, kw_only=True)

@@ -1,6 +1,6 @@
 import json
 import logging
-from asyncio import shield, subprocess, timeout
+from asyncio import IncompleteReadError, StreamReader, shield, subprocess, timeout
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
@@ -15,13 +15,14 @@ from pydantic import Field, ValidationError
 from aidm.app.builtin import run_builtin
 from aidm.config import CliProvider, Role, RoleConfig, Settings
 from aidm.core.entities import Loose, Refusal, parse_json
-from aidm.turn import Tools
+from aidm.turn import Turn
 
 LOGGER = logging.getLogger(__name__)
 
 # The child gets nothing else: the parent shell may hold keys no role may see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
 PROMPT_MAX_BYTES = 131_072  # Linux MAX_ARG_STRLEN: the prompt is one argv element
+OUTPUT_MAX_BYTES = 4_194_304  # a role answer is kilobytes; a runaway CLI streams without end
 # The id goes back as an argv element; a leading `-` must not parse as a flag.
 ConversationId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")]
 
@@ -46,7 +47,7 @@ class Driver(Protocol):
 
 class Spawner(Protocol):
     async def run(
-        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
     ) -> RunResult: ...
 
 
@@ -155,7 +156,7 @@ class RoleRunner:
     settings: Settings
 
     async def run(
-        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Turn | None = None
     ) -> RunResult:
         config = self.settings.roles.for_name(role)
         started = monotonic()
@@ -251,11 +252,11 @@ async def _spawn(
     except OSError as failed:
         raise Refusal(f"the {role} could not be started: {failed}") from failed
     try:
-        streamed = await process.communicate()
+        output = "" if process.stdout is None else await _capped(role, process.stdout)
+        _ = await process.wait()
     finally:
         # Does nothing once it exited; an abandoned or timed-out spawn dies with its children.
         await _kill(process)
-    output = streamed[0].decode(errors="replace")
     if process.returncode != 0:
         LOGGER.warning("the %s exited %s: %s", role, process.returncode, output[-500:])
         raise Refusal(f"the {role} exited {process.returncode}")
@@ -283,6 +284,15 @@ def _said(events: Sequence[_CodexEvent]) -> str | None:
         if event.item is not None and event.item.type == "agent_message" and event.item.text
     )
     return next(spoken, None)
+
+
+async def _capped(role: Role, stdout: StreamReader) -> str:
+    """Stderr is merged into stdout, so the cap covers both."""
+    try:
+        _ = await stdout.readexactly(OUTPUT_MAX_BYTES + 1)
+    except IncompleteReadError as ended:
+        return ended.partial.decode(errors="replace")
+    raise Refusal(f"the {role} printed more than {OUTPUT_MAX_BYTES} bytes")
 
 
 async def _kill(process: subprocess.Process) -> None:
