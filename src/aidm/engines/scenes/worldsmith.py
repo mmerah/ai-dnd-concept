@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.prompt import Sections
-from aidm.engines.base import Person, Thing, leaked_names, named_unmet, required_unmet
+from aidm.engines.base import Person, Thing, leaked_names, named_unmet, required_needs
 from aidm.engines.scenes.world import SceneProposal, SceneWorld, resolved_id
 
 OPENING_SECTIONS: Sections = (
@@ -45,11 +45,11 @@ MEANWHILE_NUDGE = (
 
 def check_scene[C: Person](draft: SceneProposal[C], world: SceneWorld[C] | None = None) -> None:
     """The world is optional: the authoring call has no world yet."""
-    if unmet := _scene_unmet(draft, world):
-        raise Refusal("the scene needs " + "; ".join(unmet))
+    if needs := _scene_needs(draft, world):
+        raise Refusal("the scene needs " + "; ".join(needs))
 
 
-def _scene_unmet[C: Person](draft: SceneProposal[C], world: SceneWorld[C] | None) -> list[str]:
+def _scene_needs[C: Person](draft: SceneProposal[C], world: SceneWorld[C] | None) -> list[str]:
     """Every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[Slug, C] = {} if world is None else world.cast
     everyone: Mapping[Slug, Thing] = (
@@ -67,35 +67,35 @@ def _scene_unmet[C: Person](draft: SceneProposal[C], world: SceneWorld[C] | None
     hidden = [
         entity_id for name in draft.hidden if (entity_id := resolved_id(name, everyone)) is not None
     ]
-    unmet: list[str] = []
+    needs: list[str] = []
     if named := sorted(name for name in others if resolved_id(name, everyone) in followers):
-        unmet.append(
+        needs.append(
             "a scene that does not list the player or the party; "
             f"they are put there by code: {named}"
         )
     if stray := sorted(name for name in others if resolved_id(name, everyone) is None):
-        unmet.append(f"ids that exist; these name nobody: {stray}")
+        needs.append(f"ids that exist; these name nobody: {stray}")
     if overlap := sorted(set(present) & set(hidden)):
-        unmet.append(f"nobody listed as both present and hidden: {overlap}")
+        needs.append(f"nobody listed as both present and hidden: {overlap}")
     if world is not None and world.player.id in draft.cast:
-        unmet.append("a cast that never rewrites the player")
+        needs.append("a cast that never rewrites the player")
     if misfiled := [
         f"{entry.id!r} is filed under {key!r}"
         for key, entry in draft.cast.items()
         if key != entry.id
     ]:
-        unmet.append("cast entries under their own id: " + "; ".join(misfiled))
-    if broken := required_unmet(draft.cast, filed):
-        unmet.append(f"cast members as the worldsmith may write them: {broken}")
+        needs.append("cast entries under their own id: " + "; ".join(misfiled))
+    if broken := required_needs(draft.cast, filed):
+        needs.append(f"cast members as the worldsmith may write them: {broken}")
     read = "\n".join((draft.title, draft.focus, draft.situation))
     watched = [entry for entry in everyone.values() if not entry.known and entry.id not in present]
     scanned = (everyone[entity_id] for entity_id in (*present, *followers, *hidden))
     hidden_entries = [everyone[entity_id] for entity_id in hidden]
     leaked = leaked_names(read, scanned, hidden_entries) | set(named_unmet(read, watched))
     if named := sorted(leaked):
-        unmet.append(f"a scene that does not name what the player has not met: {named}")
+        needs.append(f"a scene that does not name what the player has not met: {named}")
     if met := sorted(
         entity_id for entity_id in set(hidden) - set(followers) if everyone[entity_id].known
     ):
-        unmet.append(f"a hidden list without {met}, whom the player has already met")
-    return unmet
+        needs.append(f"a hidden list without {met}, whom the player has already met")
+    return needs

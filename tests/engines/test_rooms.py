@@ -20,8 +20,8 @@ from aidm.engines.packs import SRD_PACK, PackSet
 from aidm.engines.rooms.tools import ELSEWHERE, MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN
 from aidm.engines.rooms.world import MapProposal, Prop, Way
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
+from aidm.engines.tunnelgoons.pack import TunnelGoonsPack
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
-from aidm.engines.tunnelgoons.worldsmith import TunnelGoonsPack
 
 
 def test_a_room_game_shows_its_place_and_its_ways_out() -> None:
@@ -30,7 +30,7 @@ def test_a_room_game_shows_its_place_and_its_ways_out() -> None:
     ways_out = next(
         panel for panel in ENGINE.player_view(begun_room).panels if panel.title == "Ways out"
     )
-    assert [row.label for row in ways_out.rows] == ["Yard"]
+    assert [row.name for row in ways_out.rows] == ["Yard"]
     begun_room.world.move(YARD, ())
     assert begun_room.world.visits == [GATE, YARD]
 
@@ -375,8 +375,8 @@ def test_the_arc_reaches_the_master_and_the_worldsmith_and_nobody_else() -> None
     arc = "The Warden answers to the Gremlin Queen."
     begun_room.world.arc = arc
 
-    written = ENGINE.render_request(
-        begun_room, intent="More map.", guidance="", answer=MapProposal[Npc]
+    written = ENGINE.render_commission(
+        begun_room, intent="More map.", guidance="", answer_model=MapProposal[Npc]
     )
 
     assert arc in str(ENGINE.master_sections(begun_room))

@@ -63,29 +63,29 @@ class ScriptedAgents:
     faults: dict[Role, list[Fault]] = field(default_factory=dict)
     log: list[Spoken] = field(default_factory=list)
     # The first prompt of each session: a resumed CLI still holds it, so a retry reads it too.
-    sessions: dict[str, str] = field(default_factory=dict)
+    conversations: dict[str, str] = field(default_factory=dict)
     scenes: "count[int]" = field(default_factory=lambda: count(1))
 
     async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
     ) -> RunResult:
         del tools
         spoken = Spoken(role=role, prompt=prompt, answer="")
         self.log.append(spoken)
-        if session is None:
+        if conversation is None:
             first = asked = prompt
         else:
-            first = self.sessions[session]
+            first = self.conversations[conversation]
             asked = f"{first}\n\n{prompt}"
-        session_id = f"{role}-{len(self.log)}"
-        self.sessions[session_id] = first
+        conversation_id = f"{role}-{len(self.log)}"
+        self.conversations[conversation_id] = first
         await sleep(self.delay)
         try:
             spoken.answer = await self._answer(role, asked, spoken)
         except (OSError, Refusal) as failed:
             spoken.error = f"{type(failed).__name__}: {failed}"
             raise
-        return RunResult(spoken.answer, session_id)
+        return RunResult(spoken.answer, conversation_id)
 
     async def _answer(self, role: Role, prompt: str, spoken: Spoken) -> str:
         armed = self.faults.get(role, [])

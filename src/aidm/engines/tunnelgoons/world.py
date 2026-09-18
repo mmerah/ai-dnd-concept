@@ -180,8 +180,8 @@ def level_up_decision(actor: Goon | Npc) -> PendingDecision:
     options = tuple(
         PendingOption(
             id=f"{ability}-{boost}",
-            label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
-            name="level_up",
+            name=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
+            tool_name="level_up",
             args={"ability": ability, "boost": boost, "actor_id": actor.id},
         )
         for ability in ABILITIES

@@ -121,14 +121,14 @@ class ScriptedSpawner:
     hooks: list[Callable[[Role, str], Awaitable[None]]] = field(default_factory=list)
 
     async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
     ) -> RunResult:
-        del session, tools
+        del conversation, tools
         for hook in self.hooks:
             await hook(role, prompt)
         self.prompts.append((role, prompt))
-        # A session every time, so a test exercises the resumed path the real CLIs take.
-        spoke = partial(RunResult, session=f"{role}-1")
+        # A conversation every time, so a test exercises the resumed path the real CLIs take.
+        spoke = partial(RunResult, conversation=f"{role}-1")
         if role == "master":
             if self.turns:
                 self.turns.pop(0)()

@@ -29,8 +29,8 @@ from aidm.core.model import ScenarioMeta
 from aidm.core.play import DecisionOption
 from aidm.engines.engine import AnyEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.pack import Loner3ePack
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.engines.loner3e.worldsmith import Loner3ePack
 from aidm.engines.registry import build_engines
 
 MIRROR = EngineId("mirror")
@@ -86,7 +86,7 @@ def _retitled(tmp_path: Path) -> Path:
 def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     catalog = _catalog(offline_settings(tmp_path), ENGINES_BUILT)
 
-    assert catalog.scenario("whispering-vault").label == "The Whispering Vault"
+    assert catalog.scenario("whispering-vault").name == "The Whispering Vault"
     assert [(entry.id, entry.engine) for entry in catalog.characters] == KAEL_FOR_EACH
     assert catalog.target("whispering-vault", "kael") == TARGET
 
@@ -130,10 +130,10 @@ def test_the_catalog_lists_shipped_and_written_packs(tmp_path: Path) -> None:
         name="Mine",
         source="",
         license="",
-        concepts=(DecisionOption(id="concept", label="Concept"),),
-        skills=(DecisionOption(id="skill", label="Skill"),),
-        frailties=(DecisionOption(id="frailty", label="Frailty"),),
-        gear=(DecisionOption(id="gear", label="Gear"),),
+        concepts=(DecisionOption(id="concept", name="Concept"),),
+        skills=(DecisionOption(id="skill", name="Skill"),),
+        frailties=(DecisionOption(id="frailty", name="Frailty"),),
+        gear=(DecisionOption(id="gear", name="Gear"),),
     )
     (written / "mine.json").write_text(mine.model_dump_json(), encoding=ENCODING)
 

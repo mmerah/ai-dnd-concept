@@ -4,7 +4,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Mutable, Refusal, Slug, slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug, slug, tag_of
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows, filled
@@ -82,7 +82,7 @@ class CrewSheet(Mutable):
     specialty: str
     origin: str = ""  # empty on a hired member: the worldsmith writes no origin
     traits: tuple[str, ...] = ()  # an alien's two; an android's body
-    skills: dict[str, SkillDie] = Field(default_factory=dict)  # keyed by the pack label
+    skills: dict[str, SkillDie] = Field(default_factory=dict)  # keyed by the pack skill's name
     credits: int = Field(default=STARTING_CREDITS, ge=0)
     hindrances: list[str] = Field(default_factory=list)
 
@@ -102,8 +102,7 @@ class CrewSheet(Mutable):
 
     def gear_text(self, *, ids: bool = False) -> str:
         return ", ".join(
-            item.name
-            + (f"[{key}]" if ids else "")
+            (tag_of(item.name, key) if ids else item.name)
             + (f" ({notes})" if (notes := item.notes()) else "")
             for key, item in self.items.items()
         )
@@ -215,17 +214,13 @@ class Crewmate(Person):
             )
         ]
 
-    def raise_skill(self, label: str) -> list[Fact]:
+    def raise_skill(self, skill: str) -> list[Fact]:
         sheet = self.require_sheet()
-        try:
-            new_die = raised(sheet.skills.get(label))
-        except Refusal as maxed:
-            raise Refusal(
-                f"{self.name}'s {label} is already at d12; raise another skill for them"
-            ) from maxed
-        sheet.skills[label] = new_die
-        trace = f"{self.mention} — {label} rises to d{new_die}"
-        return [self.fact(trace, card=self.card_line(f"Job done: {label} d{new_die}"))]
+        if (new_die := raised(sheet.skills.get(skill))) is None:
+            raise Refusal(f"{self.name}'s {skill} is already at d12; raise another skill for them")
+        sheet.skills[skill] = new_die
+        trace = f"{self.mention} — {skill} rises to d{new_die}"
+        return [self.fact(trace, card=self.card_line(f"Job done: {skill} d{new_die}"))]
 
     def earn(self, credits: int, event: DiceEvent) -> list[Fact]:
         sheet = self.require_sheet()
@@ -392,9 +387,10 @@ TwentyfourxxScenario = Scenario[SceneProposal[Crewmate]]
 TwentyfourxxCharacter = Character[Crewmate]
 
 
-def raised(current: SkillDie | None) -> SkillDie:
+def raised(current: SkillDie | None) -> SkillDie | None:
+    """The next step of the ladder; None once a skill stands at d12."""
     if current is None:
         return LADDER[0]
     if current == LADDER[-1]:
-        raise Refusal("the skill is already at d12")
+        return None
     return LADDER[LADDER.index(current) + 1]

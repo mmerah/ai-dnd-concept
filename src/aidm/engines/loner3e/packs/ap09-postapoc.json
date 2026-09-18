@@ -161,33 +161,33 @@
   "rules": "The Eden Fallout:\n\nRadiation isn’t just background noise — it’s the air you breathe, the dust on your skin, and the voice in your blood. Any time your Protagonist lingers in a red zone, digs into old biotech ruins, or crosses a fallout storm, **ask the Oracle**: *Does the exposure leave a mark?*\n\n* A **Yes** means you gain a temporary or permanent **Mutation Tag**.\n* A **No, but…** may mean sickness, weakness, or hallucinations.\n* Treatments are rare and unreliable. When you attempt to treat radiation symptoms, **ask the Oracle** if the method is effective — most “cures” are pre-Collapse myths or poison in a vial.\n\n> **NOTE**\n> *Mutation Tags* should reflect the unnatural evolution of life in the wasteland.\n> Examples: `Bioluminescent Veins`, `Bone Bark Armor`, `Photosynthetic Skin`, `Echo Sense`.\n\nSurvival at the Brink:\n\nResources are not tracked — they’re **story drivers**. You have what you need *until the world says you don’t*. Whenever your character uses up food, water, fuel, or ammo in a risky context, **ask the Oracle**: *Do you still have enough?*\n\n* If the answer is **No**, narrate what went wrong — spoiled rations, burst canisters, power drains — and improvise a new plan.\n* Certain Tags (like `Scavenger Instinct` or `Jury-Rigged Solar Still`) may give you Advantage.\n\n> **EXAMPLE**\n> You fire your last flare into the night, hoping to blind the oncoming beast.\n> Ask the Oracle: *Do I have more flares?*\n> *No* — and the pack is already circling.\n\nFaction Instability:\n\nNo one rules the Wastes — but many try. When you interact with a faction (militias, trade caravans, cults, etc.), **ask the Oracle**: *How do they respond?*\n\n* Consider your Tags and theirs. If you're branded by a rival clan, expect hostility.\n* Roll again if the faction is internally split or operating under stress — betrayal and negotiation often go hand in hand.\n\n> **NOTE**\n> *Faction Tags* are optional but useful.\n> Examples: `Water Tithers`, `Bullet Gospel Evangelists`, `Sunfoil Syndicate`, `Cracked Dome Alliance`.\n\n> **EXAMPLE**\n> You meet a trader with a Sunfoil armband and offer them half your ammo for clean water.\n> Ask the Oracle: *Do they agree?*\n> *Yes, and —* they warn you of a nearby fallout storm for free.",
   "locations": [
     {
-      "label": "Vault Theta-7",
-      "detail": "A fractured biotech military facility buried beneath a collapsed hill range. Still echoes with malfunctioning security drones and containment anomalies.",
+      "name": "Vault Theta-7",
+      "brief": "A fractured biotech military facility buried beneath a collapsed hill range. Still echoes with malfunctioning security drones and containment anomalies.",
       "encounters": "Defense remnants, relic hunters, mutagen leaks"
     },
     {
-      "label": "Glowfen Market",
-      "detail": "A geothermal spring-turned-trading post, surrounded by glowing vine-lattices. Its warmth draws both barter caravans and parasitic fauna.",
+      "name": "Glowfen Market",
+      "brief": "A geothermal spring-turned-trading post, surrounded by glowing vine-lattices. Its warmth draws both barter caravans and parasitic fauna.",
       "encounters": "Traders, resource cults, water rustlers"
     },
     {
-      "label": "Thornepost Bastion",
-      "detail": "A repurposed rail hub, now a scrap-metal fortress bristling with solar arrays. Controlled by a militia faction obsessed with purity and control.",
+      "name": "Thornepost Bastion",
+      "brief": "A repurposed rail hub, now a scrap-metal fortress bristling with solar arrays. Controlled by a militia faction obsessed with purity and control.",
       "encounters": "Patrols, inquisitors, smugglers in disguise"
     },
     {
-      "label": "The Pale Expanse",
-      "detail": "A dead, sun-bleached stretch of fallout desert crusted with bone-pale ash. Tech warps in the dust storms; time seems to skip or stall.",
+      "name": "The Pale Expanse",
+      "brief": "A dead, sun-bleached stretch of fallout desert crusted with bone-pale ash. Tech warps in the dust storms; time seems to skip or stall.",
       "encounters": "Wanderers, ghost cults, terra-warped predators"
     },
     {
-      "label": "Underdrift Warren",
-      "detail": "A labyrinth of silos, drains, and vault-burrows repurposed into a thriving black market. Lit by fungal glow and solar foil, it's a haven for the desperate and the clever.",
+      "name": "Underdrift Warren",
+      "brief": "A labyrinth of silos, drains, and vault-burrows repurposed into a thriving black market. Lit by fungal glow and solar foil, it's a haven for the desperate and the clever.",
       "encounters": "Info brokers, rogue biotechs, hive-gangs"
     },
     {
-      "label": "The Crimson Verge",
-      "detail": "A twisted forest of red-barked trees, mutated roots, and phosphorescent undergrowth. The air pulses faintly; things *grow* even when unwatched.",
+      "name": "The Crimson Verge",
+      "brief": "A twisted forest of red-barked trees, mutated roots, and phosphorescent undergrowth. The air pulses faintly; things *grow* even when unwatched.",
       "encounters": "Spore-beasts, gene-scientists, Verdancy pilgrims"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "ash-eater-prophet",
-      "label": "Ash-Eater Prophet",
-      "detail": ""
+      "name": "Ash-Eater Prophet",
+      "brief": ""
     },
     {
       "id": "bonepicker-scavenger",
-      "label": "Bonepicker Scavenger",
-      "detail": ""
+      "name": "Bonepicker Scavenger",
+      "brief": ""
     },
     {
       "id": "wasteland-sniper",
-      "label": "Wasteland Sniper",
-      "detail": ""
+      "name": "Wasteland Sniper",
+      "brief": ""
     },
     {
       "id": "glow-touched-mystic",
-      "label": "Glow-Touched Mystic",
-      "detail": ""
+      "name": "Glow-Touched Mystic",
+      "brief": ""
     },
     {
       "id": "railcar-nomad",
-      "label": "Railcar Nomad",
-      "detail": ""
+      "name": "Railcar Nomad",
+      "brief": ""
     },
     {
       "id": "chain-gang-escapee",
-      "label": "Chain-Gang Escapee",
-      "detail": ""
+      "name": "Chain-Gang Escapee",
+      "brief": ""
     },
     {
       "id": "radiation-forager",
-      "label": "Radiation Forager",
-      "detail": ""
+      "name": "Radiation Forager",
+      "brief": ""
     },
     {
       "id": "solar-tech-salvager",
-      "label": "Solar Tech Salvager",
-      "detail": ""
+      "name": "Solar Tech Salvager",
+      "brief": ""
     },
     {
       "id": "dustborn-raider",
-      "label": "Dustborn Raider",
-      "detail": ""
+      "name": "Dustborn Raider",
+      "brief": ""
     },
     {
       "id": "iron-voiced-preacher",
-      "label": "Iron-Voiced Preacher",
-      "detail": ""
+      "name": "Iron-Voiced Preacher",
+      "brief": ""
     },
     {
       "id": "plague-mask-alchemist",
-      "label": "Plague Mask Alchemist",
-      "detail": ""
+      "name": "Plague Mask Alchemist",
+      "brief": ""
     },
     {
       "id": "hollow-eyed-sentinel",
-      "label": "Hollow-Eyed Sentinel",
-      "detail": ""
+      "name": "Hollow-Eyed Sentinel",
+      "brief": ""
     },
     {
       "id": "scrap-surgeon",
-      "label": "Scrap Surgeon",
-      "detail": ""
+      "name": "Scrap Surgeon",
+      "brief": ""
     },
     {
       "id": "stormrider-outcast",
-      "label": "Stormrider Outcast",
-      "detail": ""
+      "name": "Stormrider Outcast",
+      "brief": ""
     },
     {
       "id": "scar-marked-gladiator",
-      "label": "Scar-Marked Gladiator",
-      "detail": ""
+      "name": "Scar-Marked Gladiator",
+      "brief": ""
     },
     {
       "id": "doom-whisperer",
-      "label": "Doom Whisperer",
-      "detail": ""
+      "name": "Doom Whisperer",
+      "brief": ""
     },
     {
       "id": "tunnelborne-smuggler",
-      "label": "Tunnelborne Smuggler",
-      "detail": ""
+      "name": "Tunnelborne Smuggler",
+      "brief": ""
     },
     {
       "id": "rotborn-cultist",
-      "label": "Rotborn Cultist",
-      "detail": ""
+      "name": "Rotborn Cultist",
+      "brief": ""
     },
     {
       "id": "gearwitch-mechanic",
-      "label": "Gearwitch Mechanic",
-      "detail": ""
+      "name": "Gearwitch Mechanic",
+      "brief": ""
     },
     {
       "id": "crater-faced-tracker",
-      "label": "Crater-Faced Tracker",
-      "detail": ""
+      "name": "Crater-Faced Tracker",
+      "brief": ""
     },
     {
       "id": "tox-runner",
-      "label": "Tox-Runner",
-      "detail": ""
+      "name": "Tox-Runner",
+      "brief": ""
     },
     {
       "id": "junkyard-warlord",
-      "label": "Junkyard Warlord",
-      "detail": ""
+      "name": "Junkyard Warlord",
+      "brief": ""
     },
     {
       "id": "blight-reaper",
-      "label": "Blight-Reaper",
-      "detail": ""
+      "name": "Blight-Reaper",
+      "brief": ""
     },
     {
       "id": "revenant-drifter",
-      "label": "Revenant Drifter",
-      "detail": ""
+      "name": "Revenant Drifter",
+      "brief": ""
     },
     {
       "id": "mushroom-druid",
-      "label": "Mushroom Druid",
-      "detail": ""
+      "name": "Mushroom Druid",
+      "brief": ""
     },
     {
       "id": "blood-bonded-mercenary",
-      "label": "Blood-Bonded Mercenary",
-      "detail": ""
+      "name": "Blood-Bonded Mercenary",
+      "brief": ""
     },
     {
       "id": "acid-burnt-bard",
-      "label": "Acid-Burnt Bard",
-      "detail": ""
+      "name": "Acid-Burnt Bard",
+      "brief": ""
     },
     {
       "id": "ghost-of-the-highway",
-      "label": "Ghost of the Highway",
-      "detail": ""
+      "name": "Ghost of the Highway",
+      "brief": ""
     },
     {
       "id": "sand-skulled-scrounger",
-      "label": "Sand-Skulled Scrounger",
-      "detail": ""
+      "name": "Sand-Skulled Scrounger",
+      "brief": ""
     },
     {
       "id": "cracked-circuit-cyborg",
-      "label": "Cracked-Circuit Cyborg",
-      "detail": ""
+      "name": "Cracked-Circuit Cyborg",
+      "brief": ""
     },
     {
       "id": "memory-lost-hermit",
-      "label": "Memory-Lost Hermit",
-      "detail": ""
+      "name": "Memory-Lost Hermit",
+      "brief": ""
     },
     {
       "id": "skyglass-collector",
-      "label": "Skyglass Collector",
-      "detail": ""
+      "name": "Skyglass Collector",
+      "brief": ""
     },
     {
       "id": "beastspeaker-vagabond",
-      "label": "Beastspeaker Vagabond",
-      "detail": ""
+      "name": "Beastspeaker Vagabond",
+      "brief": ""
     },
     {
       "id": "feral-hive-witch",
-      "label": "Feral Hive-Witch",
-      "detail": ""
+      "name": "Feral Hive-Witch",
+      "brief": ""
     },
     {
       "id": "pipe-town-trader",
-      "label": "Pipe-Town Trader",
-      "detail": ""
+      "name": "Pipe-Town Trader",
+      "brief": ""
     },
     {
       "id": "vaultborn-exile",
-      "label": "Vaultborn Exile",
-      "detail": ""
+      "name": "Vaultborn Exile",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "scavenging",
-      "label": "Scavenging",
-      "detail": ""
+      "name": "Scavenging",
+      "brief": ""
     },
     {
       "id": "survival-instinct",
-      "label": "Survival Instinct",
-      "detail": ""
+      "name": "Survival Instinct",
+      "brief": ""
     },
     {
       "id": "marksmanship",
-      "label": "Marksmanship",
-      "detail": ""
+      "name": "Marksmanship",
+      "brief": ""
     },
     {
       "id": "tracking",
-      "label": "Tracking",
-      "detail": ""
+      "name": "Tracking",
+      "brief": ""
     },
     {
       "id": "radiation-sense",
-      "label": "Radiation Sense",
-      "detail": ""
+      "name": "Radiation Sense",
+      "brief": ""
     },
     {
       "id": "melee-brutality",
-      "label": "Melee Brutality",
-      "detail": ""
+      "name": "Melee Brutality",
+      "brief": ""
     },
     {
       "id": "tech-jury-rigging",
-      "label": "Tech Jury-Rigging",
-      "detail": ""
+      "name": "Tech Jury-Rigging",
+      "brief": ""
     },
     {
       "id": "herbal-alchemy",
-      "label": "Herbal Alchemy",
-      "detail": ""
+      "name": "Herbal Alchemy",
+      "brief": ""
     },
     {
       "id": "beast-communication",
-      "label": "Beast Communication",
-      "detail": ""
+      "name": "Beast Communication",
+      "brief": ""
     },
     {
       "id": "shadowing",
-      "label": "Shadowing",
-      "detail": ""
+      "name": "Shadowing",
+      "brief": ""
     },
     {
       "id": "toxin-brewing",
-      "label": "Toxin Brewing",
-      "detail": ""
+      "name": "Toxin Brewing",
+      "brief": ""
     },
     {
       "id": "urban-navigation",
-      "label": "Urban Navigation",
-      "detail": ""
+      "name": "Urban Navigation",
+      "brief": ""
     },
     {
       "id": "foraging",
-      "label": "Foraging",
-      "detail": ""
+      "name": "Foraging",
+      "brief": ""
     },
     {
       "id": "improvised-traps",
-      "label": "Improvised Traps",
-      "detail": ""
+      "name": "Improvised Traps",
+      "brief": ""
     },
     {
       "id": "firearms-handling",
-      "label": "Firearms Handling",
-      "detail": ""
+      "name": "Firearms Handling",
+      "brief": ""
     },
     {
       "id": "first-aid",
-      "label": "First Aid",
-      "detail": ""
+      "name": "First Aid",
+      "brief": ""
     },
     {
       "id": "cryptic-lore",
-      "label": "Cryptic Lore",
-      "detail": ""
+      "name": "Cryptic Lore",
+      "brief": ""
     },
     {
       "id": "explosive-handling",
-      "label": "Explosive Handling",
-      "detail": ""
+      "name": "Explosive Handling",
+      "brief": ""
     },
     {
       "id": "night-vision",
-      "label": "Night Vision",
-      "detail": ""
+      "name": "Night Vision",
+      "brief": ""
     },
     {
       "id": "lockpicking",
-      "label": "Lockpicking",
-      "detail": ""
+      "name": "Lockpicking",
+      "brief": ""
     },
     {
       "id": "mutant-handling",
-      "label": "Mutant Handling",
-      "detail": ""
+      "name": "Mutant Handling",
+      "brief": ""
     },
     {
       "id": "trap-disarming",
-      "label": "Trap Disarming",
-      "detail": ""
+      "name": "Trap Disarming",
+      "brief": ""
     },
     {
       "id": "bartering",
-      "label": "Bartering",
-      "detail": ""
+      "name": "Bartering",
+      "brief": ""
     },
     {
       "id": "stealth-movement",
-      "label": "Stealth Movement",
-      "detail": ""
+      "name": "Stealth Movement",
+      "brief": ""
     },
     {
       "id": "salvage-appraisal",
-      "label": "Salvage Appraisal",
-      "detail": ""
+      "name": "Salvage Appraisal",
+      "brief": ""
     },
     {
       "id": "mutagen-resistance",
-      "label": "Mutagen Resistance",
-      "detail": ""
+      "name": "Mutagen Resistance",
+      "brief": ""
     },
     {
       "id": "psyche-manipulation",
-      "label": "Psyche Manipulation",
-      "detail": ""
+      "name": "Psyche Manipulation",
+      "brief": ""
     },
     {
       "id": "cooking-from-scraps",
-      "label": "Cooking from Scraps",
-      "detail": ""
+      "name": "Cooking from Scraps",
+      "brief": ""
     },
     {
       "id": "hacking-old-systems",
-      "label": "Hacking Old Systems",
-      "detail": ""
+      "name": "Hacking Old Systems",
+      "brief": ""
     },
     {
       "id": "riding-mount-or-rig",
-      "label": "Riding (Mount or Rig)",
-      "detail": ""
+      "name": "Riding (Mount or Rig)",
+      "brief": ""
     },
     {
       "id": "metalcraft",
-      "label": "Metalcraft",
-      "detail": ""
+      "name": "Metalcraft",
+      "brief": ""
     },
     {
       "id": "ambush-tactics",
-      "label": "Ambush Tactics",
-      "detail": ""
+      "name": "Ambush Tactics",
+      "brief": ""
     },
     {
       "id": "intimidation",
-      "label": "Intimidation",
-      "detail": ""
+      "name": "Intimidation",
+      "brief": ""
     },
     {
       "id": "language-of-the-olds",
-      "label": "Language of the Olds",
-      "detail": ""
+      "name": "Language of the Olds",
+      "brief": ""
     },
     {
       "id": "shelter-building",
-      "label": "Shelter Building",
-      "detail": ""
+      "name": "Shelter Building",
+      "brief": ""
     },
     {
       "id": "ritual-channeling",
-      "label": "Ritual Channeling",
-      "detail": ""
+      "name": "Ritual Channeling",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "radiation-scars",
-      "label": "Radiation Scars",
-      "detail": ""
+      "name": "Radiation Scars",
+      "brief": ""
     },
     {
       "id": "tainted-blood",
-      "label": "Tainted Blood",
-      "detail": ""
+      "name": "Tainted Blood",
+      "brief": ""
     },
     {
       "id": "mutation-addiction",
-      "label": "Mutation Addiction",
-      "detail": ""
+      "name": "Mutation Addiction",
+      "brief": ""
     },
     {
       "id": "paranoia",
-      "label": "Paranoia",
-      "detail": ""
+      "name": "Paranoia",
+      "brief": ""
     },
     {
       "id": "flashbacks-to-the-fall",
-      "label": "Flashbacks to the Fall",
-      "detail": ""
+      "name": "Flashbacks to the Fall",
+      "brief": ""
     },
     {
       "id": "self-destructive-urges",
-      "label": "Self-Destructive Urges",
-      "detail": ""
+      "name": "Self-Destructive Urges",
+      "brief": ""
     },
     {
       "id": "cracked-psyche",
-      "label": "Cracked Psyche",
-      "detail": ""
+      "name": "Cracked Psyche",
+      "brief": ""
     },
     {
       "id": "flesh-rot",
-      "label": "Flesh Rot",
-      "detail": ""
+      "name": "Flesh Rot",
+      "brief": ""
     },
     {
       "id": "claustrophobia",
-      "label": "Claustrophobia",
-      "detail": ""
+      "name": "Claustrophobia",
+      "brief": ""
     },
     {
       "id": "addiction-spore-dust",
-      "label": "Addiction (Spore Dust)",
-      "detail": ""
+      "name": "Addiction (Spore Dust)",
+      "brief": ""
     },
     {
       "id": "night-terrors",
-      "label": "Night Terrors",
-      "detail": ""
+      "name": "Night Terrors",
+      "brief": ""
     },
     {
       "id": "obsessive-scavenger",
-      "label": "Obsessive Scavenger",
-      "detail": ""
+      "name": "Obsessive Scavenger",
+      "brief": ""
     },
     {
       "id": "haunted-by-voices",
-      "label": "Haunted by Voices",
-      "detail": ""
+      "name": "Haunted by Voices",
+      "brief": ""
     },
     {
       "id": "illness-chronic-cough",
-      "label": "Illness (Chronic Cough)",
-      "detail": ""
+      "name": "Illness (Chronic Cough)",
+      "brief": ""
     },
     {
       "id": "insatiable-hunger",
-      "label": "Insatiable Hunger",
-      "detail": ""
+      "name": "Insatiable Hunger",
+      "brief": ""
     },
     {
       "id": "tech-dependency",
-      "label": "Tech Dependency",
-      "detail": ""
+      "name": "Tech Dependency",
+      "brief": ""
     },
     {
       "id": "chemical-sensitivity",
-      "label": "Chemical Sensitivity",
-      "detail": ""
+      "name": "Chemical Sensitivity",
+      "brief": ""
     },
     {
       "id": "rage-blackouts",
-      "label": "Rage Blackouts",
-      "detail": ""
+      "name": "Rage Blackouts",
+      "brief": ""
     },
     {
       "id": "burned-nerve-endings",
-      "label": "Burned Nerve Endings",
-      "detail": ""
+      "name": "Burned Nerve Endings",
+      "brief": ""
     },
     {
       "id": "water-anxiety",
-      "label": "Water Anxiety",
-      "detail": ""
+      "name": "Water Anxiety",
+      "brief": ""
     },
     {
       "id": "delusions-of-immortality",
-      "label": "Delusions of Immortality",
-      "detail": ""
+      "name": "Delusions of Immortality",
+      "brief": ""
     },
     {
       "id": "hallucinatory-episodes",
-      "label": "Hallucinatory Episodes",
-      "detail": ""
+      "name": "Hallucinatory Episodes",
+      "brief": ""
     },
     {
       "id": "unstable-mutation",
-      "label": "Unstable Mutation",
-      "detail": ""
+      "name": "Unstable Mutation",
+      "brief": ""
     },
     {
       "id": "trust-no-one-instinct",
-      "label": "Trust No One Instinct",
-      "detail": ""
+      "name": "Trust No One Instinct",
+      "brief": ""
     },
     {
       "id": "hoarder-s-compulsion",
-      "label": "Hoarder’s Compulsion",
-      "detail": ""
+      "name": "Hoarder’s Compulsion",
+      "brief": ""
     },
     {
       "id": "isolation-induced-twitch",
-      "label": "Isolation-Induced Twitch",
-      "detail": ""
+      "name": "Isolation-Induced Twitch",
+      "brief": ""
     },
     {
       "id": "guilt-over-past-acts",
-      "label": "Guilt over Past Acts",
-      "detail": ""
+      "name": "Guilt over Past Acts",
+      "brief": ""
     },
     {
       "id": "fear-of-sunlight",
-      "label": "Fear of Sunlight",
-      "detail": ""
+      "name": "Fear of Sunlight",
+      "brief": ""
     },
     {
       "id": "aversion-to-firearms",
-      "label": "Aversion to Firearms",
-      "detail": ""
+      "name": "Aversion to Firearms",
+      "brief": ""
     },
     {
       "id": "constant-itch",
-      "label": "Constant Itch",
-      "detail": ""
+      "name": "Constant Itch",
+      "brief": ""
     },
     {
       "id": "memory-holes",
-      "label": "Memory Holes",
-      "detail": ""
+      "name": "Memory Holes",
+      "brief": ""
     },
     {
       "id": "bounty-on-their-head",
-      "label": "Bounty on Their Head",
-      "detail": ""
+      "name": "Bounty on Their Head",
+      "brief": ""
     },
     {
       "id": "phantom-pain",
-      "label": "Phantom Pain",
-      "detail": ""
+      "name": "Phantom Pain",
+      "brief": ""
     },
     {
       "id": "compulsion-to-preach",
-      "label": "Compulsion to Preach",
-      "detail": ""
+      "name": "Compulsion to Preach",
+      "brief": ""
     },
     {
       "id": "terminal-diagnosis",
-      "label": "Terminal Diagnosis",
-      "detail": ""
+      "name": "Terminal Diagnosis",
+      "brief": ""
     },
     {
       "id": "glows-in-the-dark",
-      "label": "Glows in the Dark",
-      "detail": ""
+      "name": "Glows in the Dark",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "gas-mask",
-      "label": "Gas Mask",
-      "detail": ""
+      "name": "Gas Mask",
+      "brief": ""
     },
     {
       "id": "rusted-crowbar",
-      "label": "Rusted Crowbar",
-      "detail": ""
+      "name": "Rusted Crowbar",
+      "brief": ""
     },
     {
       "id": "bio-filter-canteen",
-      "label": "Bio-Filter Canteen",
-      "detail": ""
+      "name": "Bio-Filter Canteen",
+      "brief": ""
     },
     {
       "id": "map-of-forbidden-zone",
-      "label": "Map of Forbidden Zone",
-      "detail": ""
+      "name": "Map of Forbidden Zone",
+      "brief": ""
     },
     {
       "id": "machete-of-bone",
-      "label": "Machete of Bone",
-      "detail": ""
+      "name": "Machete of Bone",
+      "brief": ""
     },
     {
       "id": "geiger-sensor",
-      "label": "Geiger Sensor",
-      "detail": ""
+      "name": "Geiger Sensor",
+      "brief": ""
     },
     {
       "id": "rebar-spear",
-      "label": "Rebar Spear",
-      "detail": ""
+      "name": "Rebar Spear",
+      "brief": ""
     },
     {
       "id": "cracked-sniper-rifle",
-      "label": "Cracked Sniper Rifle",
-      "detail": ""
+      "name": "Cracked Sniper Rifle",
+      "brief": ""
     },
     {
       "id": "bandit-cloak",
-      "label": "Bandit Cloak",
-      "detail": ""
+      "name": "Bandit Cloak",
+      "brief": ""
     },
     {
       "id": "lighter-scrap-fuel",
-      "label": "Lighter & Scrap Fuel",
-      "detail": ""
+      "name": "Lighter & Scrap Fuel",
+      "brief": ""
     },
     {
       "id": "solar-patch-blanket",
-      "label": "Solar-Patch Blanket",
-      "detail": ""
+      "name": "Solar-Patch Blanket",
+      "brief": ""
     },
     {
       "id": "handmade-crossbow",
-      "label": "Handmade Crossbow",
-      "detail": ""
+      "name": "Handmade Crossbow",
+      "brief": ""
     },
     {
       "id": "vault-medkit",
-      "label": "Vault Medkit",
-      "detail": ""
+      "name": "Vault Medkit",
+      "brief": ""
     },
     {
       "id": "duct-taped-armor",
-      "label": "Duct-Taped Armor",
-      "detail": ""
+      "name": "Duct-Taped Armor",
+      "brief": ""
     },
     {
       "id": "glowvine-tonic",
-      "label": "Glowvine Tonic",
-      "detail": ""
+      "name": "Glowvine Tonic",
+      "brief": ""
     },
     {
       "id": "insect-jerky-rations",
-      "label": "Insect Jerky Rations",
-      "detail": ""
+      "name": "Insect Jerky Rations",
+      "brief": ""
     },
     {
       "id": "nailgun",
-      "label": "Nailgun",
-      "detail": ""
+      "name": "Nailgun",
+      "brief": ""
     },
     {
       "id": "collapsible-tent",
-      "label": "Collapsible Tent",
-      "detail": ""
+      "name": "Collapsible Tent",
+      "brief": ""
     },
     {
       "id": "signal-flare-gun",
-      "label": "Signal Flare Gun",
-      "detail": ""
+      "name": "Signal Flare Gun",
+      "brief": ""
     },
     {
       "id": "detonator-bricks",
-      "label": "Detonator Bricks",
-      "detail": ""
+      "name": "Detonator Bricks",
+      "brief": ""
     },
     {
       "id": "bone-dice-oracle",
-      "label": "Bone Dice Oracle",
-      "detail": ""
+      "name": "Bone Dice Oracle",
+      "brief": ""
     },
     {
       "id": "noise-trigger-mines",
-      "label": "Noise-Trigger Mines",
-      "detail": ""
+      "name": "Noise-Trigger Mines",
+      "brief": ""
     },
     {
       "id": "rope-with-hooks",
-      "label": "Rope with Hooks",
-      "detail": ""
+      "name": "Rope with Hooks",
+      "brief": ""
     },
     {
       "id": "rat-cage-backpack",
-      "label": "Rat-Cage Backpack",
-      "detail": ""
+      "name": "Rat-Cage Backpack",
+      "brief": ""
     },
     {
       "id": "flash-goggles",
-      "label": "Flash Goggles",
-      "detail": ""
+      "name": "Flash Goggles",
+      "brief": ""
     },
     {
       "id": "rainwater-catcher",
-      "label": "Rainwater Catcher",
-      "detail": ""
+      "name": "Rainwater Catcher",
+      "brief": ""
     },
     {
       "id": "hand-crank-radio",
-      "label": "Hand-Crank Radio",
-      "detail": ""
+      "name": "Hand-Crank Radio",
+      "brief": ""
     },
     {
       "id": "scavenger-s-toolkit",
-      "label": "Scavenger’s Toolkit",
-      "detail": ""
+      "name": "Scavenger’s Toolkit",
+      "brief": ""
     },
     {
       "id": "emp-spike",
-      "label": "EMP Spike",
-      "detail": ""
+      "name": "EMP Spike",
+      "brief": ""
     },
     {
       "id": "barbed-whip",
-      "label": "Barbed Whip",
-      "detail": ""
+      "name": "Barbed Whip",
+      "brief": ""
     },
     {
       "id": "spore-breath-mask",
-      "label": "Spore-Breath Mask",
-      "detail": ""
+      "name": "Spore-Breath Mask",
+      "brief": ""
     },
     {
       "id": "broken-drone-eye",
-      "label": "Broken Drone Eye",
-      "detail": ""
+      "name": "Broken Drone Eye",
+      "brief": ""
     },
     {
       "id": "chainblade",
-      "label": "Chainblade",
-      "detail": ""
+      "name": "Chainblade",
+      "brief": ""
     },
     {
       "id": "chitin-shield",
-      "label": "Chitin Shield",
-      "detail": ""
+      "name": "Chitin Shield",
+      "brief": ""
     },
     {
       "id": "magnet-compass",
-      "label": "Magnet Compass",
-      "detail": ""
+      "name": "Magnet Compass",
+      "brief": ""
     },
     {
       "id": "voice-of-the-ancients-recorder",
-      "label": "Voice of the Ancients (Recorder)",
-      "detail": ""
+      "name": "Voice of the Ancients (Recorder)",
+      "brief": ""
     }
   ],
   "spends_luck": false,

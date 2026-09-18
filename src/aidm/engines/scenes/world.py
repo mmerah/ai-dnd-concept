@@ -25,7 +25,7 @@ class Scene(Mutable):
     focus: str = ""
     situation: str = Field(min_length=1)
     here: list[Slug] = Field(default_factory=list)
-    offered: bool = False
+    way_offered: bool = False
 
 
 class SceneProposal[C: Person](Frozen):
@@ -223,10 +223,10 @@ class SceneWorld[C: Person](World[C, C]):
         card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
         return [entity.fact(f"{entity.mention} is dead", card=card)]
 
-    def offer(self) -> list[Fact]:
-        if self.scene.offered:
+    def offer_way_on(self) -> list[Fact]:
+        if self.scene.way_offered:
             raise Refusal("this scene already offers the way on; play on, or send them off")
-        self.scene.offered = True
+        self.scene.way_offered = True
         return [WAY_OFFERED]
 
     def merged_cast(self, cast: Mapping[Slug, C]) -> dict[Slug, C]:
@@ -248,7 +248,7 @@ class SceneWorld[C: Person](World[C, C]):
     def scene_panel(self) -> tuple[Panel, ...]:
         if not self.scene.focus:
             return ()
-        return (Panel(title="This scene", rows=(PanelRow(label=self.scene.focus, detail=""),)),)
+        return (Panel(title="This scene", rows=(PanelRow(name=self.scene.focus, brief=""),)),)
 
 
 def settled[C: Person](
@@ -256,8 +256,8 @@ def settled[C: Person](
 ) -> tuple[dict[Slug, C], Scene]:
     """Marks the present met and files the scene, for a world that may not exist yet."""
     everyone: Mapping[Slug, Thing] = {player.id: player, **cast}
-    present = _resolve_ids(draft.present, everyone, "present")
-    hidden = _resolve_ids(draft.hidden, everyone, "hidden")
+    present = resolved_ids(draft.present, everyone, "present")
+    hidden = resolved_ids(draft.hidden, everyone, "hidden")
     for entity_id in present:
         cast[entity_id].known = True
     scene = Scene(
@@ -285,7 +285,7 @@ def resolved_id(wanted: str, cast: Mapping[Slug, Thing]) -> Slug | None:
     return matches[0] if len(matches) == 1 else None
 
 
-def _resolve_ids(wanted: Iterable[str], cast: Mapping[Slug, Thing], where: str) -> list[Slug]:
+def resolved_ids(wanted: Iterable[str], cast: Mapping[Slug, Thing], where: str) -> list[Slug]:
     found: list[Slug] = []
     for name in wanted:
         matched = resolved_id(name, cast)

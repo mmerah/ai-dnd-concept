@@ -9,8 +9,8 @@ from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapProposal, Place, Prop, RegionProposal, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
+from aidm.engines.tunnelgoons.pack import AUTHORING, AbilitiesProposal
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
-from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesProposal
 
 ONLY = "only"
 HIDDEN = "hidden"

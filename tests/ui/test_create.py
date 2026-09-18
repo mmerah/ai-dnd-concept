@@ -20,8 +20,8 @@ def test_rolling_a_seed_writes_one_of_the_chosen_packs_seeds(
     entry = CatalogEntry(
         id="kael",
         engine=LONER3E,
-        label="Kael",
-        detail="a wanderer",
+        name="Kael",
+        brief="a wanderer",
         rules="LONER 3E",
         look=ENGINES_BUILT[LONER3E].look,
     )

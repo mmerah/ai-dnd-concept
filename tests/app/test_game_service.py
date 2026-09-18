@@ -54,14 +54,14 @@ class _RefusingStore(FileStore):
 class _LandFailsAfterAdvance(Loner3eEngine):
     """`close` ends in `land`: only the landing after a successful write fails."""
 
-    def __init__(self, written: Path) -> None:
-        super().__init__(written)
+    def __init__(self, player_packs: Path) -> None:
+        super().__init__(player_packs)
         self._advanced = False
 
     async def advance(
-        self, draft: Loner3eGame, request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: Loner3eGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        written = await super().advance(draft, request, worldsmith)
+        written = await super().advance(draft, commission, worldsmith)
         self._advanced = True
         return written
 
@@ -355,11 +355,11 @@ async def test_a_complication_after_an_offer_clears_it_only_once_installed(
     _ = await play_turn(table, "I have what I came for.", the_way_on())
 
     state = await play_turn(table, "I keep watch.", complication)
-    assert state.world.scene.offered
+    assert state.world.scene.way_offered
 
     table.spawner.answers["worldsmith"] = [_scene()]
     state = await play_turn(table, "I keep watching.", complication, arrival="Torchlight.")
-    assert not state.world.scene.offered
+    assert not state.world.scene.way_offered
     assert state.world.scene.title == "The Abbot's Study, Disturbed"
 
 
@@ -374,7 +374,7 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
         tool_call("next_scene", complication="A second crew breaches the study door."),
     )
 
-    assert table.service.engine.over(state) is not None
+    assert table.service.engine.ending(state) is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
     assert len(state.world.scenes) == 1
     assert state.commission is None
@@ -587,7 +587,7 @@ async def test_a_failing_background_task_is_logged_and_close_leaves_no_live_task
 async def test_act_hushes_before_it_asks_the_worldsmith_to_write(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`_grow` alone can run 900s; a stale narrator spawn must not outlive the write."""
+    """`_write_commission` alone can run 900s; a stale narrator spawn must not outlive the write."""
     table = open_table(tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame)
     draft = table.state.draft()
     for place in draft.world.places.values():

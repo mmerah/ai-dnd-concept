@@ -7,7 +7,7 @@ from support.table import LONER3E, ScriptedSpawner, narrowed, offline_settings
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal, Slug
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.worldsmith import Loner3ePack
+from aidm.engines.loner3e.pack import Loner3ePack
 
 MINE: Slug = "mine"
 SHIPPED: Slug = "ap01-fantasy"

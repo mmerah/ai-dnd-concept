@@ -1,27 +1,33 @@
 from typing import Literal
 
 from httpx import HTTPError, HTTPStatusError
-from pydantic import JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from aidm.app.providers import post_bearer
 from aidm.config import ProviderConfig, Role, RoleConfig
-from aidm.core.entities import Echoed, Loose, Refusal, parse_json
+from aidm.core.entities import Loose, Refusal, parse_json
 from aidm.core.io import decode
 from aidm.core.tools import MasterTool, Tools, schema_of
 
 
-class _Function(Echoed):
+class _Echoed(BaseModel):
+    """Kept whole: a reply goes back in the next request, reasoning and all."""
+
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True)
+
+
+class _Function(_Echoed):
     name: str
     arguments: str
 
 
-class _ToolCall(Echoed):
+class _ToolCall(_Echoed):
     id: str
     type: Literal["function"]
     function: _Function
 
 
-class _Said(Echoed):
+class _Said(_Echoed):
     role: Literal["assistant"]
     content: str | None = None
     tool_calls: tuple[_ToolCall, ...] | None = None

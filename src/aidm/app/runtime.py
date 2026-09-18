@@ -8,8 +8,14 @@ from random import Random
 
 from aidm.app.launch import LaunchTarget, check_resumes
 from aidm.app.media import ICON_DIR, Illustrator
-from aidm.app.providers import close_posting
-from aidm.app.roles import OPENING_NARRATION, interject, master, narrate, worldsmith
+from aidm.app.providers import close_client
+from aidm.app.roles import (
+    OPENING_NARRATION,
+    run_interjection,
+    run_master,
+    run_narrator,
+    worldsmith_answer,
+)
 from aidm.app.spawn import RoleRunner, Spawner
 from aidm.app.speech import Reader
 from aidm.config import Role, Settings
@@ -125,22 +131,22 @@ class GameService:
         async with self.gate.admit(self):
             await self._turn(answer, self.state)
 
-    async def act(self, action: Slug, words: str) -> None:
+    async def act(self, action_id: Slug, words: str) -> None:
         async with self.gate.admit(self):
             self.hush()
-            if (ended := self.engine.over(self.state)) is not None:
+            if (ended := self.engine.ending(self.state)) is not None:
                 raise Refusal(f"{ended} {RESTART}")
             if self.state.pending is not None:
                 raise Refusal("the rules wait on the player's decision first")
             draft = self.state.draft()
-            self.engine.act(draft, action, words)
+            self.engine.act(draft, action_id, words)
             if draft.commission is None:
                 await self._turn(Answer(text=words), draft)
                 return
             self.intent = words
             try:
                 self.save(self.engine.accept(draft))
-                written = await self._grow(words=words, mark="")
+                written = await self._write_commission(words=words, mark="")
             finally:
                 self.intent = ""
             if written:
@@ -152,7 +158,7 @@ class GameService:
         self.turn, self.phase = turn, "master"
         try:
             if turn.played:
-                await master(self.spawner, turn)
+                await run_master(self.spawner, turn)
             lines: tuple[SpokenLine, ...] = ()
             if turn.narrates:
                 self.phase = "narrator"
@@ -166,11 +172,11 @@ class GameService:
         self.save(state)
         self.rng.setstate(turn.rng.getstate())
         self._present()
-        await self._grow(words="", mark="story")
+        await self._write_commission(words="", mark="story")
         if (
             self.interjections
             and self.state.pending is None
-            and self.engine.over(self.state) is None
+            and self.engine.ending(self.state) is None
         ):
             self._speaking = create_task(self.let_party_speak())
             self.tasks.retain(self._speaking)
@@ -195,12 +201,12 @@ class GameService:
             return
         before = self.state
         try:
-            lines, proposal = await interject(self.spawner, self.engine, self.state, member)
+            lines, proposal = await run_interjection(self.spawner, self.engine, self.state, member)
         except Refusal as failed:
             LOGGER.warning("the party did not speak: %s", failed)
             return
         if self.turn is not None or self.phase is not None or self.state is not before:
-            LOGGER.info("%s's interjection came after the turn moved on; dropped", member.label)
+            LOGGER.info("%s's interjection came after the turn moved on; dropped", member.name)
             return
         if not lines:
             return
@@ -209,29 +215,29 @@ class GameService:
         )
         self.speak(self._newest())
 
-    async def _grow(self, *, words: str, mark: Mark) -> bool:
-        request = self.state.commission
-        if request is None:
+    async def _write_commission(self, *, words: str, mark: Mark) -> bool:
+        commission = self.state.commission
+        if commission is None:
             return False
         draft = self.state.draft()
         draft.commission = None
-        if self.engine.over(self.state) is not None:
+        if self.engine.ending(self.state) is not None:
             self.save(self.engine.accept(draft))
             return False
         self.phase, grown = "worldsmith", True
         try:
-            written = await self.engine.advance(draft, request, worldsmith(self.spawner))
-            if written.telling is None:
+            written = await self.engine.advance(draft, commission, worldsmith_answer(self.spawner))
+            if written.narrator_prompt is None:
                 landed = self.engine.accept(draft)
             else:
                 self.phase = "narrator"
-                lines = await self._narrated(draft, written.facts, written.telling)
+                lines = await self._narrated(draft, written.facts, written.narrator_prompt)
                 landed = self.engine.close(draft, lines, written.facts, words=words, mark=mark)
         except Refusal as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.commission = None
-            unwritten = self.engine.unwritten[request.operation]
+            unwritten = self.engine.unwritten[commission.operation]
             landed = self.engine.close(draft, (), (unwritten,), words=words, mark=mark)
             grown = False
         finally:
@@ -245,7 +251,7 @@ class GameService:
     ) -> tuple[SpokenLine, ...]:
         """Nothing landed means nothing to save, so the player hears why and keeps their words."""
         try:
-            return await narrate(self.spawner, self.engine, draft, facts, prompt)
+            return await run_narrator(self.spawner, self.engine, draft, facts, prompt)
         except Refusal as failed:
             if not landed:
                 raise
@@ -356,7 +362,7 @@ class Runtime:
     async def close(self) -> None:
         for session in list(self._sessions.values()):
             await session.close()
-        await close_posting()
+        await close_client()
 
     async def new_scenario(
         self,
@@ -375,7 +381,9 @@ class Runtime:
         def check(built: AnyScenario) -> None:
             engine.begin(name, built, character)
 
-        scenario = await engine.author(meta, source, pack_id, worldsmith(self.spawner), check)
+        scenario = await engine.author(
+            meta, source, pack_id, worldsmith_answer(self.spawner), check
+        )
         self.library.write_scenario(name, scenario)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
@@ -397,7 +405,7 @@ class Runtime:
             source=source,
             origin=origin,
             license=license,
-            worldsmith=worldsmith(self.spawner),
+            worldsmith=worldsmith_answer(self.spawner),
         )
         self.packs.write(engine.id, pack_id, pack)
         engine.install_pack(pack_id, pack)

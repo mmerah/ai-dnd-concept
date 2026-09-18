@@ -1,4 +1,4 @@
-"""World-growth requests: a request ends the turn, twice is refused, a failed write clears it."""
+"""World-growth commissions: one ends the turn, twice is refused, a failed write clears it."""
 
 import sys
 from pathlib import Path

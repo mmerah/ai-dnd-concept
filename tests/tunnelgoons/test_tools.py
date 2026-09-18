@@ -117,7 +117,7 @@ def test_a_miss_against_an_npc_can_kill_the_player(draft: TunnelGoonsGame) -> No
     )
     assert world.player.hp.current == 0
     assert not world.player.alive
-    assert ENGINE.over(draft) == "You died."
+    assert ENGINE.ending(draft) == "You died."
 
 
 def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous(draft: TunnelGoonsGame) -> None:
@@ -360,14 +360,14 @@ def test_unlocking_an_unwalked_way_tells_a_card_becomes_known_and_appears_in_way
     assert way is not None
     way.known = False
     before = next(panel for panel in ENGINE.player_view(draft).panels if panel.title == "Ways out")
-    assert [row.label for row in before.rows] == ["Start"]
+    assert [row.name for row in before.rows] == ["Start"]
 
     facts = change(ENGINE, draft, "unlock_way", to_id=VAULT)
 
     assert way.known
     assert any(fact.told and fact.card == "Vault unlocked" for fact in facts)
     after = next(panel for panel in ENGINE.player_view(draft).panels if panel.title == "Ways out")
-    assert [row.label for row in after.rows] == ["Start", "Vault"]
+    assert [row.name for row in after.rows] == ["Start", "Vault"]
 
 
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place(draft: TunnelGoonsGame) -> None:

@@ -23,6 +23,15 @@ from aidm.engines.tools import (
     SIGNS_ON,
     Hire,
 )
+from aidm.engines.tunnelgoons.pack import (
+    AUTHORING,
+    HIRE_GUIDANCE,
+    HIRING,
+    AbilitiesProposal,
+    TunnelGoonsBody,
+    TunnelGoonsHead,
+    TunnelGoonsPack,
+)
 from aidm.engines.tunnelgoons.tools import LevelUp, Roll
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
@@ -39,18 +48,9 @@ from aidm.engines.tunnelgoons.world import (
     level_up_decision,
     sheet_of,
 )
-from aidm.engines.tunnelgoons.worldsmith import (
-    AUTHORING,
-    HIRE_GUIDANCE,
-    HIRING,
-    AbilitiesProposal,
-    TunnelGoonsBody,
-    TunnelGoonsHead,
-    TunnelGoonsPack,
-)
 
 POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
-    DecisionOption(id=str(points), label=str(points)) for points in range(ABILITY_POINTS + 1)
+    DecisionOption(id=str(points), name=str(points)) for points in range(ABILITY_POINTS + 1)
 )
 
 
@@ -81,16 +81,16 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         return [Fact(trace=trace)]
 
     async def write_hire(
-        self, draft: TunnelGoonsGame, request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: TunnelGoonsGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if request.target is None:
+        if commission.target is None:
             raise Refusal(NO_HIRE_TARGET)
-        member = draft.world.require_hireable(request.target)
-        prompt = self.render_request(
+        member = draft.world.require_hireable(commission.target)
+        prompt = self.render_commission(
             draft,
-            intent=HIRING.format(name=member.name, brief=member.brief, terms=request.detail),
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=commission.detail),
             guidance=HIRE_GUIDANCE,
-            answer=AbilitiesProposal,
+            answer_model=AbilitiesProposal,
         )
         answer = await worldsmith(prompt, AbilitiesProposal, lambda _answer: None)
         summary = member.sign_on(answer.abilities)
@@ -102,11 +102,11 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
     async def advance(
-        self, draft: TunnelGoonsGame, request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: TunnelGoonsGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if request.operation == HIRE:
-            return await self.write_hire(draft, request, worldsmith)
-        return await super().advance(draft, request, worldsmith)
+        if commission.operation == HIRE:
+            return await self.write_hire(draft, commission, worldsmith)
+        return await super().advance(draft, commission, worldsmith)
 
     @tool
     def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
@@ -117,7 +117,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         ability_steps = tuple(
             CreationStep(
                 id=ability,
-                label=f"Points in {ability.capitalize()}",
+                name=f"Points in {ability.capitalize()}",
                 options=POINT_OPTIONS,
                 hint=f"{ABILITY_POINTS} points across the three",
             )
@@ -125,7 +125,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         )
         hint = ", ".join(name for pack in self.packs.played(pack_id) for name in pack.items)
         item_steps = tuple(
-            CreationStep(id=f"item-{number}", label=f"Item {number}", hint=hint)
+            CreationStep(id=f"item-{number}", name=f"Item {number}", hint=hint)
             for number in range(1, STARTING_ITEMS + 1)
         )
         return (*ability_steps, *item_steps)
@@ -175,8 +175,8 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         npc = world.require_member_here(args.target_id) if args.target_id is not None else None
         if npc is actor:
             raise Refusal(f"{actor.name} cannot roll against themselves")
-        ds = npc.hp.current if npc is not None else args.difficulty
-        if ds is None:
+        difficulty = npc.hp.current if npc is not None else args.difficulty
+        if difficulty is None:
             raise ValueError("a roll names an npc or a difficulty, by `Roll._one_target`")
         penalty = 0
         if args.ability in ("brute", "skulker"):
@@ -184,20 +184,20 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
 
         rolled = roll((6, 6), f"{args.what} — {args.ability}", rng)
         total = rolled.total + sheet.abilities[args.ability] + len(items) - penalty
-        success = total >= ds
+        success = total >= difficulty
         outcome = "success" if success else "failure"
         line = (
             f"{args.what} — {actor.card_line(args.ability.capitalize())}"
             + (f" with {', '.join(item.name for item in items)}" if items else "")
             + (f" against {npc.name}" if npc is not None else "")
-            + f", {total} vs DS {ds} → {outcome}"
+            + f", {total} vs DS {difficulty} → {outcome}"
         )
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
 
         # SRD: only a dangerous action turns the margin into damage; an npc's DS alone does not.
         if not args.dangerous:
             return facts
-        margin = total - ds
+        margin = total - difficulty
         if npc is not None and success:
             facts.extend(npc.change(npc.hp, -margin, "Health", f"{actor.name}'s action"))
             if npc.hp.current == 0:

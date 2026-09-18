@@ -16,6 +16,12 @@ from aidm.core.prompt import Sections
 from aidm.core.tools import tool
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.loner3e.pack import (
+    AUTHORING,
+    Loner3eBody,
+    Loner3eHead,
+    Loner3ePack,
+)
 from aidm.engines.loner3e.tools import (
     DEFEAT_NOTE,
     TWIST_NOTE,
@@ -37,12 +43,6 @@ from aidm.engines.loner3e.world import (
     pack_meanings,
     twist_pairing,
 )
-from aidm.engines.loner3e.worldsmith import (
-    AUTHORING,
-    Loner3eBody,
-    Loner3eHead,
-    Loner3ePack,
-)
 from aidm.engines.scenes.engine import SceneEngine
 
 
@@ -60,8 +60,8 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
     world = Loner3eWorld
     member = Loner3eEntity
 
-    def __init__(self, written: Path) -> None:
-        super().__init__(written)
+    def __init__(self, player_packs: Path) -> None:
+        super().__init__(player_packs)
         srd = self.packs.srd()  # always the SRD's own table: no other pack publishes one
         if srd.twist_subjects is None or srd.twist_actions is None:
             raise ValueError("the SRD table set has no twist columns")
@@ -76,22 +76,22 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
         return (
             CreationStep(
                 id="concept",
-                label="Write a one-line concept",
-                hint=", ".join(entry.label for entry in concepts[:3]),
+                name="Write a one-line concept",
+                hint=", ".join(entry.name for entry in concepts[:3]),
             ),
-            CreationStep(id="goal", label="What does your character want?"),
-            CreationStep(id="motive", label="Why do they want it?"),
-            CreationStep(id="skill-1", label="Choose skill 1", options=skills),
+            CreationStep(id="goal", name="What does your character want?"),
+            CreationStep(id="motive", name="Why do they want it?"),
+            CreationStep(id="skill-1", name="Choose skill 1", options=skills),
             CreationStep(
                 id="skill-2",
-                label="Choose skill 2",
+                name="Choose skill 2",
                 options=other_than(skills, picked(picks, "skill-1")),
             ),
-            CreationStep(id="frailty", label="Choose a frailty", options=frailties),
-            CreationStep(id="gear-1", label="Choose gear 1", options=gear),
+            CreationStep(id="frailty", name="Choose a frailty", options=frailties),
+            CreationStep(id="gear-1", name="Choose gear 1", options=gear),
             CreationStep(
                 id="gear-2",
-                label="Choose gear 2",
+                name="Choose gear 2",
                 options=other_than(gear, picked(picks, "gear-1")),
             ),
         )
@@ -104,7 +104,7 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
         by_id = {step.id: step for step in steps}
 
         def taken(step_id: Slug) -> str:
-            return chosen_option(by_id[step_id].options, picked(picks, step_id)).label
+            return chosen_option(by_id[step_id].options, picked(picks, step_id)).name
 
         sheet = Loner3eEntity(
             id=PLAYER_ID,

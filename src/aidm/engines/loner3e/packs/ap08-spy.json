@@ -161,33 +161,33 @@
   "rules": "Cover Identity:\n\nYour character begins each mission with an assigned cover. When performing an action that might expose your cover, roll the Oracle with **Risk**. If the Oracle response is negative or mixed, your cover begins to fray.\n\n* Track cover using **three states**: *Intact*, *Strained*, *Blown*.\n* Each time you act “out of cover,” or draw heat, consult the Oracle and adjust the state.\n* A *Blown* cover immediately triggers **extraction, pursuit, or capture** (Oracle decides which).\n\n> **Tip**\n> Describe how your action fits the cover — not just what you do, but **how you make it look normal**.\n\nInterrogation:\n\nIf captured, you enter an **interrogation sequence**. You must answer questions posed by your captors. For each question:\n\n* You may choose to **Lie**, **Evade**, or **Confess**.\n* Consult the Oracle after each attempt. On a failure, your captors learn something — real or fabricated, Oracle decides.\n* After three questions, roll to see if you’re **released**, **escape**, or remain **detained**.\n\n> **Note**\n> If you plant disinformation during interrogation, note it — it may alter future missions if the lie takes root.\n\nPolitical Tensions:\n\nEach mission alters the geopolitical climate. After a mission:\n\n* Roll the Oracle to determine whether your actions **stabilized**, **disrupted**, or **escalated** tensions.\n* Keep a simple **Tension Track**: *Stable → Shifting → Boiling Point*.\n* At *Boiling Point*, missions become more chaotic: assets disappear, contacts are unreliable, and extraction becomes harder.\n\n> **Tip**\n> Use factions or governments as recurring actors. When you cross one, track their suspicion.",
   "locations": [
     {
-      "label": "The Embassy",
-      "detail": "An official front for diplomacy, unofficially a nest of surveillance devices, veiled threats, and closed-door deals.",
+      "name": "The Embassy",
+      "brief": "An official front for diplomacy, unofficially a nest of surveillance devices, veiled threats, and closed-door deals.",
       "encounters": "Cultural Attaché, Agency Liaison, Surveillance Tech posing as Clerk"
     },
     {
-      "label": "The Bazaar",
-      "detail": "A volatile maze of whispered deals, cold stares, and vanishing stalls — ideal for covert exchanges and plausible deniability.",
+      "name": "The Bazaar",
+      "brief": "A volatile maze of whispered deals, cold stares, and vanishing stalls — ideal for covert exchanges and plausible deniability.",
       "encounters": "Information Broker, Disgraced Agent in Hiding, Distraction Team posing as Vendors"
     },
     {
-      "label": "The Safehouse",
-      "detail": "Nondescript from the outside, the inside tells stories in scratches, gun oil, and half-sanitized medical kits — never truly safe.",
+      "name": "The Safehouse",
+      "brief": "Nondescript from the outside, the inside tells stories in scratches, gun oil, and half-sanitized medical kits — never truly safe.",
       "encounters": "Paranoid Field Operative, Burned Asset, Silent Quartermaster"
     },
     {
-      "label": "The Executive Compound",
-      "detail": "A perimeter of decorum hides a core of control — policy is shaped here under velvet threats and soft power.",
+      "name": "The Executive Compound",
+      "brief": "A perimeter of decorum hides a core of control — policy is shaped here under velvet threats and soft power.",
       "encounters": "Political Powerbroker, Private Intelligence Consultant, Hidden Microphone"
     },
     {
-      "label": "The Grey Sector",
-      "detail": "A district of abandoned buildings and flickering streetlamps, known to be both avoided and exploited by operatives of every stripe.",
+      "name": "The Grey Sector",
+      "brief": "A district of abandoned buildings and flickering streetlamps, known to be both avoided and exploited by operatives of every stripe.",
       "encounters": "Street-Level Informant, Double-Crosser, Surveillance Drone Skimming Rooftops"
     },
     {
-      "label": "The Black Lab",
-      "detail": "Beyond jurisdiction and ethics, this subterranean site runs tests no one admits exist — the lights hum with secrecy.",
+      "name": "The Black Lab",
+      "brief": "Beyond jurisdiction and ethics, this subterranean site runs tests no one admits exist — the lights hum with secrecy.",
       "encounters": "Nervous Technician, Security AI in Test Mode, Something Not Fully Human"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "disavowed-operative",
-      "label": "Disavowed Operative",
-      "detail": ""
+      "name": "Disavowed Operative",
+      "brief": ""
     },
     {
       "id": "elegant-assassin",
-      "label": "Elegant Assassin",
-      "detail": ""
+      "name": "Elegant Assassin",
+      "brief": ""
     },
     {
       "id": "hacker-for-hire",
-      "label": "Hacker-for-Hire",
-      "detail": ""
+      "name": "Hacker-for-Hire",
+      "brief": ""
     },
     {
       "id": "burned-spy",
-      "label": "Burned Spy",
-      "detail": ""
+      "name": "Burned Spy",
+      "brief": ""
     },
     {
       "id": "undercover-analyst",
-      "label": "Undercover Analyst",
-      "detail": ""
+      "name": "Undercover Analyst",
+      "brief": ""
     },
     {
       "id": "rogue-handler",
-      "label": "Rogue Handler",
-      "detail": ""
+      "name": "Rogue Handler",
+      "brief": ""
     },
     {
       "id": "sleeper-agent",
-      "label": "Sleeper Agent",
-      "detail": ""
+      "name": "Sleeper Agent",
+      "brief": ""
     },
     {
       "id": "cryptid-conspirator",
-      "label": "Cryptid Conspirator",
-      "detail": ""
+      "name": "Cryptid Conspirator",
+      "brief": ""
     },
     {
       "id": "techno-saboteur",
-      "label": "Techno-Saboteur",
-      "detail": ""
+      "name": "Techno-Saboteur",
+      "brief": ""
     },
     {
       "id": "charming-infiltrator",
-      "label": "Charming Infiltrator",
-      "detail": ""
+      "name": "Charming Infiltrator",
+      "brief": ""
     },
     {
       "id": "double-cross-expert",
-      "label": "Double-Cross Expert",
-      "detail": ""
+      "name": "Double-Cross Expert",
+      "brief": ""
     },
     {
       "id": "cold-war-relic",
-      "label": "Cold-War Relic",
-      "detail": ""
+      "name": "Cold-War Relic",
+      "brief": ""
     },
     {
       "id": "mind-wiped-asset",
-      "label": "Mind-Wiped Asset",
-      "detail": ""
+      "name": "Mind-Wiped Asset",
+      "brief": ""
     },
     {
       "id": "shadow-broker",
-      "label": "Shadow Broker",
-      "detail": ""
+      "name": "Shadow Broker",
+      "brief": ""
     },
     {
       "id": "deep-mole",
-      "label": "Deep Mole",
-      "detail": ""
+      "name": "Deep Mole",
+      "brief": ""
     },
     {
       "id": "debonair-seductress",
-      "label": "Debonair Seductress",
-      "detail": ""
+      "name": "Debonair Seductress",
+      "brief": ""
     },
     {
       "id": "clean-up-specialist",
-      "label": "Clean-Up Specialist",
-      "detail": ""
+      "name": "Clean-Up Specialist",
+      "brief": ""
     },
     {
       "id": "field-surgeon",
-      "label": "Field Surgeon",
-      "detail": ""
+      "name": "Field Surgeon",
+      "brief": ""
     },
     {
       "id": "diplomatic-chameleon",
-      "label": "Diplomatic Chameleon",
-      "detail": ""
+      "name": "Diplomatic Chameleon",
+      "brief": ""
     },
     {
       "id": "interrogation-expert",
-      "label": "Interrogation Expert",
-      "detail": ""
+      "name": "Interrogation Expert",
+      "brief": ""
     },
     {
       "id": "mi6-turncoat",
-      "label": "MI6 Turncoat",
-      "detail": ""
+      "name": "MI6 Turncoat",
+      "brief": ""
     },
     {
       "id": "cia-escapee",
-      "label": "CIA Escapee",
-      "detail": ""
+      "name": "CIA Escapee",
+      "brief": ""
     },
     {
       "id": "corporate-fixer",
-      "label": "Corporate Fixer",
-      "detail": ""
+      "name": "Corporate Fixer",
+      "brief": ""
     },
     {
       "id": "disguised-courier",
-      "label": "Disguised Courier",
-      "detail": ""
+      "name": "Disguised Courier",
+      "brief": ""
     },
     {
       "id": "black-bag-technician",
-      "label": "Black Bag Technician",
-      "detail": ""
+      "name": "Black Bag Technician",
+      "brief": ""
     },
     {
       "id": "radio-silence-ghost",
-      "label": "Radio Silence Ghost",
-      "detail": ""
+      "name": "Radio Silence Ghost",
+      "brief": ""
     },
     {
       "id": "surveillance-addict",
-      "label": "Surveillance Addict",
-      "detail": ""
+      "name": "Surveillance Addict",
+      "brief": ""
     },
     {
       "id": "glamorous-deceiver",
-      "label": "Glamorous Deceiver",
-      "detail": ""
+      "name": "Glamorous Deceiver",
+      "brief": ""
     },
     {
       "id": "anti-terror-analyst",
-      "label": "Anti-Terror Analyst",
-      "detail": ""
+      "name": "Anti-Terror Analyst",
+      "brief": ""
     },
     {
       "id": "precision-cleaner",
-      "label": "Precision Cleaner",
-      "detail": ""
+      "name": "Precision Cleaner",
+      "brief": ""
     },
     {
       "id": "urban-stalker",
-      "label": "Urban Stalker",
-      "detail": ""
+      "name": "Urban Stalker",
+      "brief": ""
     },
     {
       "id": "sleepless-interceptor",
-      "label": "Sleepless Interceptor",
-      "detail": ""
+      "name": "Sleepless Interceptor",
+      "brief": ""
     },
     {
       "id": "psychological-profiler",
-      "label": "Psychological Profiler",
-      "detail": ""
+      "name": "Psychological Profiler",
+      "brief": ""
     },
     {
       "id": "disgraced-patriot",
-      "label": "Disgraced Patriot",
-      "detail": ""
+      "name": "Disgraced Patriot",
+      "brief": ""
     },
     {
       "id": "kgb-heir",
-      "label": "KGB Heir",
-      "detail": ""
+      "name": "KGB Heir",
+      "brief": ""
     },
     {
       "id": "high-stakes-negotiator",
-      "label": "High-Stakes Negotiator",
-      "detail": ""
+      "name": "High-Stakes Negotiator",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "espionage",
-      "label": "Espionage",
-      "detail": ""
+      "name": "Espionage",
+      "brief": ""
     },
     {
       "id": "stealth",
-      "label": "Stealth",
-      "detail": ""
+      "name": "Stealth",
+      "brief": ""
     },
     {
       "id": "interrogation",
-      "label": "Interrogation",
-      "detail": ""
+      "name": "Interrogation",
+      "brief": ""
     },
     {
       "id": "lockpicking",
-      "label": "Lockpicking",
-      "detail": ""
+      "name": "Lockpicking",
+      "brief": ""
     },
     {
       "id": "disguise",
-      "label": "Disguise",
-      "detail": ""
+      "name": "Disguise",
+      "brief": ""
     },
     {
       "id": "counterintelligence",
-      "label": "Counterintelligence",
-      "detail": ""
+      "name": "Counterintelligence",
+      "brief": ""
     },
     {
       "id": "seduction",
-      "label": "Seduction",
-      "detail": ""
+      "name": "Seduction",
+      "brief": ""
     },
     {
       "id": "firearms",
-      "label": "Firearms",
-      "detail": ""
+      "name": "Firearms",
+      "brief": ""
     },
     {
       "id": "martial-arts",
-      "label": "Martial Arts",
-      "detail": ""
+      "name": "Martial Arts",
+      "brief": ""
     },
     {
       "id": "surveillance",
-      "label": "Surveillance",
-      "detail": ""
+      "name": "Surveillance",
+      "brief": ""
     },
     {
       "id": "codebreaking",
-      "label": "Codebreaking",
-      "detail": ""
+      "name": "Codebreaking",
+      "brief": ""
     },
     {
       "id": "gadgeteering",
-      "label": "Gadgeteering",
-      "detail": ""
+      "name": "Gadgeteering",
+      "brief": ""
     },
     {
       "id": "hacking",
-      "label": "Hacking",
-      "detail": ""
+      "name": "Hacking",
+      "brief": ""
     },
     {
       "id": "tail-shadowing",
-      "label": "Tail/Shadowing",
-      "detail": ""
+      "name": "Tail/Shadowing",
+      "brief": ""
     },
     {
       "id": "infiltration",
-      "label": "Infiltration",
-      "detail": ""
+      "name": "Infiltration",
+      "brief": ""
     },
     {
       "id": "combat-driving",
-      "label": "Combat Driving",
-      "detail": ""
+      "name": "Combat Driving",
+      "brief": ""
     },
     {
       "id": "explosives",
-      "label": "Explosives",
-      "detail": ""
+      "name": "Explosives",
+      "brief": ""
     },
     {
       "id": "escape-techniques",
-      "label": "Escape Techniques",
-      "detail": ""
+      "name": "Escape Techniques",
+      "brief": ""
     },
     {
       "id": "persuasion",
-      "label": "Persuasion",
-      "detail": ""
+      "name": "Persuasion",
+      "brief": ""
     },
     {
       "id": "language-mastery",
-      "label": "Language Mastery",
-      "detail": ""
+      "name": "Language Mastery",
+      "brief": ""
     },
     {
       "id": "distraction",
-      "label": "Distraction",
-      "detail": ""
+      "name": "Distraction",
+      "brief": ""
     },
     {
       "id": "social-engineering",
-      "label": "Social Engineering",
-      "detail": ""
+      "name": "Social Engineering",
+      "brief": ""
     },
     {
       "id": "drone-operation",
-      "label": "Drone Operation",
-      "detail": ""
+      "name": "Drone Operation",
+      "brief": ""
     },
     {
       "id": "medical-knowledge",
-      "label": "Medical Knowledge",
-      "detail": ""
+      "name": "Medical Knowledge",
+      "brief": ""
     },
     {
       "id": "forensics",
-      "label": "Forensics",
-      "detail": ""
+      "name": "Forensics",
+      "brief": ""
     },
     {
       "id": "data-extraction",
-      "label": "Data Extraction",
-      "detail": ""
+      "name": "Data Extraction",
+      "brief": ""
     },
     {
       "id": "voice-impersonation",
-      "label": "Voice Impersonation",
-      "detail": ""
+      "name": "Voice Impersonation",
+      "brief": ""
     },
     {
       "id": "bomb-defusal",
-      "label": "Bomb Defusal",
-      "detail": ""
+      "name": "Bomb Defusal",
+      "brief": ""
     },
     {
       "id": "trap-setting",
-      "label": "Trap Setting",
-      "detail": ""
+      "name": "Trap Setting",
+      "brief": ""
     },
     {
       "id": "toxin-handling",
-      "label": "Toxin Handling",
-      "detail": ""
+      "name": "Toxin Handling",
+      "brief": ""
     },
     {
       "id": "bluffing",
-      "label": "Bluffing",
-      "detail": ""
+      "name": "Bluffing",
+      "brief": ""
     },
     {
       "id": "parkour",
-      "label": "Parkour",
-      "detail": ""
+      "name": "Parkour",
+      "brief": ""
     },
     {
       "id": "cryptanalysis",
-      "label": "Cryptanalysis",
-      "detail": ""
+      "name": "Cryptanalysis",
+      "brief": ""
     },
     {
       "id": "strategic-planning",
-      "label": "Strategic Planning",
-      "detail": ""
+      "name": "Strategic Planning",
+      "brief": ""
     },
     {
       "id": "quick-draw",
-      "label": "Quick Draw",
-      "detail": ""
+      "name": "Quick Draw",
+      "brief": ""
     },
     {
       "id": "improvised-tools",
-      "label": "Improvised Tools",
-      "detail": ""
+      "name": "Improvised Tools",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "identity-crisis",
-      "label": "Identity Crisis",
-      "detail": ""
+      "name": "Identity Crisis",
+      "brief": ""
     },
     {
       "id": "burnout",
-      "label": "Burnout",
-      "detail": ""
+      "name": "Burnout",
+      "brief": ""
     },
     {
       "id": "paranoia",
-      "label": "Paranoia",
-      "detail": ""
+      "name": "Paranoia",
+      "brief": ""
     },
     {
       "id": "guilt-complex",
-      "label": "Guilt Complex",
-      "detail": ""
+      "name": "Guilt Complex",
+      "brief": ""
     },
     {
       "id": "trust-issues",
-      "label": "Trust Issues",
-      "detail": ""
+      "name": "Trust Issues",
+      "brief": ""
     },
     {
       "id": "amnesia",
-      "label": "Amnesia",
-      "detail": ""
+      "name": "Amnesia",
+      "brief": ""
     },
     {
       "id": "addictive-behavior",
-      "label": "Addictive Behavior",
-      "detail": ""
+      "name": "Addictive Behavior",
+      "brief": ""
     },
     {
       "id": "ptsd",
-      "label": "PTSD",
-      "detail": ""
+      "name": "PTSD",
+      "brief": ""
     },
     {
       "id": "obsessive-habits",
-      "label": "Obsessive Habits",
-      "detail": ""
+      "name": "Obsessive Habits",
+      "brief": ""
     },
     {
       "id": "emotional-detachment",
-      "label": "Emotional Detachment",
-      "detail": ""
+      "name": "Emotional Detachment",
+      "brief": ""
     },
     {
       "id": "tremors",
-      "label": "Tremors",
-      "detail": ""
+      "name": "Tremors",
+      "brief": ""
     },
     {
       "id": "chronic-insomnia",
-      "label": "Chronic Insomnia",
-      "detail": ""
+      "name": "Chronic Insomnia",
+      "brief": ""
     },
     {
       "id": "flashbacks",
-      "label": "Flashbacks",
-      "detail": ""
+      "name": "Flashbacks",
+      "brief": ""
     },
     {
       "id": "overconfidence",
-      "label": "Overconfidence",
-      "detail": ""
+      "name": "Overconfidence",
+      "brief": ""
     },
     {
       "id": "panic-under-fire",
-      "label": "Panic Under Fire",
-      "detail": ""
+      "name": "Panic Under Fire",
+      "brief": ""
     },
     {
       "id": "self-sabotage",
-      "label": "Self-Sabotage",
-      "detail": ""
+      "name": "Self-Sabotage",
+      "brief": ""
     },
     {
       "id": "secret-loyalty",
-      "label": "Secret Loyalty",
-      "detail": ""
+      "name": "Secret Loyalty",
+      "brief": ""
     },
     {
       "id": "haunted-by-the-past",
-      "label": "Haunted by the Past",
-      "detail": ""
+      "name": "Haunted by the Past",
+      "brief": ""
     },
     {
       "id": "moral-hesitation",
-      "label": "Moral Hesitation",
-      "detail": ""
+      "name": "Moral Hesitation",
+      "brief": ""
     },
     {
       "id": "manipulative-tendencies",
-      "label": "Manipulative Tendencies",
-      "detail": ""
+      "name": "Manipulative Tendencies",
+      "brief": ""
     },
     {
       "id": "split-allegiances",
-      "label": "Split Allegiances",
-      "detail": ""
+      "name": "Split Allegiances",
+      "brief": ""
     },
     {
       "id": "nightmares",
-      "label": "Nightmares",
-      "detail": ""
+      "name": "Nightmares",
+      "brief": ""
     },
     {
       "id": "code-dependency",
-      "label": "Code Dependency",
-      "detail": ""
+      "name": "Code Dependency",
+      "brief": ""
     },
     {
       "id": "reluctance-to-kill",
-      "label": "Reluctance to Kill",
-      "detail": ""
+      "name": "Reluctance to Kill",
+      "brief": ""
     },
     {
       "id": "fame-from-a-botched-op",
-      "label": "Fame from a Botched Op",
-      "detail": ""
+      "name": "Fame from a Botched Op",
+      "brief": ""
     },
     {
       "id": "vengeful",
-      "label": "Vengeful",
-      "detail": ""
+      "name": "Vengeful",
+      "brief": ""
     },
     {
       "id": "overtrusting",
-      "label": "Overtrusting",
-      "detail": ""
+      "name": "Overtrusting",
+      "brief": ""
     },
     {
       "id": "technophobia",
-      "label": "Technophobia",
-      "detail": ""
+      "name": "Technophobia",
+      "brief": ""
     },
     {
       "id": "chronic-injury",
-      "label": "Chronic Injury",
-      "detail": ""
+      "name": "Chronic Injury",
+      "brief": ""
     },
     {
       "id": "emotional-outbursts",
-      "label": "Emotional Outbursts",
-      "detail": ""
+      "name": "Emotional Outbursts",
+      "brief": ""
     },
     {
       "id": "voices-in-the-ear",
-      "label": "Voices in the Ear",
-      "detail": ""
+      "name": "Voices in the Ear",
+      "brief": ""
     },
     {
       "id": "double-life-stress",
-      "label": "Double Life Stress",
-      "detail": ""
+      "name": "Double Life Stress",
+      "brief": ""
     },
     {
       "id": "fear-of-exposure",
-      "label": "Fear of Exposure",
-      "detail": ""
+      "name": "Fear of Exposure",
+      "brief": ""
     },
     {
       "id": "gadget-malfunction-phobia",
-      "label": "Gadget Malfunction Phobia",
-      "detail": ""
+      "name": "Gadget Malfunction Phobia",
+      "brief": ""
     },
     {
       "id": "cold-bloodedness",
-      "label": "Cold-Bloodedness",
-      "detail": ""
+      "name": "Cold-Bloodedness",
+      "brief": ""
     },
     {
       "id": "bureaucratic-trauma",
-      "label": "Bureaucratic Trauma",
-      "detail": ""
+      "name": "Bureaucratic Trauma",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "silenced-pistol",
-      "label": "Silenced Pistol",
-      "detail": ""
+      "name": "Silenced Pistol",
+      "brief": ""
     },
     {
       "id": "bug-detector",
-      "label": "Bug Detector",
-      "detail": ""
+      "name": "Bug Detector",
+      "brief": ""
     },
     {
       "id": "forged-passport",
-      "label": "Forged Passport",
-      "detail": ""
+      "name": "Forged Passport",
+      "brief": ""
     },
     {
       "id": "lockpick-set",
-      "label": "Lockpick Set",
-      "detail": ""
+      "name": "Lockpick Set",
+      "brief": ""
     },
     {
       "id": "micro-recorder",
-      "label": "Micro Recorder",
-      "detail": ""
+      "name": "Micro Recorder",
+      "brief": ""
     },
     {
       "id": "burner-phone",
-      "label": "Burner Phone",
-      "detail": ""
+      "name": "Burner Phone",
+      "brief": ""
     },
     {
       "id": "concealed-blade",
-      "label": "Concealed Blade",
-      "detail": ""
+      "name": "Concealed Blade",
+      "brief": ""
     },
     {
       "id": "grappling-gun",
-      "label": "Grappling Gun",
-      "detail": ""
+      "name": "Grappling Gun",
+      "brief": ""
     },
     {
       "id": "tactical-glasses",
-      "label": "Tactical Glasses",
-      "detail": ""
+      "name": "Tactical Glasses",
+      "brief": ""
     },
     {
       "id": "encryption-tablet",
-      "label": "Encryption Tablet",
-      "detail": ""
+      "name": "Encryption Tablet",
+      "brief": ""
     },
     {
       "id": "gps-scrambler",
-      "label": "GPS Scrambler",
-      "detail": ""
+      "name": "GPS Scrambler",
+      "brief": ""
     },
     {
       "id": "flashbang-grenade",
-      "label": "Flashbang Grenade",
-      "detail": ""
+      "name": "Flashbang Grenade",
+      "brief": ""
     },
     {
       "id": "tracker-darts",
-      "label": "Tracker Darts",
-      "detail": ""
+      "name": "Tracker Darts",
+      "brief": ""
     },
     {
       "id": "eavesdropping-kit",
-      "label": "Eavesdropping Kit",
-      "detail": ""
+      "name": "Eavesdropping Kit",
+      "brief": ""
     },
     {
       "id": "disguise-kit",
-      "label": "Disguise Kit",
-      "detail": ""
+      "name": "Disguise Kit",
+      "brief": ""
     },
     {
       "id": "antidote-injector",
-      "label": "Antidote Injector",
-      "detail": ""
+      "name": "Antidote Injector",
+      "brief": ""
     },
     {
       "id": "gas-mask",
-      "label": "Gas Mask",
-      "detail": ""
+      "name": "Gas Mask",
+      "brief": ""
     },
     {
       "id": "surveillance-drone",
-      "label": "Surveillance Drone",
-      "detail": ""
+      "name": "Surveillance Drone",
+      "brief": ""
     },
     {
       "id": "poison-ring",
-      "label": "Poison Ring",
-      "detail": ""
+      "name": "Poison Ring",
+      "brief": ""
     },
     {
       "id": "hollow-watch",
-      "label": "Hollow Watch",
-      "detail": ""
+      "name": "Hollow Watch",
+      "brief": ""
     },
     {
       "id": "signal-jammer",
-      "label": "Signal Jammer",
-      "detail": ""
+      "name": "Signal Jammer",
+      "brief": ""
     },
     {
       "id": "emp-device",
-      "label": "EMP Device",
-      "detail": ""
+      "name": "EMP Device",
+      "brief": ""
     },
     {
       "id": "wrist-taser",
-      "label": "Wrist Taser",
-      "detail": ""
+      "name": "Wrist Taser",
+      "brief": ""
     },
     {
       "id": "tranquilizer-gun",
-      "label": "Tranquilizer Gun",
-      "detail": ""
+      "name": "Tranquilizer Gun",
+      "brief": ""
     },
     {
       "id": "rfid-spoofer",
-      "label": "RFID Spoofer",
-      "detail": ""
+      "name": "RFID Spoofer",
+      "brief": ""
     },
     {
       "id": "hidden-camera",
-      "label": "Hidden Camera",
-      "detail": ""
+      "name": "Hidden Camera",
+      "brief": ""
     },
     {
       "id": "kevlar-vest",
-      "label": "Kevlar Vest",
-      "detail": ""
+      "name": "Kevlar Vest",
+      "brief": ""
     },
     {
       "id": "infrared-goggles",
-      "label": "Infrared Goggles",
-      "detail": ""
+      "name": "Infrared Goggles",
+      "brief": ""
     },
     {
       "id": "cyanide-tooth",
-      "label": "Cyanide Tooth",
-      "detail": ""
+      "name": "Cyanide Tooth",
+      "brief": ""
     },
     {
       "id": "money-bricks",
-      "label": "Money Bricks",
-      "detail": ""
+      "name": "Money Bricks",
+      "brief": ""
     },
     {
       "id": "compact-smg",
-      "label": "Compact SMG",
-      "detail": ""
+      "name": "Compact SMG",
+      "brief": ""
     },
     {
       "id": "retinal-scanner",
-      "label": "Retinal Scanner",
-      "detail": ""
+      "name": "Retinal Scanner",
+      "brief": ""
     },
     {
       "id": "remote-explosives",
-      "label": "Remote Explosives",
-      "detail": ""
+      "name": "Remote Explosives",
+      "brief": ""
     },
     {
       "id": "med-patch-kit",
-      "label": "Med Patch Kit",
-      "detail": ""
+      "name": "Med Patch Kit",
+      "brief": ""
     },
     {
       "id": "smoke-pellets",
-      "label": "Smoke Pellets",
-      "detail": ""
+      "name": "Smoke Pellets",
+      "brief": ""
     },
     {
       "id": "hacking-rig",
-      "label": "Hacking Rig",
-      "detail": ""
+      "name": "Hacking Rig",
+      "brief": ""
     }
   ],
   "spends_luck": false,

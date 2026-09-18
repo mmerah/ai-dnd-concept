@@ -161,33 +161,33 @@
   "rules": "Ship Combat:\n\nWhen engaging in ship combat, resolve the scene by asking a closed question (e.g. *Do we manage to board them before they escape?*). Interpret the result with the following **fictional prompts**, not fixed effects.\n\n* **No, and**: Your ship takes a brutal hit or is outmaneuvered. You’re left vulnerable, or damage affects a key system (e.g. sails, rudder, morale).\n* **No**: The enemy ship holds position. You fail to make progress and remain under threat.\n* **No, but**: You’re kept at bay, but avoid damage or find a small tactical advantage.\n* **Yes, but**: You make contact or land a shot, but suffer damage or lose a key crew member.\n* **Yes**: You hit them hard or gain the upper hand.\n* **Yes, and**: A clean broadside, precise boarding, or swift disabling action—total advantage is yours.\n\n> **Note:** Treat “damage” loosely—it might mean a torn sail, spilled powder, broken morale, or wounded allies. Track the fiction, not HP.\n\nPlunder & Morale:\n\nAfter a successful raid, ask: *Did the haul satisfy the crew?* or *Do we manage to keep order during the division of spoils?*\n\nUse the result to build **emergent pressure or stability**, not binary success/failure.\n\n* **No, and**: Fights break out over shares; a faction forms against you.\n* **No**: The crew is grumbling, and trust is fraying.\n* **No, but**: Unease simmers, but your officers keep order—for now.\n* **Yes, but**: You get things settled, but only after giving up something or showing weakness.\n* **Yes**: Order is maintained, loot distributed.\n* **Yes, and**: A rousing speech, a fair hand—morale soars, you gain loyalty or volunteers.\n\n> **Caution:** Crew morale can be tracked abstractly (via a tag, journal note, or countdown). Use it narratively to inform future rolls.\n\nMutiny:\n\nWhen tension peaks, ask: *Does the crew rise against me?* or *Can I hold the deck in the face of open defiance?*\n\n* **No, and**: You reassert control with force or fear. The crew falls in line—at a cost.\n* **No**: The uprising is quelled. Morale is shaky, but you’re in charge.\n* **No, but**: You prevent a full revolt, but the ringleaders remain, watching.\n* **Yes, but**: You're deposed or forced to share power, but you avoid being cast overboard.\n* **Yes**: You're overthrown. Someone else takes the helm.\n* **Yes, and**: You’re betrayed by a close ally. Leadership shifts violently. You may survive—but not unscathed.\n\n> **Tip:** Let mutinies reshape the fiction dramatically. They’re a chance to reframe the story, not a game-over.",
   "locations": [
     {
-      "label": "Port Royal",
-      "detail": "A thriving British colonial port, infamous for its corruption and indulgence.",
+      "name": "Port Royal",
+      "brief": "A thriving British colonial port, infamous for its corruption and indulgence.",
       "encounters": "Bribe the corrupt Governor’s aide; overhear treasonous plans at the Black Pearl Tavern; escape a tavern brawl turned deadly."
     },
     {
-      "label": "Isla de Culebras",
-      "detail": "A remote and rocky island, feared for its storms, snakes, and the wrecks that litter its shores.",
+      "name": "Isla de Culebras",
+      "brief": "A remote and rocky island, feared for its storms, snakes, and the wrecks that litter its shores.",
       "encounters": "Dodge rival treasure hunters in the hidden cavern; get ambushed by smugglers in the clifftop watch; scale jagged cliffs under musket fire."
     },
     {
-      "label": "Tortuga",
-      "detail": "A loose, lawless port where pirates rule and no flag flies for long.",
+      "name": "Tortuga",
+      "brief": "A loose, lawless port where pirates rule and no flag flies for long.",
       "encounters": "Duel a rival in the Red Parrot Inn; persuade the Pirate Court to back a mutiny; chase a thief through crowded alleys."
     },
     {
-      "label": "Nassau",
-      "detail": "A fledgling pirate republic where ideals clash with ambition.",
+      "name": "Nassau",
+      "brief": "A fledgling pirate republic where ideals clash with ambition.",
       "encounters": "Trade secrets in the Free Market; outwit a British informant in the Governor’s Quarters; rally support for a pirate fleet."
     },
     {
-      "label": "Shipbreaker Cove",
-      "detail": "A jagged inlet known for wrecks, reefs, and rumors of hidden anchorages.",
+      "name": "Shipbreaker Cove",
+      "brief": "A jagged inlet known for wrecks, reefs, and rumors of hidden anchorages.",
       "encounters": "Slip through the cove’s defenses under pursuit; parley during a tense pirate summit; retrieve a wrecked courier ship’s logs before high tide."
     },
     {
-      "label": "The Lost Shoals",
-      "detail": "A shifting maze of reefs and fogbanks where compasses spin and charts lie.",
+      "name": "The Lost Shoals",
+      "brief": "A shifting maze of reefs and fogbanks where compasses spin and charts lie.",
       "encounters": "Board the haunted wreck of the Resolute; escape a pursuing brig obscured in the fog; investigate why the Deadlight Buoy is following your vessel."
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "weathered-captain",
-      "label": "Weathered Captain",
-      "detail": ""
+      "name": "Weathered Captain",
+      "brief": ""
     },
     {
       "id": "vengeful-buccaneer",
-      "label": "Vengeful Buccaneer",
-      "detail": ""
+      "name": "Vengeful Buccaneer",
+      "brief": ""
     },
     {
       "id": "treasure-hunter",
-      "label": "Treasure Hunter",
-      "detail": ""
+      "name": "Treasure Hunter",
+      "brief": ""
     },
     {
       "id": "escaped-convict",
-      "label": "Escaped Convict",
-      "detail": ""
+      "name": "Escaped Convict",
+      "brief": ""
     },
     {
       "id": "rogue-privateer",
-      "label": "Rogue Privateer",
-      "detail": ""
+      "name": "Rogue Privateer",
+      "brief": ""
     },
     {
       "id": "drunken-navigator",
-      "label": "Drunken Navigator",
-      "detail": ""
+      "name": "Drunken Navigator",
+      "brief": ""
     },
     {
       "id": "exiled-noble",
-      "label": "Exiled Noble",
-      "detail": ""
+      "name": "Exiled Noble",
+      "brief": ""
     },
     {
       "id": "cunning-cook",
-      "label": "Cunning Cook",
-      "detail": ""
+      "name": "Cunning Cook",
+      "brief": ""
     },
     {
       "id": "runaway-shipwright",
-      "label": "Runaway Shipwright",
-      "detail": ""
+      "name": "Runaway Shipwright",
+      "brief": ""
     },
     {
       "id": "hardened-gunner",
-      "label": "Hardened Gunner",
-      "detail": ""
+      "name": "Hardened Gunner",
+      "brief": ""
     },
     {
       "id": "smiling-smuggler",
-      "label": "Smiling Smuggler",
-      "detail": ""
+      "name": "Smiling Smuggler",
+      "brief": ""
     },
     {
       "id": "sharp-tongued-barkeep",
-      "label": "Sharp-Tongued Barkeep",
-      "detail": ""
+      "name": "Sharp-Tongued Barkeep",
+      "brief": ""
     },
     {
       "id": "reluctant-mutineer",
-      "label": "Reluctant Mutineer",
-      "detail": ""
+      "name": "Reluctant Mutineer",
+      "brief": ""
     },
     {
       "id": "survivor-of-shipwreck",
-      "label": "Survivor of Shipwreck",
-      "detail": ""
+      "name": "Survivor of Shipwreck",
+      "brief": ""
     },
     {
       "id": "greedy-deckhand",
-      "label": "Greedy Deckhand",
-      "detail": ""
+      "name": "Greedy Deckhand",
+      "brief": ""
     },
     {
       "id": "obsessive-cartographer",
-      "label": "Obsessive Cartographer",
-      "detail": ""
+      "name": "Obsessive Cartographer",
+      "brief": ""
     },
     {
       "id": "freed-bondsman",
-      "label": "Freed Bondsman",
-      "detail": ""
+      "name": "Freed Bondsman",
+      "brief": ""
     },
     {
       "id": "cold-eyed-lookout",
-      "label": "Cold-Eyed Lookout",
-      "detail": ""
+      "name": "Cold-Eyed Lookout",
+      "brief": ""
     },
     {
       "id": "former-officer",
-      "label": "Former Officer",
-      "detail": ""
+      "name": "Former Officer",
+      "brief": ""
     },
     {
       "id": "quartermaster-in-hiding",
-      "label": "Quartermaster in Hiding",
-      "detail": ""
+      "name": "Quartermaster in Hiding",
+      "brief": ""
     },
     {
       "id": "duel-happy-swashbuckler",
-      "label": "Duel-Happy Swashbuckler",
-      "detail": ""
+      "name": "Duel-Happy Swashbuckler",
+      "brief": ""
     },
     {
       "id": "bankrupt-merchant",
-      "label": "Bankrupt Merchant",
-      "detail": ""
+      "name": "Bankrupt Merchant",
+      "brief": ""
     },
     {
       "id": "powder-monkey-veteran",
-      "label": "Powder Monkey Veteran",
-      "detail": ""
+      "name": "Powder Monkey Veteran",
+      "brief": ""
     },
     {
       "id": "grizzled-harpooner",
-      "label": "Grizzled Harpooner",
-      "detail": ""
+      "name": "Grizzled Harpooner",
+      "brief": ""
     },
     {
       "id": "island-trader-scout",
-      "label": "Island-Trader Scout",
-      "detail": ""
+      "name": "Island-Trader Scout",
+      "brief": ""
     },
     {
       "id": "scarred-surgeon",
-      "label": "Scarred Surgeon",
-      "detail": ""
+      "name": "Scarred Surgeon",
+      "brief": ""
     },
     {
       "id": "gambling-addict",
-      "label": "Gambling Addict",
-      "detail": ""
+      "name": "Gambling Addict",
+      "brief": ""
     },
     {
       "id": "defrocked-missionary",
-      "label": "Defrocked Missionary",
-      "detail": ""
+      "name": "Defrocked Missionary",
+      "brief": ""
     },
     {
       "id": "streetwise-orphan",
-      "label": "Streetwise Orphan",
-      "detail": ""
+      "name": "Streetwise Orphan",
+      "brief": ""
     },
     {
       "id": "cross-dressed-stowaway",
-      "label": "Cross-Dressed Stowaway",
-      "detail": ""
+      "name": "Cross-Dressed Stowaway",
+      "brief": ""
     },
     {
       "id": "seasoned-pilot",
-      "label": "Seasoned Pilot",
-      "detail": ""
+      "name": "Seasoned Pilot",
+      "brief": ""
     },
     {
       "id": "silver-tongued-rogue",
-      "label": "Silver-Tongued Rogue",
-      "detail": ""
+      "name": "Silver-Tongued Rogue",
+      "brief": ""
     },
     {
       "id": "hothead-gunrunner",
-      "label": "Hothead Gunrunner",
-      "detail": ""
+      "name": "Hothead Gunrunner",
+      "brief": ""
     },
     {
       "id": "scarred-boatswain",
-      "label": "Scarred Boatswain",
-      "detail": ""
+      "name": "Scarred Boatswain",
+      "brief": ""
     },
     {
       "id": "cocky-recruit",
-      "label": "Cocky Recruit",
-      "detail": ""
+      "name": "Cocky Recruit",
+      "brief": ""
     },
     {
       "id": "veteran-boatswain",
-      "label": "Veteran Boatswain",
-      "detail": ""
+      "name": "Veteran Boatswain",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "ropework-mastery",
-      "label": "Ropework Mastery",
-      "detail": ""
+      "name": "Ropework Mastery",
+      "brief": ""
     },
     {
       "id": "pistol-accuracy",
-      "label": "Pistol Accuracy",
-      "detail": ""
+      "name": "Pistol Accuracy",
+      "brief": ""
     },
     {
       "id": "commanding-voice",
-      "label": "Commanding Voice",
-      "detail": ""
+      "name": "Commanding Voice",
+      "brief": ""
     },
     {
       "id": "celestial-navigation",
-      "label": "Celestial Navigation",
-      "detail": ""
+      "name": "Celestial Navigation",
+      "brief": ""
     },
     {
       "id": "fast-reload",
-      "label": "Fast Reload",
-      "detail": ""
+      "name": "Fast Reload",
+      "brief": ""
     },
     {
       "id": "dice-hustling",
-      "label": "Dice Hustling",
-      "detail": ""
+      "name": "Dice Hustling",
+      "brief": ""
     },
     {
       "id": "silent-movement",
-      "label": "Silent Movement",
-      "detail": ""
+      "name": "Silent Movement",
+      "brief": ""
     },
     {
       "id": "knife-throwing",
-      "label": "Knife Throwing",
-      "detail": ""
+      "name": "Knife Throwing",
+      "brief": ""
     },
     {
       "id": "swordsmanship",
-      "label": "Swordsmanship",
-      "detail": ""
+      "name": "Swordsmanship",
+      "brief": ""
     },
     {
       "id": "reading-charts",
-      "label": "Reading Charts",
-      "detail": ""
+      "name": "Reading Charts",
+      "brief": ""
     },
     {
       "id": "hide-in-plain-sight",
-      "label": "Hide in Plain Sight",
-      "detail": ""
+      "name": "Hide in Plain Sight",
+      "brief": ""
     },
     {
       "id": "storm-sailing",
-      "label": "Storm Sailing",
-      "detail": ""
+      "name": "Storm Sailing",
+      "brief": ""
     },
     {
       "id": "cannon-handling",
-      "label": "Cannon Handling",
-      "detail": ""
+      "name": "Cannon Handling",
+      "brief": ""
     },
     {
       "id": "ship-tactics",
-      "label": "Ship Tactics",
-      "detail": ""
+      "name": "Ship Tactics",
+      "brief": ""
     },
     {
       "id": "quick-reflexes",
-      "label": "Quick Reflexes",
-      "detail": ""
+      "name": "Quick Reflexes",
+      "brief": ""
     },
     {
       "id": "intimidation",
-      "label": "Intimidation",
-      "detail": ""
+      "name": "Intimidation",
+      "brief": ""
     },
     {
       "id": "wilderness-survival",
-      "label": "Wilderness Survival",
-      "detail": ""
+      "name": "Wilderness Survival",
+      "brief": ""
     },
     {
       "id": "contraband-concealment",
-      "label": "Contraband Concealment",
-      "detail": ""
+      "name": "Contraband Concealment",
+      "brief": ""
     },
     {
       "id": "map-copying",
-      "label": "Map Copying",
-      "detail": ""
+      "name": "Map Copying",
+      "brief": ""
     },
     {
       "id": "multilingual",
-      "label": "Multilingual",
-      "detail": ""
+      "name": "Multilingual",
+      "brief": ""
     },
     {
       "id": "bartering",
-      "label": "Bartering",
-      "detail": ""
+      "name": "Bartering",
+      "brief": ""
     },
     {
       "id": "heavy-lifting",
-      "label": "Heavy Lifting",
-      "detail": ""
+      "name": "Heavy Lifting",
+      "brief": ""
     },
     {
       "id": "bluffing",
-      "label": "Bluffing",
-      "detail": ""
+      "name": "Bluffing",
+      "brief": ""
     },
     {
       "id": "rig-climbing",
-      "label": "Rig Climbing",
-      "detail": ""
+      "name": "Rig Climbing",
+      "brief": ""
     },
     {
       "id": "sharp-eyes",
-      "label": "Sharp Eyes",
-      "detail": ""
+      "name": "Sharp Eyes",
+      "brief": ""
     },
     {
       "id": "rig-repair",
-      "label": "Rig Repair",
-      "detail": ""
+      "name": "Rig Repair",
+      "brief": ""
     },
     {
       "id": "fire-starting",
-      "label": "Fire Starting",
-      "detail": ""
+      "name": "Fire Starting",
+      "brief": ""
     },
     {
       "id": "load-balancing",
-      "label": "Load Balancing",
-      "detail": ""
+      "name": "Load Balancing",
+      "brief": ""
     },
     {
       "id": "fast-talking",
-      "label": "Fast Talking",
-      "detail": ""
+      "name": "Fast Talking",
+      "brief": ""
     },
     {
       "id": "silent-signaling",
-      "label": "Silent Signaling",
-      "detail": ""
+      "name": "Silent Signaling",
+      "brief": ""
     },
     {
       "id": "hold-breath-long",
-      "label": "Hold Breath Long",
-      "detail": ""
+      "name": "Hold Breath Long",
+      "brief": ""
     },
     {
       "id": "steady-hand",
-      "label": "Steady Hand",
-      "detail": ""
+      "name": "Steady Hand",
+      "brief": ""
     },
     {
       "id": "sea-shanty-leadership",
-      "label": "Sea Shanty Leadership",
-      "detail": ""
+      "name": "Sea Shanty Leadership",
+      "brief": ""
     },
     {
       "id": "improvised-weapons",
-      "label": "Improvised Weapons",
-      "detail": ""
+      "name": "Improvised Weapons",
+      "brief": ""
     },
     {
       "id": "spot-a-traitor",
-      "label": "Spot a Traitor",
-      "detail": ""
+      "name": "Spot a Traitor",
+      "brief": ""
     },
     {
       "id": "hull-patching",
-      "label": "Hull Patching",
-      "detail": ""
+      "name": "Hull Patching",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "hunted-by-the-navy",
-      "label": "Hunted by the Navy",
-      "detail": ""
+      "name": "Hunted by the Navy",
+      "brief": ""
     },
     {
       "id": "seasick-in-storms",
-      "label": "Seasick in Storms",
-      "detail": ""
+      "name": "Seasick in Storms",
+      "brief": ""
     },
     {
       "id": "haunted-by-the-past",
-      "label": "Haunted by the Past",
-      "detail": ""
+      "name": "Haunted by the Past",
+      "brief": ""
     },
     {
       "id": "ill-reputation",
-      "label": "Ill Reputation",
-      "detail": ""
+      "name": "Ill Reputation",
+      "brief": ""
     },
     {
       "id": "broken-ribs",
-      "label": "Broken Ribs",
-      "detail": ""
+      "name": "Broken Ribs",
+      "brief": ""
     },
     {
       "id": "too-trusting",
-      "label": "Too Trusting",
-      "detail": ""
+      "name": "Too Trusting",
+      "brief": ""
     },
     {
       "id": "drunk-on-duty",
-      "label": "Drunk on Duty",
-      "detail": ""
+      "name": "Drunk on Duty",
+      "brief": ""
     },
     {
       "id": "guilt-ridden",
-      "label": "Guilt-Ridden",
-      "detail": ""
+      "name": "Guilt-Ridden",
+      "brief": ""
     },
     {
       "id": "crippling-debt",
-      "label": "Crippling Debt",
-      "detail": ""
+      "name": "Crippling Debt",
+      "brief": ""
     },
     {
       "id": "poor-swimmer",
-      "label": "Poor Swimmer",
-      "detail": ""
+      "name": "Poor Swimmer",
+      "brief": ""
     },
     {
       "id": "old-grudge",
-      "label": "Old Grudge",
-      "detail": ""
+      "name": "Old Grudge",
+      "brief": ""
     },
     {
       "id": "disobeys-orders",
-      "label": "Disobeys Orders",
-      "detail": ""
+      "name": "Disobeys Orders",
+      "brief": ""
     },
     {
       "id": "missing-fingers",
-      "label": "Missing Fingers",
-      "detail": ""
+      "name": "Missing Fingers",
+      "brief": ""
     },
     {
       "id": "loud-sleeper",
-      "label": "Loud Sleeper",
-      "detail": ""
+      "name": "Loud Sleeper",
+      "brief": ""
     },
     {
       "id": "temper-problem",
-      "label": "Temper Problem",
-      "detail": ""
+      "name": "Temper Problem",
+      "brief": ""
     },
     {
       "id": "illiterate",
-      "label": "Illiterate",
-      "detail": ""
+      "name": "Illiterate",
+      "brief": ""
     },
     {
       "id": "known-braggart",
-      "label": "Known Braggart",
-      "detail": ""
+      "name": "Known Braggart",
+      "brief": ""
     },
     {
       "id": "limp-from-old-wound",
-      "label": "Limp from Old Wound",
-      "detail": ""
+      "name": "Limp from Old Wound",
+      "brief": ""
     },
     {
       "id": "fears-firearms",
-      "label": "Fears Firearms",
-      "detail": ""
+      "name": "Fears Firearms",
+      "brief": ""
     },
     {
       "id": "wanted-in-port",
-      "label": "Wanted in Port",
-      "detail": ""
+      "name": "Wanted in Port",
+      "brief": ""
     },
     {
       "id": "known-cheat",
-      "label": "Known Cheat",
-      "detail": ""
+      "name": "Known Cheat",
+      "brief": ""
     },
     {
       "id": "questionable-loyalty",
-      "label": "Questionable Loyalty",
-      "detail": ""
+      "name": "Questionable Loyalty",
+      "brief": ""
     },
     {
       "id": "reeks-of-rum",
-      "label": "Reeks of Rum",
-      "detail": ""
+      "name": "Reeks of Rum",
+      "brief": ""
     },
     {
       "id": "speaks-out-of-turn",
-      "label": "Speaks Out of Turn",
-      "detail": ""
+      "name": "Speaks Out of Turn",
+      "brief": ""
     },
     {
       "id": "easily-distracted",
-      "label": "Easily Distracted",
-      "detail": ""
+      "name": "Easily Distracted",
+      "brief": ""
     },
     {
       "id": "heavy-gambler",
-      "label": "Heavy Gambler",
-      "detail": ""
+      "name": "Heavy Gambler",
+      "brief": ""
     },
     {
       "id": "prone-to-brawls",
-      "label": "Prone to Brawls",
-      "detail": ""
+      "name": "Prone to Brawls",
+      "brief": ""
     },
     {
       "id": "voice-carries-too-far",
-      "label": "Voice Carries Too Far",
-      "detail": ""
+      "name": "Voice Carries Too Far",
+      "brief": ""
     },
     {
       "id": "trouble-holding-tongue",
-      "label": "Trouble Holding Tongue",
-      "detail": ""
+      "name": "Trouble Holding Tongue",
+      "brief": ""
     },
     {
       "id": "overconfident",
-      "label": "Overconfident",
-      "detail": ""
+      "name": "Overconfident",
+      "brief": ""
     },
     {
       "id": "bitter-toward-officers",
-      "label": "Bitter Toward Officers",
-      "detail": ""
+      "name": "Bitter Toward Officers",
+      "brief": ""
     },
     {
       "id": "jealous-of-others",
-      "label": "Jealous of Others",
-      "detail": ""
+      "name": "Jealous of Others",
+      "brief": ""
     },
     {
       "id": "unreliable-memory",
-      "label": "Unreliable Memory",
-      "detail": ""
+      "name": "Unreliable Memory",
+      "brief": ""
     },
     {
       "id": "prone-to-sunstroke",
-      "label": "Prone to Sunstroke",
-      "detail": ""
+      "name": "Prone to Sunstroke",
+      "brief": ""
     },
     {
       "id": "fears-enclosed-spaces",
-      "label": "Fears Enclosed Spaces",
-      "detail": ""
+      "name": "Fears Enclosed Spaces",
+      "brief": ""
     },
     {
       "id": "weak-stomach",
-      "label": "Weak Stomach",
-      "detail": ""
+      "name": "Weak Stomach",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "rusty-cutlass",
-      "label": "Rusty Cutlass",
-      "detail": ""
+      "name": "Rusty Cutlass",
+      "brief": ""
     },
     {
       "id": "flintlock-pistol",
-      "label": "Flintlock Pistol",
-      "detail": ""
+      "name": "Flintlock Pistol",
+      "brief": ""
     },
     {
       "id": "hand-drawn-map",
-      "label": "Hand-Drawn Map",
-      "detail": ""
+      "name": "Hand-Drawn Map",
+      "brief": ""
     },
     {
       "id": "locked-chest-no-key",
-      "label": "Locked Chest (no key)",
-      "detail": ""
+      "name": "Locked Chest (no key)",
+      "brief": ""
     },
     {
       "id": "well-oiled-compass",
-      "label": "Well-Oiled Compass",
-      "detail": ""
+      "name": "Well-Oiled Compass",
+      "brief": ""
     },
     {
       "id": "set-of-dice",
-      "label": "Set of Dice",
-      "detail": ""
+      "name": "Set of Dice",
+      "brief": ""
     },
     {
       "id": "bottle-of-strong-rum",
-      "label": "Bottle of Strong Rum",
-      "detail": ""
+      "name": "Bottle of Strong Rum",
+      "brief": ""
     },
     {
       "id": "set-of-cooking-knives",
-      "label": "Set of Cooking Knives",
-      "detail": ""
+      "name": "Set of Cooking Knives",
+      "brief": ""
     },
     {
       "id": "waterproof-satchel",
-      "label": "Waterproof Satchel",
-      "detail": ""
+      "name": "Waterproof Satchel",
+      "brief": ""
     },
     {
       "id": "engraved-spyglass",
-      "label": "Engraved Spyglass",
-      "detail": ""
+      "name": "Engraved Spyglass",
+      "brief": ""
     },
     {
       "id": "faded-letter-from-home",
-      "label": "Faded Letter from Home",
-      "detail": ""
+      "name": "Faded Letter from Home",
+      "brief": ""
     },
     {
       "id": "deck-of-playing-cards",
-      "label": "Deck of Playing Cards",
-      "detail": ""
+      "name": "Deck of Playing Cards",
+      "brief": ""
     },
     {
       "id": "belt-with-hidden-knife",
-      "label": "Belt with Hidden Knife",
-      "detail": ""
+      "name": "Belt with Hidden Knife",
+      "brief": ""
     },
     {
       "id": "toolkit-for-ship-repairs",
-      "label": "Toolkit for Ship Repairs",
-      "detail": ""
+      "name": "Toolkit for Ship Repairs",
+      "brief": ""
     },
     {
       "id": "ink-charts",
-      "label": "Ink & Charts",
-      "detail": ""
+      "name": "Ink & Charts",
+      "brief": ""
     },
     {
       "id": "heavy-leather-boots",
-      "label": "Heavy Leather Boots",
-      "detail": ""
+      "name": "Heavy Leather Boots",
+      "brief": ""
     },
     {
       "id": "lockpicks",
-      "label": "Lockpicks",
-      "detail": ""
+      "name": "Lockpicks",
+      "brief": ""
     },
     {
       "id": "false-documents",
-      "label": "False Documents",
-      "detail": ""
+      "name": "False Documents",
+      "brief": ""
     },
     {
       "id": "signal-whistle",
-      "label": "Signal Whistle",
-      "detail": ""
+      "name": "Signal Whistle",
+      "brief": ""
     },
     {
       "id": "barrel-of-powder",
-      "label": "Barrel of Powder",
-      "detail": ""
+      "name": "Barrel of Powder",
+      "brief": ""
     },
     {
       "id": "rope-grapple-hook",
-      "label": "Rope & Grapple Hook",
-      "detail": ""
+      "name": "Rope & Grapple Hook",
+      "brief": ""
     },
     {
       "id": "pocket-notebook",
-      "label": "Pocket Notebook",
-      "detail": ""
+      "name": "Pocket Notebook",
+      "brief": ""
     },
     {
       "id": "engraved-locket",
-      "label": "Engraved Locket",
-      "detail": ""
+      "name": "Engraved Locket",
+      "brief": ""
     },
     {
       "id": "sharpening-stone",
-      "label": "Sharpening Stone",
-      "detail": ""
+      "name": "Sharpening Stone",
+      "brief": ""
     },
     {
       "id": "smuggler-s-satchel",
-      "label": "Smuggler’s Satchel",
-      "detail": ""
+      "name": "Smuggler’s Satchel",
+      "brief": ""
     },
     {
       "id": "brass-telescope",
-      "label": "Brass Telescope",
-      "detail": ""
+      "name": "Brass Telescope",
+      "brief": ""
     },
     {
       "id": "pocket-telescope",
-      "label": "Pocket Telescope",
-      "detail": ""
+      "name": "Pocket Telescope",
+      "brief": ""
     },
     {
       "id": "merchant-s-ledger",
-      "label": "Merchant’s Ledger",
-      "detail": ""
+      "name": "Merchant’s Ledger",
+      "brief": ""
     },
     {
       "id": "custom-gunpowder-horn",
-      "label": "Custom Gunpowder Horn",
-      "detail": ""
+      "name": "Custom Gunpowder Horn",
+      "brief": ""
     },
     {
       "id": "dented-tin-mug",
-      "label": "Dented Tin Mug",
-      "detail": ""
+      "name": "Dented Tin Mug",
+      "brief": ""
     },
     {
       "id": "signal-flags-set",
-      "label": "Signal Flags Set",
-      "detail": ""
+      "name": "Signal Flags Set",
+      "brief": ""
     },
     {
       "id": "ink-stained-journal",
-      "label": "Ink-Stained Journal",
-      "detail": ""
+      "name": "Ink-Stained Journal",
+      "brief": ""
     },
     {
       "id": "fishing-line-hook",
-      "label": "Fishing Line & Hook",
-      "detail": ""
+      "name": "Fishing Line & Hook",
+      "brief": ""
     },
     {
       "id": "black-bandana",
-      "label": "Black Bandana",
-      "detail": ""
+      "name": "Black Bandana",
+      "brief": ""
     },
     {
       "id": "heavy-cloak",
-      "label": "Heavy Cloak",
-      "detail": ""
+      "name": "Heavy Cloak",
+      "brief": ""
     },
     {
       "id": "brass-knuckles",
-      "label": "Brass Knuckles",
-      "detail": ""
+      "name": "Brass Knuckles",
+      "brief": ""
     }
   ],
   "spends_luck": false,

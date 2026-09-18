@@ -11,7 +11,7 @@ class CreationStep(Frozen):
     """No options means the player writes the answer."""
 
     id: Slug
-    label: str
+    name: str
     options: tuple[DecisionOption, ...] = ()
     hint: str = ""
     allows_text: bool = False

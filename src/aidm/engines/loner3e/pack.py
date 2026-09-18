@@ -7,7 +7,7 @@ from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections
 from aidm.engines.loner3e.world import DIE_FACE
 from aidm.engines.packs import (
-    Labelled,
+    Named,
     Pack,
     PackBody,
     PackHead,
@@ -15,7 +15,7 @@ from aidm.engines.packs import (
     bullets,
     check_items,
     check_lines,
-    options,
+    with_ids,
 )
 
 AUTHORING = (
@@ -109,7 +109,7 @@ class Loner3ePack(Pack):
 
     def sections(self, *, opening: bool) -> Sections:
         tags = "\n".join(
-            f"{kind}: {', '.join(entry.label for entry in entries)}"
+            f"{kind}: {', '.join(entry.name for entry in entries)}"
             for kind, entries in (
                 ("concepts", self.concepts),
                 ("skills", self.skills),
@@ -127,25 +127,25 @@ class Loner3ePack(Pack):
 
 
 class Loner3eHead(PackHead):
-    concepts: tuple[Labelled, ...] = Field(
+    concepts: tuple[Named, ...] = Field(
         min_length=6,
         max_length=36,
         description="One-line concepts a player picks their character from, such as "
         "'A salvager who works the drowned streets'.",
     )
-    skills: tuple[Labelled, ...] = Field(
+    skills: tuple[Named, ...] = Field(
         min_length=6,
         max_length=36,
         description="Freeform skill tags, each something a character is good at, such as "
         "'Reads old stonework'.",
     )
-    frailties: tuple[Labelled, ...] = Field(
+    frailties: tuple[Named, ...] = Field(
         min_length=6,
         max_length=36,
         description="Freeform frailty tags, each something that works against a character, such "
         "as 'Owes the wrong people'.",
     )
-    gear: tuple[Labelled, ...] = Field(
+    gear: tuple[Named, ...] = Field(
         min_length=6,
         max_length=36,
         description="Freeform gear tags, each a thing a character carries, such as "
@@ -157,10 +157,10 @@ class Loner3eHead(PackHead):
         taken: list[Slug] = []
         return {
             **super().pack_fields(),
-            "concepts": options(self.concepts, taken),
-            "skills": options(self.skills, taken),
-            "frailties": options(self.frailties, taken),
-            "gear": options(self.gear, taken),
+            "concepts": with_ids(self.concepts, taken),
+            "skills": with_ids(self.skills, taken),
+            "frailties": with_ids(self.frailties, taken),
+            "gear": with_ids(self.gear, taken),
         }
 
 

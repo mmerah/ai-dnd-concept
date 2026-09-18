@@ -42,7 +42,7 @@ def test_gear_notes(gear: Gear, expected: str) -> None:
 def test_player_view_character_panel_carries_the_gear_row() -> None:
     view = ENGINE.player_view(small_world())
     character = next(panel for panel in view.panels if panel.title == "Character")
-    assert PanelRow(label="Gear", detail="Lockpick set") in character.rows
+    assert PanelRow(name="Gear", brief="Lockpick set") in character.rows
 
 
 def test_master_sections_shows_hidden_entities() -> None:

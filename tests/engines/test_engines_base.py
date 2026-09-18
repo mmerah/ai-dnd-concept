@@ -24,12 +24,12 @@ def _state() -> Loner3eGame:
 
 
 def test_here_panel_leaves_out_the_player_and_carries_an_icon_id_per_row() -> None:
-    other = Subject(id="kestrel", label="Kestrel", detail="Runs the dock.")
+    other = Subject(id="kestrel", name="Kestrel", brief="Runs the dock.")
 
     panel = here_panel((other,))
 
     assert panel.title == "Also here"
-    assert [row.label for row in panel.rows] == ["Kestrel"]
+    assert [row.name for row in panel.rows] == ["Kestrel"]
     assert panel.rows[0].icon_id == other.id
 
 
@@ -43,8 +43,8 @@ def test_party_section_is_empty_for_nobody_and_party_panel_orders_entity_before_
 
     (panel,) = party_panel((member,))
     assert panel.title == "Party"
-    assert panel.rows[0] == PanelRow(label="Mara", detail="Keeps to herself.", icon_id=member.id)
-    assert panel.rows[1] == PanelRow(label="Concept", detail="A Watcher")
+    assert panel.rows[0] == PanelRow(name="Mara", brief="Keeps to herself.", icon_id=member.id)
+    assert panel.rows[1] == PanelRow(name="Concept", brief="A Watcher")
 
     ((title, body),) = party_section((member,))
     assert (title, body) == ("THE PARTY (led by the player)", member.line())

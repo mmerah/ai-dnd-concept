@@ -1,12 +1,13 @@
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from functools import cache
 
 from httpx import AsyncClient
 from pydantic import JsonValue
 
 from aidm.config import ProviderConfig
+
+_client: AsyncClient | None = None
 
 
 @dataclass(slots=True)
@@ -27,23 +28,26 @@ class Claims:
                 self.held.discard(key)
 
 
-@cache
-def posting() -> AsyncClient:
+def client() -> AsyncClient:
     """One pool for the process: a client per call pays a new handshake."""
-    return AsyncClient()
+    global _client
+    if _client is None:
+        _client = AsyncClient()
+    return _client
 
 
-async def close_posting() -> None:
-    if posting.cache_info().currsize:
-        await posting().aclose()
-        posting.cache_clear()
+async def close_client() -> None:
+    global _client
+    if _client is not None:
+        await _client.aclose()
+        _client = None
 
 
 async def post_bearer(
     provider: ProviderConfig, path: str, body: Mapping[str, JsonValue], timeout: float
 ) -> bytes:
     """Returns bytes: one reply is JSON, another audio."""
-    reply = await posting().post(
+    reply = await client().post(
         f"{provider.base_url}{path}",
         headers={"Authorization": f"Bearer {provider.api_key.get_secret_value()}"},
         json=body,

@@ -20,7 +20,9 @@ from aidm.engines.engine import AnyEngine
 MASTER_ROLE = Path(__file__).parent / "prompts" / "master.md"
 PAUSED_TO_ASK = 'The rules paused play to ask the player: "{prompt}" '
 RULES_WAIT = "the rules now wait on the player's decision"
-REQUEST_WAIT = "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
+COMMISSION_WAIT = (
+    "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
+)
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
     "do not settle it again."
@@ -38,7 +40,7 @@ class Turn:
     facts: list[Fact] = field(default_factory=list)
     words: str = ""
     # What the master reads as PLAYER ACTION: the words, or the marker for a chosen option.
-    action: str = ""
+    player_action: str = ""
     notes: list[str] = field(default_factory=list)
     # Whether the master plays: an answer that re-suspended leaves every tool refused.
     played: bool = True
@@ -55,7 +57,7 @@ class Turn:
 
     def _consume(self, answer: Answer) -> None:
         engine, draft = self.engine, self.draft
-        if (ended := engine.over(draft)) is not None:
+        if (ended := engine.ending(draft)) is not None:
             raise Refusal(f"{ended} {RESTART}")
         # Any input consumes the decision, a revision included: it never survives its own answer.
         consumed, draft.pending = draft.pending, None
@@ -68,7 +70,7 @@ class Turn:
                     PAUSED_TO_ASK.format(prompt=consumed.prompt)
                     + "The PLAYER ACTION is their answer."
                 )
-            self.words = self.action = answer.text
+            self.words = self.player_action = answer.text
             return
         if consumed is None:
             raise Refusal(f"no decision is open, so option {chosen!r} answers nothing")
@@ -76,16 +78,16 @@ class Turn:
         if option is None:
             raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
         # A refusal raises: the engine enumerated the option, so it is never model error.
-        facts = self.apply(lambda copy, dice: engine.answer(copy, option, dice))
+        facts = self.apply(lambda copy, dice: engine.play_option(copy, option, dice))
         traces = traced(facts)
         # An answer that re-suspended has no tool answer to carry the wait, so the note says it.
         if self.draft.pending is not None:
             traces += f"\n- {RULES_WAIT}"
         self.draft.note(
             PAUSED_TO_ASK.format(prompt=consumed.prompt)
-            + f"They chose: {option.label}. Already resolved:\n{traces}"
+            + f"They chose: {option.name}. Already resolved:\n{traces}"
         )
-        self.words, self.action = option.label, ANSWERED_BY_OPTION
+        self.words, self.player_action = option.name, ANSWERED_BY_OPTION
 
     @property
     def narrates(self) -> bool:
@@ -102,13 +104,13 @@ class Turn:
             self.engine.instructions,
             self.engine.master_sections(self.draft),
             self.draft,
-            self.action,
+            self.player_action,
             notes=self.notes,
         )
 
     def call(self, name: str, raw: JsonValue) -> str:
         """The one gate every published tool passes; returns what changed as the master reads it."""
-        if (ended := self.engine.over(self.draft)) is not None:
+        if (ended := self.engine.ending(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
         found = self.engine.require_tool(name)
         pending = self.draft.pending
@@ -119,7 +121,7 @@ class Turn:
                 "Stop here and exit; the player's answer opens the next turn."
             )
         if self.draft.commission is not None:
-            return REQUEST_WAIT
+            return COMMISSION_WAIT
         notes_before = len(self.draft.notes)
         facts = self.apply(lambda draft, rng: found.call(draft, raw, rng))
         lines = [f"- {fact.trace}" for fact in facts]

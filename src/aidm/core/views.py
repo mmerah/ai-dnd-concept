@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Refusal, Slug, check_unique
+from aidm.core.entities import Frozen, Refusal, Slug, check_unique, headline_of
 from aidm.core.play import (
     DecisionOption,
     Interjection,
@@ -17,20 +17,24 @@ type Chattiness = Literal["quiet", "normal", "chatty"]
 type Rows = tuple[tuple[str, str], ...]
 
 
-# Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
+# Three row shapes, in order: entity (`icon_id`), named value (`brief`), or bare name.
 class PanelRow(Frozen):
-    label: str
-    detail: str
+    name: str
+    brief: str
     icon_id: Slug | None = None
 
 
-class Subject(DecisionOption):
+class Subject(Frozen):
+    id: Slug
+    name: str = Field(min_length=1)
+    brief: str = ""
+
     @property
     def headline(self) -> str:
-        return f"{self.label}[{self.id}]" + (f" — {self.detail}" if self.detail else "")
+        return headline_of(self.name, self.id, self.brief)
 
     def row(self) -> PanelRow:
-        return PanelRow(label=self.label, detail=self.detail, icon_id=self.id)
+        return PanelRow(name=self.name, brief=self.brief, icon_id=self.id)
 
 
 class Companion(Subject):
@@ -81,7 +85,7 @@ class NarratorView(Frozen):
             who = here.get(line.speaker_id)
             if who is None:
                 raise Refusal(f"nobody here has id {line.speaker_id!r}")
-            return SpokenLine(speaker_id=who.id, speaker=who.label, text=line.text)
+            return SpokenLine(speaker_id=who.id, speaker=who.name, text=line.text)
 
         return tuple(spoken_line(line) for line in lines)
 
@@ -114,7 +118,7 @@ class PlayerView(Frozen):
     panels: tuple[Panel, ...]
     decision: PendingDecision | None
     action: DecisionOption | None
-    over: str | None
+    ending: str | None
 
 
 class Look(Frozen):

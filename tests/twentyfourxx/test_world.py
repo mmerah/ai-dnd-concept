@@ -32,9 +32,8 @@ def test_raised_steps_up_the_ladder() -> None:
     assert raised(10) == 12
 
 
-def test_raised_refuses_past_d12() -> None:
-    with pytest.raises(Refusal):
-        raised(12)
+def test_raised_returns_none_past_d12() -> None:
+    assert raised(12) is None
 
 
 def test_sheet_die_returns_skill_or_default(world: TwentyfourxxWorld) -> None:

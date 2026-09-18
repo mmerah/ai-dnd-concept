@@ -7,10 +7,10 @@ from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING
 from aidm.core.play import DecisionOption
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.worldsmith import Loner3eBlock, Loner3ePack
+from aidm.engines.loner3e.pack import Loner3eBlock, Loner3ePack
 from aidm.engines.packs import SRD_PACK, Names, Pack, PackSet, read_packs
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.worldsmith import (
+from aidm.engines.twentyfourxx.pack import (
     OriginProposal,
     SpecialtyProposal,
     TwentyfourxxHead,
@@ -24,10 +24,10 @@ def _loner3e_pack(name: str) -> Loner3ePack:
         name=name,
         source="",
         license="",
-        concepts=(DecisionOption(id="concept", label="Concept"),),
-        skills=(DecisionOption(id="skill", label="Skill"),),
-        frailties=(DecisionOption(id="frailty", label="Frailty"),),
-        gear=(DecisionOption(id="gear", label="Gear"),),
+        concepts=(DecisionOption(id="concept", name="Concept"),),
+        skills=(DecisionOption(id="skill", name="Skill"),),
+        frailties=(DecisionOption(id="frailty", name="Frailty"),),
+        gear=(DecisionOption(id="gear", name="Gear"),),
     )
 
 
@@ -175,8 +175,8 @@ def test_options_lists_the_srd_first() -> None:
     packs = PackSet(TEST_ENGINE, {"second": second, SRD_PACK: srd}, {})
 
     assert packs.options() == (
-        DecisionOption(id=SRD_PACK, label="SRD"),
-        DecisionOption(id="second", label="Second"),
+        DecisionOption(id=SRD_PACK, name="SRD"),
+        DecisionOption(id="second", name="Second"),
     )
 
 
@@ -186,10 +186,10 @@ def test_a_twentyfourxx_head_never_gives_two_picks_the_same_id() -> None:
         setting="A belt station and the ships that dock there.",
         names=Names(),
         specialties=(
-            SpecialtyProposal(label="Face", detail="You talk the docks down.", skills=("Talk",)),
-            SpecialtyProposal(label="Face", detail="You wear another name.", skills=("Bluff",)),
+            SpecialtyProposal(name="Face", brief="You talk the docks down.", skills=("Talk",)),
+            SpecialtyProposal(name="Face", brief="You wear another name.", skills=("Bluff",)),
         ),
-        origins=(OriginProposal(label="Face", detail="Known on every deck."),),
+        origins=(OriginProposal(name="Face", brief="Known on every deck."),),
     )
 
     made = engine.pack_of(head, None, name="Test", origin="", license="")

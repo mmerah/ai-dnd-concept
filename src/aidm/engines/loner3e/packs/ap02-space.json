@@ -161,33 +161,33 @@
   "rules": "Concepts:\n\n- Heavy Cruiser, Light Freighter, Deep-Core Mining Vessel, Long-Range Surveyor, Recon Scout, Modular Carrier\n- Dreadnought, Diplomatic Transport, Blacksite Research Ship, Cloaked Corvette, Seed-Class Colony Pod, Mobile Medical Barge\n- Orbital Station, Salvage Rig, Strike Gunship, Planetary Lander, Autonomous Drone Net, Relay Outpost\n- Resource Barge, Gravitic Tug, Defense Platform, Boarding Shuttle, Mobile Factory, Orbital Refinery\n- Troop Hauler, Merchant Frigate, Passenger Shuttle, Deep-Space Habitat, Quantum Survey Vessel, Planet-Dredger\n- Escort Carrier, Heavy Lifters, Atmospheric Skimmer, Industrial Tug, Core-Drill Platform, Stardancer Yacht\n\nSkills:\n\n- Navigation Systems, Precision Piloting, Systems Engineering, Automated Weaponry, Long-Range Comms, Advanced Sensors\n- Shield Harmonization, Life Support Management, Energy Routing, Hyperspace Geometry, Docking Protocols, Crisis Response Systems\n- Field Repairs, Tactical Operations, Excavation Protocols, Multispectral Analysis, Medical Facilities, Cargo Optimization\n- Defensive Turrets, Missile Batteries, Stealth Field Modulation, Electronic Warfare, Bridge Command, First-Contact Procedure\n- Surgical Medbay Ops, Harsh-Env Survival Routines, Exoplanet Scanning, Astrogation Routines, Maintenance Drones, AI Systems Integration\n- Bio-Lab Synthesis, AI-Guided Navigation, Quantum Research, Stellar Cartography, Temporal Sensors, Phase Cloaking\n\nFrailties:\n\n- Unstable Power Core, Fluctuating Engine Output, Drift-Loop Misalignment, Vulnerable Shield Lattice, Dampened Weapon Systems, Patchy Communications Array\n- Crippled Sensors, Failing Life Support, FTL Instability, Jammed Docking Mechanisms, Emergency Beacon Inoperative, Erratic Thruster Control\n- Micro-Hull Breaches, Hazardous Nebula Scars, Reactor Undercapacity, Skeleton Crew, Blackbox Corruption, Worn-Out Mechanical Parts\n- AI Subroutine Corruption, Glitch-Prone Computer Core, Intrusion Vulnerabilities, Hull Plating Erosion, Cracked Viewing Panels, Persistent Electrical Arcing\n- Starved Resource Reserves, Obsolete Interface Systems, No Replacement Parts, Cramped Cargo Bays, Bunk Shortages, Fuel Economy Failure\n- Minimal Armaments, Narrow Sensor Cone, Weakpoint in Shield Bubble, Sluggish Maneuvering Jets, Below-Average Sublight Speed, Cloak Disruption Field Leak\n\nGear:\n\n- Jump Drive, Ion Engines, Hyperwave Relay, Transport Beacons, Plasma Arc Emitters, Quantum Cannons\n- Deflector Matrix, Cloaking Hull Sheath, Tractor Pulse Array, Lifeweb Integrator, Environment Stabilizer, Emergency Sleep Pods\n- Adaptive Holosuite, Synthesis Replicator, Trauma Medbay, Starpath Navigator, Combat-Optimized Core AI, Deep-Scan Radar\n- Signal Uplink Dish, Auto-Destruct Trigger, Ejection Pods, Magnetic Docking Latch, Gravity Equalizer Array, External Force Projector\n- Fusion Core Engine, Redundant Power Grid, Vaulted Armory, Climate-Controlled Hold, Maintenance Swarm, Multipurpose Lab\n- Astrometrics Dome, Quantum Core CPU, Core Engine Chamber, Observation Deck, Common Space Lounge, Living Quarters Pod",
   "locations": [
     {
-      "label": "Concord Command Citadel",
-      "detail": "A fortified arcology rising over Terra Prime’s equatorial plateau. It houses the political, military, and diplomatic core of the **Concord of Sol**. Constant surveillance, diplomatic friction, and tense strategy meetings make it a pressure cooker of ambition.",
+      "name": "Concord Command Citadel",
+      "brief": "A fortified arcology rising over Terra Prime’s equatorial plateau. It houses the political, military, and diplomatic core of the **Concord of Sol**. Constant surveillance, diplomatic friction, and tense strategy meetings make it a pressure cooker of ambition.",
       "encounters": "Concord strategists, faction envoys, off-record informants, surveillance AIs"
     },
     {
-      "label": "Axis Market Vault",
-      "detail": "A commercial superstructure built into the hull of **Station Kaltris**, a trade hub orbiting a neutron star. Goods flow from across the sector — legal and not. The deeper you go, the fewer questions are asked.",
+      "name": "Axis Market Vault",
+      "brief": "A commercial superstructure built into the hull of **Station Kaltris**, a trade hub orbiting a neutron star. Goods flow from across the sector — legal and not. The deeper you go, the fewer questions are asked.",
       "encounters": "Combine agents, fringe tech dealers, smugglers under false flags, corporate fixers"
     },
     {
-      "label": "Assembly Chamber of Va'Surak",
-      "detail": "A living, bio-sculpted structure that houses the **Galactic Assembly of Worlds** on the neutral moon Surak-2. The building responds to mood and intent, and species from a dozen systems hold overlapping summits inside.",
+      "name": "Assembly Chamber of Va'Surak",
+      "brief": "A living, bio-sculpted structure that houses the **Galactic Assembly of Worlds** on the neutral moon Surak-2. The building responds to mood and intent, and species from a dozen systems hold overlapping summits inside.",
       "encounters": "Alien philosophers, cultural tacticians, political saboteurs, species in quiet revolt"
     },
     {
-      "label": "Mindchain Node-Theta",
-      "detail": "A hidden thought-factory buried within the crust of a rogue planet, where the **Mindchain Ascendancy** refines new synthminds. Outsiders are rarely allowed in, and those who leave remember different things.",
+      "name": "Mindchain Node-Theta",
+      "brief": "A hidden thought-factory buried within the crust of a rogue planet, where the **Mindchain Ascendancy** refines new synthminds. Outsiders are rarely allowed in, and those who leave remember different things.",
       "encounters": "Rogue sapient constructs, half-evolved AIs, broken protocols, watchers that dream"
     },
     {
-      "label": "Driftclad Anchorage \"Redhook\"",
-      "detail": "An ex-warship turned pirate fortress drifting just inside a gas giant’s stormband. This is the de facto capital of the **Driftclad Marauders**, where stolen goods are traded and rival captains air grudges.",
+      "name": "Driftclad Anchorage \"Redhook\"",
+      "brief": "An ex-warship turned pirate fortress drifting just inside a gas giant’s stormband. This is the de facto capital of the **Driftclad Marauders**, where stolen goods are traded and rival captains air grudges.",
       "encounters": "Raider lieutenants, bounty hunters, fuel smugglers, ex-soldiers turned scavvers"
     },
     {
-      "label": "Free Frontier Camp Hira",
-      "detail": "A terraforming ruin turned rebel base on the scorched moon Hira-3. The **Free Frontier Collectives** use it to launch raids and spread counter-propaganda against Core-aligned factions.",
+      "name": "Free Frontier Camp Hira",
+      "brief": "A terraforming ruin turned rebel base on the scorched moon Hira-3. The **Free Frontier Collectives** use it to launch raids and spread counter-propaganda against Core-aligned factions.",
       "encounters": "Guerrilla strategists, terra-farm refugees, former Concord operatives, surveillance ghosts"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "starship-captain",
-      "label": "Starship Captain",
-      "detail": ""
+      "name": "Starship Captain",
+      "brief": ""
     },
     {
       "id": "hotshot-pilot",
-      "label": "Hotshot Pilot",
-      "detail": ""
+      "name": "Hotshot Pilot",
+      "brief": ""
     },
     {
       "id": "cyber-enhanced-operative",
-      "label": "Cyber-Enhanced Operative",
-      "detail": ""
+      "name": "Cyber-Enhanced Operative",
+      "brief": ""
     },
     {
       "id": "alien-envoy",
-      "label": "Alien Envoy",
-      "detail": ""
+      "name": "Alien Envoy",
+      "brief": ""
     },
     {
       "id": "voidfarer-explorer",
-      "label": "Voidfarer Explorer",
-      "detail": ""
+      "name": "Voidfarer Explorer",
+      "brief": ""
     },
     {
       "id": "corsair-raider",
-      "label": "Corsair Raider",
-      "detail": ""
+      "name": "Corsair Raider",
+      "brief": ""
     },
     {
       "id": "cybernetic-hacker",
-      "label": "Cybernetic Hacker",
-      "detail": ""
+      "name": "Cybernetic Hacker",
+      "brief": ""
     },
     {
       "id": "gene-tweaker",
-      "label": "Gene-Tweaker",
-      "detail": ""
+      "name": "Gene-Tweaker",
+      "brief": ""
     },
     {
       "id": "mechwright",
-      "label": "Mechwright",
-      "detail": ""
+      "name": "Mechwright",
+      "brief": ""
     },
     {
       "id": "gun-for-hire",
-      "label": "Gun-for-Hire",
-      "detail": ""
+      "name": "Gun-for-Hire",
+      "brief": ""
     },
     {
       "id": "meditech-specialist",
-      "label": "Meditech Specialist",
-      "detail": ""
+      "name": "Meditech Specialist",
+      "brief": ""
     },
     {
       "id": "hull-welder-mechanic",
-      "label": "Hull-Welder Mechanic",
-      "detail": ""
+      "name": "Hull-Welder Mechanic",
+      "brief": ""
     },
     {
       "id": "relic-seeker",
-      "label": "Relic Seeker",
-      "detail": ""
+      "name": "Relic Seeker",
+      "brief": ""
     },
     {
       "id": "interstellar-diplomat",
-      "label": "Interstellar Diplomat",
-      "detail": ""
+      "name": "Interstellar Diplomat",
+      "brief": ""
     },
     {
       "id": "colonial-marine",
-      "label": "Colonial Marine",
-      "detail": ""
+      "name": "Colonial Marine",
+      "brief": ""
     },
     {
       "id": "starforge-engineer",
-      "label": "Starforge Engineer",
-      "detail": ""
+      "name": "Starforge Engineer",
+      "brief": ""
     },
     {
       "id": "astro-lawyer",
-      "label": "Astro-Lawyer",
-      "detail": ""
+      "name": "Astro-Lawyer",
+      "brief": ""
     },
     {
       "id": "embedded-war-reporter",
-      "label": "Embedded War Reporter",
-      "detail": ""
+      "name": "Embedded War Reporter",
+      "brief": ""
     },
     {
       "id": "xeno-botanist",
-      "label": "Xeno-Botanist",
-      "detail": ""
+      "name": "Xeno-Botanist",
+      "brief": ""
     },
     {
       "id": "biophage-researcher",
-      "label": "Biophage Researcher",
-      "detail": ""
+      "name": "Biophage Researcher",
+      "brief": ""
     },
     {
       "id": "planetcrust-surveyor",
-      "label": "Planetcrust Surveyor",
-      "detail": ""
+      "name": "Planetcrust Surveyor",
+      "brief": ""
     },
     {
       "id": "particle-physicist",
-      "label": "Particle Physicist",
-      "detail": ""
+      "name": "Particle Physicist",
+      "brief": ""
     },
     {
       "id": "deep-space-chemist",
-      "label": "Deep-Space Chemist",
-      "detail": ""
+      "name": "Deep-Space Chemist",
+      "brief": ""
     },
     {
       "id": "cosmic-theorist",
-      "label": "Cosmic Theorist",
-      "detail": ""
+      "name": "Cosmic Theorist",
+      "brief": ""
     },
     {
       "id": "orbital-detective",
-      "label": "Orbital Detective",
-      "detail": ""
+      "name": "Orbital Detective",
+      "brief": ""
     },
     {
       "id": "peacekeeper-enforcer",
-      "label": "Peacekeeper Enforcer",
-      "detail": ""
+      "name": "Peacekeeper Enforcer",
+      "brief": ""
     },
     {
       "id": "contraband-runner",
-      "label": "Contraband Runner",
-      "detail": ""
+      "name": "Contraband Runner",
+      "brief": ""
     },
     {
       "id": "freeport-trader",
-      "label": "Freeport Trader",
-      "detail": ""
+      "name": "Freeport Trader",
+      "brief": ""
     },
     {
       "id": "derelict-salvager",
-      "label": "Derelict Salvager",
-      "detail": ""
+      "name": "Derelict Salvager",
+      "brief": ""
     },
     {
       "id": "drift-nomad",
-      "label": "Drift Nomad",
-      "detail": ""
+      "name": "Drift Nomad",
+      "brief": ""
     },
     {
       "id": "cult-acolyte",
-      "label": "Cult Acolyte",
-      "detail": ""
+      "name": "Cult Acolyte",
+      "brief": ""
     },
     {
       "id": "void-prophet",
-      "label": "Void Prophet",
-      "detail": ""
+      "name": "Void Prophet",
+      "brief": ""
     },
     {
       "id": "psionic-channeler",
-      "label": "Psionic Channeler",
-      "detail": ""
+      "name": "Psionic Channeler",
+      "brief": ""
     },
     {
       "id": "rift-summoner",
-      "label": "Rift Summoner",
-      "detail": ""
+      "name": "Rift Summoner",
+      "brief": ""
     },
     {
       "id": "quantum-alchemist",
-      "label": "Quantum Alchemist",
-      "detail": ""
+      "name": "Quantum Alchemist",
+      "brief": ""
     },
     {
       "id": "time-slip-wanderer",
-      "label": "Time-Slip Wanderer",
-      "detail": ""
+      "name": "Time-Slip Wanderer",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "starship-piloting",
-      "label": "Starship Piloting",
-      "detail": ""
+      "name": "Starship Piloting",
+      "brief": ""
     },
     {
       "id": "astrogation",
-      "label": "Astrogation",
-      "detail": ""
+      "name": "Astrogation",
+      "brief": ""
     },
     {
       "id": "weapons-systems",
-      "label": "Weapons Systems",
-      "detail": ""
+      "name": "Weapons Systems",
+      "brief": ""
     },
     {
       "id": "command-tactics",
-      "label": "Command Tactics",
-      "detail": ""
+      "name": "Command Tactics",
+      "brief": ""
     },
     {
       "id": "survival",
-      "label": "Survival",
-      "detail": ""
+      "name": "Survival",
+      "brief": ""
     },
     {
       "id": "trade-negotiation",
-      "label": "Trade Negotiation",
-      "detail": ""
+      "name": "Trade Negotiation",
+      "brief": ""
     },
     {
       "id": "system-breach",
-      "label": "System Breach",
-      "detail": ""
+      "name": "System Breach",
+      "brief": ""
     },
     {
       "id": "genetic-splicing",
-      "label": "Genetic Splicing",
-      "detail": ""
+      "name": "Genetic Splicing",
+      "brief": ""
     },
     {
       "id": "autonomous-systems",
-      "label": "Autonomous Systems",
-      "detail": ""
+      "name": "Autonomous Systems",
+      "brief": ""
     },
     {
       "id": "close-combat",
-      "label": "Close Combat",
-      "detail": ""
+      "name": "Close Combat",
+      "brief": ""
     },
     {
       "id": "field-medicine",
-      "label": "Field Medicine",
-      "detail": ""
+      "name": "Field Medicine",
+      "brief": ""
     },
     {
       "id": "structural-repair",
-      "label": "Structural Repair",
-      "detail": ""
+      "name": "Structural Repair",
+      "brief": ""
     },
     {
       "id": "ancient-tech-decoding",
-      "label": "Ancient Tech Decoding",
-      "detail": ""
+      "name": "Ancient Tech Decoding",
+      "brief": ""
     },
     {
       "id": "interstellar-protocol",
-      "label": "Interstellar Protocol",
-      "detail": ""
+      "name": "Interstellar Protocol",
+      "brief": ""
     },
     {
       "id": "squad-tactics",
-      "label": "Squad Tactics",
-      "detail": ""
+      "name": "Squad Tactics",
+      "brief": ""
     },
     {
       "id": "tech-fabrication",
-      "label": "Tech Fabrication",
-      "detail": ""
+      "name": "Tech Fabrication",
+      "brief": ""
     },
     {
       "id": "legal-strategy",
-      "label": "Legal Strategy",
-      "detail": ""
+      "name": "Legal Strategy",
+      "brief": ""
     },
     {
       "id": "investigative-journalism",
-      "label": "Investigative Journalism",
-      "detail": ""
+      "name": "Investigative Journalism",
+      "brief": ""
     },
     {
       "id": "alien-flora-knowledge",
-      "label": "Alien Flora Knowledge",
-      "detail": ""
+      "name": "Alien Flora Knowledge",
+      "brief": ""
     },
     {
       "id": "bioanalysis",
-      "label": "Bioanalysis",
-      "detail": ""
+      "name": "Bioanalysis",
+      "brief": ""
     },
     {
       "id": "mineral-surveying",
-      "label": "Mineral Surveying",
-      "detail": ""
+      "name": "Mineral Surveying",
+      "brief": ""
     },
     {
       "id": "quantum-mechanics",
-      "label": "Quantum Mechanics",
-      "detail": ""
+      "name": "Quantum Mechanics",
+      "brief": ""
     },
     {
       "id": "chemical-analysis",
-      "label": "Chemical Analysis",
-      "detail": ""
+      "name": "Chemical Analysis",
+      "brief": ""
     },
     {
       "id": "astrophysics",
-      "label": "Astrophysics",
-      "detail": ""
+      "name": "Astrophysics",
+      "brief": ""
     },
     {
       "id": "case-solving",
-      "label": "Case Solving",
-      "detail": ""
+      "name": "Case Solving",
+      "brief": ""
     },
     {
       "id": "tactical-suppression",
-      "label": "Tactical Suppression",
-      "detail": ""
+      "name": "Tactical Suppression",
+      "brief": ""
     },
     {
       "id": "black-market-logistics",
-      "label": "Black Market Logistics",
-      "detail": ""
+      "name": "Black Market Logistics",
+      "brief": ""
     },
     {
       "id": "market-dynamics",
-      "label": "Market Dynamics",
-      "detail": ""
+      "name": "Market Dynamics",
+      "brief": ""
     },
     {
       "id": "wreck-recovery",
-      "label": "Wreck Recovery",
-      "detail": ""
+      "name": "Wreck Recovery",
+      "brief": ""
     },
     {
       "id": "navigating-the-drift",
-      "label": "Navigating the Drift",
-      "detail": ""
+      "name": "Navigating the Drift",
+      "brief": ""
     },
     {
       "id": "occult-lore",
-      "label": "Occult Lore",
-      "detail": ""
+      "name": "Occult Lore",
+      "brief": ""
     },
     {
       "id": "social-manipulation",
-      "label": "Social Manipulation",
-      "detail": ""
+      "name": "Social Manipulation",
+      "brief": ""
     },
     {
       "id": "mental-probing",
-      "label": "Mental Probing",
-      "detail": ""
+      "name": "Mental Probing",
+      "brief": ""
     },
     {
       "id": "dimensional-theory",
-      "label": "Dimensional Theory",
-      "detail": ""
+      "name": "Dimensional Theory",
+      "brief": ""
     },
     {
       "id": "xenochemistry",
-      "label": "Xenochemistry",
-      "detail": ""
+      "name": "Xenochemistry",
+      "brief": ""
     },
     {
       "id": "chrono-logic-reasoning",
-      "label": "Chrono-Logic Reasoning",
-      "detail": ""
+      "name": "Chrono-Logic Reasoning",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "poor-grav-adaptation",
-      "label": "Poor Grav-Adaptation",
-      "detail": ""
+      "name": "Poor Grav-Adaptation",
+      "brief": ""
     },
     {
       "id": "claustrophobia",
-      "label": "Claustrophobia",
-      "detail": ""
+      "name": "Claustrophobia",
+      "brief": ""
     },
     {
       "id": "dissociation-in-deep-space",
-      "label": "Dissociation in Deep Space",
-      "detail": ""
+      "name": "Dissociation in Deep Space",
+      "brief": ""
     },
     {
       "id": "paranoia-toward-synthetics",
-      "label": "Paranoia Toward Synthetics",
-      "detail": ""
+      "name": "Paranoia Toward Synthetics",
+      "brief": ""
     },
     {
       "id": "anomaly-obsession",
-      "label": "Anomaly Obsession",
-      "detail": ""
+      "name": "Anomaly Obsession",
+      "brief": ""
     },
     {
       "id": "aversion-to-first-contact",
-      "label": "Aversion to First Contact",
-      "detail": ""
+      "name": "Aversion to First Contact",
+      "brief": ""
     },
     {
       "id": "radiation-sensitivity",
-      "label": "Radiation Sensitivity",
-      "detail": ""
+      "name": "Radiation Sensitivity",
+      "brief": ""
     },
     {
       "id": "zero-g-vertigo",
-      "label": "Zero-G Vertigo",
-      "detail": ""
+      "name": "Zero-G Vertigo",
+      "brief": ""
     },
     {
       "id": "vacuum-panic",
-      "label": "Vacuum Panic",
-      "detail": ""
+      "name": "Vacuum Panic",
+      "brief": ""
     },
     {
       "id": "spatial-disorientation",
-      "label": "Spatial Disorientation",
-      "detail": ""
+      "name": "Spatial Disorientation",
+      "brief": ""
     },
     {
       "id": "time-dilation-trauma",
-      "label": "Time Dilation Trauma",
-      "detail": ""
+      "name": "Time Dilation Trauma",
+      "brief": ""
     },
     {
       "id": "dimensional-instability",
-      "label": "Dimensional Instability",
-      "detail": ""
+      "name": "Dimensional Instability",
+      "brief": ""
     },
     {
       "id": "ai-distrust",
-      "label": "AI Distrust",
-      "detail": ""
+      "name": "AI Distrust",
+      "brief": ""
     },
     {
       "id": "gene-defect-anxiety",
-      "label": "Gene Defect Anxiety",
-      "detail": ""
+      "name": "Gene Defect Anxiety",
+      "brief": ""
     },
     {
       "id": "prosthetic-rejection-syndrome",
-      "label": "Prosthetic Rejection Syndrome",
-      "detail": ""
+      "name": "Prosthetic Rejection Syndrome",
+      "brief": ""
     },
     {
       "id": "nanotech-paranoia",
-      "label": "Nanotech Paranoia",
-      "detail": ""
+      "name": "Nanotech Paranoia",
+      "brief": ""
     },
     {
       "id": "psionic-feedback-loops",
-      "label": "Psionic Feedback Loops",
-      "detail": ""
+      "name": "Psionic Feedback Loops",
+      "brief": ""
     },
     {
       "id": "rogue-ai-surveillance-fear",
-      "label": "Rogue AI Surveillance Fear",
-      "detail": ""
+      "name": "Rogue AI Surveillance Fear",
+      "brief": ""
     },
     {
       "id": "identity-drift",
-      "label": "Identity Drift",
-      "detail": ""
+      "name": "Identity Drift",
+      "brief": ""
     },
     {
       "id": "memory-fragmentation",
-      "label": "Memory Fragmentation",
-      "detail": ""
+      "name": "Memory Fragmentation",
+      "brief": ""
     },
     {
       "id": "emotional-suppression-glitch",
-      "label": "Emotional Suppression Glitch",
-      "detail": ""
+      "name": "Emotional Suppression Glitch",
+      "brief": ""
     },
     {
       "id": "ethical-rigidity",
-      "label": "Ethical Rigidity",
-      "detail": ""
+      "name": "Ethical Rigidity",
+      "brief": ""
     },
     {
       "id": "free-will-crisis",
-      "label": "Free Will Crisis",
-      "detail": ""
+      "name": "Free Will Crisis",
+      "brief": ""
     },
     {
       "id": "earthlonging-depression",
-      "label": "Earthlonging Depression",
-      "detail": ""
+      "name": "Earthlonging Depression",
+      "brief": ""
     },
     {
       "id": "abandonment-complex",
-      "label": "Abandonment Complex",
-      "detail": ""
+      "name": "Abandonment Complex",
+      "brief": ""
     },
     {
       "id": "resource-hoarding-instinct",
-      "label": "Resource Hoarding Instinct",
-      "detail": ""
+      "name": "Resource Hoarding Instinct",
+      "brief": ""
     },
     {
       "id": "cosmic-isolation-syndrome",
-      "label": "Cosmic Isolation Syndrome",
-      "detail": ""
+      "name": "Cosmic Isolation Syndrome",
+      "brief": ""
     },
     {
       "id": "betrayal-ptsd",
-      "label": "Betrayal PTSD",
-      "detail": ""
+      "name": "Betrayal PTSD",
+      "brief": ""
     },
     {
       "id": "unshakable-loneliness",
-      "label": "Unshakable Loneliness",
-      "detail": ""
+      "name": "Unshakable Loneliness",
+      "brief": ""
     },
     {
       "id": "obscurity-dread",
-      "label": "Obscurity Dread",
-      "detail": ""
+      "name": "Obscurity Dread",
+      "brief": ""
     },
     {
       "id": "assimilation-phobia",
-      "label": "Assimilation Phobia",
-      "detail": ""
+      "name": "Assimilation Phobia",
+      "brief": ""
     },
     {
       "id": "enslavement-flashbacks",
-      "label": "Enslavement Flashbacks",
-      "detail": ""
+      "name": "Enslavement Flashbacks",
+      "brief": ""
     },
     {
       "id": "medical-experiment-trauma",
-      "label": "Medical Experiment Trauma",
-      "detail": ""
+      "name": "Medical Experiment Trauma",
+      "brief": ""
     },
     {
       "id": "predator-anxiety",
-      "label": "Predator Anxiety",
-      "detail": ""
+      "name": "Predator Anxiety",
+      "brief": ""
     },
     {
       "id": "inferiority-complex",
-      "label": "Inferiority Complex",
-      "detail": ""
+      "name": "Inferiority Complex",
+      "brief": ""
     },
     {
       "id": "overwhelm-response-panic",
-      "label": "Overwhelm Response Panic",
-      "detail": ""
+      "name": "Overwhelm Response Panic",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "phase-pistol",
-      "label": "Phase Pistol",
-      "detail": ""
+      "name": "Phase Pistol",
+      "brief": ""
     },
     {
       "id": "adaptive-exo-suit",
-      "label": "Adaptive Exo-Suit",
-      "detail": ""
+      "name": "Adaptive Exo-Suit",
+      "brief": ""
     },
     {
       "id": "quantum-commlink",
-      "label": "Quantum Commlink",
-      "detail": ""
+      "name": "Quantum Commlink",
+      "brief": ""
     },
     {
       "id": "tactical-holo-emitter",
-      "label": "Tactical Holo-Emitter",
-      "detail": ""
+      "name": "Tactical Holo-Emitter",
+      "brief": ""
     },
     {
       "id": "personal-shield-generator",
-      "label": "Personal Shield Generator",
-      "detail": ""
+      "name": "Personal Shield Generator",
+      "brief": ""
     },
     {
       "id": "grav-boots",
-      "label": "Grav Boots",
-      "detail": ""
+      "name": "Grav Boots",
+      "brief": ""
     },
     {
       "id": "plasma-cutter",
-      "label": "Plasma Cutter",
-      "detail": ""
+      "name": "Plasma Cutter",
+      "brief": ""
     },
     {
       "id": "multi-projection-display",
-      "label": "Multi-Projection Display",
-      "detail": ""
+      "name": "Multi-Projection Display",
+      "brief": ""
     },
     {
       "id": "neural-uplink-implant",
-      "label": "Neural Uplink Implant",
-      "detail": ""
+      "name": "Neural Uplink Implant",
+      "brief": ""
     },
     {
       "id": "emp-pulse-device",
-      "label": "EMP Pulse Device",
-      "detail": ""
+      "name": "EMP Pulse Device",
+      "brief": ""
     },
     {
       "id": "rift-beacon",
-      "label": "Rift Beacon",
-      "detail": ""
+      "name": "Rift Beacon",
+      "brief": ""
     },
     {
       "id": "kinetic-barrier",
-      "label": "Kinetic Barrier",
-      "detail": ""
+      "name": "Kinetic Barrier",
+      "brief": ""
     },
     {
       "id": "gravity-sling",
-      "label": "Gravity Sling",
-      "detail": ""
+      "name": "Gravity Sling",
+      "brief": ""
     },
     {
       "id": "regenerative-nanogel",
-      "label": "Regenerative Nanogel",
-      "detail": ""
+      "name": "Regenerative Nanogel",
+      "brief": ""
     },
     {
       "id": "mobile-habitat-node",
-      "label": "Mobile Habitat Node",
-      "detail": ""
+      "name": "Mobile Habitat Node",
+      "brief": ""
     },
     {
       "id": "stealth-cloak",
-      "label": "Stealth Cloak",
-      "detail": ""
+      "name": "Stealth Cloak",
+      "brief": ""
     },
     {
       "id": "fusion-torch",
-      "label": "Fusion Torch",
-      "detail": ""
+      "name": "Fusion Torch",
+      "brief": ""
     },
     {
       "id": "assistive-ai-core",
-      "label": "Assistive AI Core",
-      "detail": ""
+      "name": "Assistive AI Core",
+      "brief": ""
     },
     {
       "id": "maneuver-jetpack",
-      "label": "Maneuver Jetpack",
-      "detail": ""
+      "name": "Maneuver Jetpack",
+      "brief": ""
     },
     {
       "id": "emp-disruptor-array",
-      "label": "EMP Disruptor Array",
-      "detail": ""
+      "name": "EMP Disruptor Array",
+      "brief": ""
     },
     {
       "id": "modular-cybernetics",
-      "label": "Modular Cybernetics",
-      "detail": ""
+      "name": "Modular Cybernetics",
+      "brief": ""
     },
     {
       "id": "mag-cable-launcher",
-      "label": "Mag-Cable Launcher",
-      "detail": ""
+      "name": "Mag-Cable Launcher",
+      "brief": ""
     },
     {
       "id": "holo-camouflage-mesh",
-      "label": "Holo-Camouflage Mesh",
-      "detail": ""
+      "name": "Holo-Camouflage Mesh",
+      "brief": ""
     },
     {
       "id": "hardened-combat-rig",
-      "label": "Hardened Combat Rig",
-      "detail": ""
+      "name": "Hardened Combat Rig",
+      "brief": ""
     },
     {
       "id": "recon-drone",
-      "label": "Recon Drone",
-      "detail": ""
+      "name": "Recon Drone",
+      "brief": ""
     },
     {
       "id": "encrypted-datashard",
-      "label": "Encrypted Datashard",
-      "detail": ""
+      "name": "Encrypted Datashard",
+      "brief": ""
     },
     {
       "id": "grav-stabilizer-harness",
-      "label": "Grav Stabilizer Harness",
-      "detail": ""
+      "name": "Grav Stabilizer Harness",
+      "brief": ""
     },
     {
       "id": "foldable-shelter-unit",
-      "label": "Foldable Shelter Unit",
-      "detail": ""
+      "name": "Foldable Shelter Unit",
+      "brief": ""
     },
     {
       "id": "signal-safe-uplink",
-      "label": "Signal-Safe Uplink",
-      "detail": ""
+      "name": "Signal-Safe Uplink",
+      "brief": ""
     },
     {
       "id": "emergency-power-cell",
-      "label": "Emergency Power Cell",
-      "detail": ""
+      "name": "Emergency Power Cell",
+      "brief": ""
     },
     {
       "id": "emp-shielding",
-      "label": "EMP Shielding",
-      "detail": ""
+      "name": "EMP Shielding",
+      "brief": ""
     },
     {
       "id": "void-hardened-plating",
-      "label": "Void-Hardened Plating",
-      "detail": ""
+      "name": "Void-Hardened Plating",
+      "brief": ""
     },
     {
       "id": "star-chart-codex",
-      "label": "Star Chart Codex",
-      "detail": ""
+      "name": "Star Chart Codex",
+      "brief": ""
     },
     {
       "id": "life-support-module",
-      "label": "Life Support Module",
-      "detail": ""
+      "name": "Life Support Module",
+      "brief": ""
     },
     {
       "id": "field-medkit",
-      "label": "Field Medkit",
-      "detail": ""
+      "name": "Field Medkit",
+      "brief": ""
     },
     {
       "id": "motion-life-scanner",
-      "label": "Motion & Life Scanner",
-      "detail": ""
+      "name": "Motion & Life Scanner",
+      "brief": ""
     }
   ],
   "spends_luck": false,

@@ -114,7 +114,7 @@ class Loner3eEntity(Person):
             raise Refusal(f"{self.name} has {self.luck.current} luck, not {amount}.")
         return self.change(self.luck, -amount, "Luck", why)
 
-    def lose(self) -> list[Fact]:
+    def run_out_of_luck(self) -> list[Fact]:
         self.defeated = True
         trace = f"{self.mention} is out of luck"
         return [self.fact(trace, card=self.card_line("Out of luck"))]
@@ -155,7 +155,7 @@ class Loner3eWorld(SceneWorld[Loner3eEntity]):
         facts = hit.change(hit.luck, -abs(harm), "Luck", why)
         if hit.luck.current != 0:
             return facts, ""
-        facts.extend(hit.lose())
+        facts.extend(hit.run_out_of_luck())
         # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
         facts.extend(hit.refill("the conflict is over"))
         facts.extend(striker.refill("the conflict is over"))
@@ -198,5 +198,5 @@ def twist_pairing(subject: int, action: int, twists: Rows) -> tuple[str, str]:
 
 
 def pack_meanings(entries: Sequence[DecisionOption], tags: Sequence[str]) -> Rows:
-    detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
-    return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)
+    brief_of = {entry.name: entry.brief for entry in entries if entry.brief}
+    return tuple((tag, brief_of[tag]) for tag in tags if tag in brief_of)

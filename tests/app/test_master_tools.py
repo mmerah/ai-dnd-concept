@@ -159,7 +159,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
     assert len(state.exchanges()) == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
-    assert state.world.scene.offered
+    assert state.world.scene.way_offered
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -176,7 +176,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     )
 
     assert state.world.scene.title == "The Abbot's Study"
-    assert state.world.scene.offered
+    assert state.world.scene.way_offered
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -210,7 +210,7 @@ async def test_a_departure_crosses_after_the_leaving_turn_and_keeps_the_notes(
     assert state.notes == []
     assert state.log[-2].exchanges[-1].words == "I go."
     assert state.world.scene.title == "The Cloister Walk"
-    assert not state.world.scene.offered
+    assert not state.world.scene.way_offered
 
 
 async def test_an_action_over_an_open_decision_is_refused(tmp_path: Path) -> None:
@@ -283,7 +283,7 @@ async def test_the_way_on_is_offered_once_and_a_departure_consumes_it(tmp_path: 
     state = await play_turn(table, PURSUIT, LEFT, action=MOVE_ON.id, arrival="Rain.")
 
     assert state.world.scene.title == "The Cloister Walk"
-    assert not state.world.scene.offered
+    assert not state.world.scene.way_offered
 
 
 async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
@@ -367,7 +367,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     assert unwritten.mark == "story"
     assert unwritten.facts[0] == WAY_UNWRITTEN
     assert state.world.scene.title == "The Abbot's Study"
-    assert state.world.scene.offered
+    assert state.world.scene.way_offered
     assert state.commission is None
 
 

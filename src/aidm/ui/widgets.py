@@ -122,7 +122,7 @@ def decision_widget(
         return
     with ui.row().classes("w-full items-start game-gap-lg"):
         for option in options:
-            # A label in the button's own slot sits beside the detail, not above it.
+            # A label in the button's own slot sits beside the brief, not above it.
             with (
                 ui.button(on_click=partial(answer, option.id))
                 .props("outline")
@@ -130,9 +130,9 @@ def decision_widget(
                 .set_enabled(enabled),
                 ui.column().classes("game-gap-0"),
             ):
-                ui.label(option.label)
-                if option.detail:
-                    ui.label(option.detail).classes("text-xs opacity-70")
+                ui.label(option.name)
+                if option.brief:
+                    ui.label(option.brief).classes("text-xs opacity-70")
 
 
 def _notify(message: str, kind: Literal["negative", "warning", "positive", "info"]) -> None:

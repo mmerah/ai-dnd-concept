@@ -64,14 +64,14 @@ class Interjection(Frozen):
 
 class DecisionOption(Frozen):
     id: Slug
-    label: str = Field(min_length=1)
-    detail: str = ""
+    name: str = Field(min_length=1)
+    brief: str = ""
 
 
 class PendingOption(DecisionOption):
     """The frozen call an engine plays this option by: one of its tools, and the arguments."""
 
-    name: str = Field(min_length=1)
+    tool_name: str = Field(min_length=1)
     args: dict[str, JsonValue] = Field(default_factory=dict)
 
 

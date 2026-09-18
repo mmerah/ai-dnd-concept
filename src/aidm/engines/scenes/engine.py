@@ -26,7 +26,7 @@ from aidm.engines.base import (
     trail_panel,
 )
 from aidm.engines.engine import WRITES_NO, Engine, Written
-from aidm.engines.packs import Pack
+from aidm.engines.packs import Pack, render_worldsmith
 from aidm.engines.scenes.tools import MOVING_ON, SCENE_LEFT, Enter, Leave, NextScene
 from aidm.engines.scenes.world import NextProposal, SceneProposal, SceneWorld
 from aidm.engines.scenes.worldsmith import (
@@ -42,7 +42,7 @@ from aidm.engines.scenes.worldsmith import (
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
 MOVE_ON = DecisionOption(
-    id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
+    id="move-on", name="Move on", brief="Keep playing, or say where you go and move on."
 )
 WAY_UNWRITTEN = Fact(
     told=True,
@@ -110,9 +110,8 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
     def player_view(self, state: Game[W]) -> PlayerView:
         world = state.world
         player = world.player
-        me = player.subject()
         return PlayerView(
-            player=me,
+            player=player.subject(),
             scene_title=world.scene.title,
             situation=world.scene.situation,
             panels=(
@@ -123,8 +122,8 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
                 trail_panel(scene.title for scene in world.scenes),
             ),
             decision=state.pending,
-            action=MOVE_ON if world.scene.offered else None,
-            over=self.over(state),
+            action=MOVE_ON if world.scene.way_offered else None,
+            ending=self.ending(state),
         )
 
     @tool
@@ -146,7 +145,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
             draft.commission = Commission(operation=DEPARTURE, detail=args.pursuit)
             return [SCENE_LEFT]
         if not args.complication:
-            return draft.world.offer()
+            return draft.world.offer_way_on()
         draft.commission = Commission(operation=COMPLICATION, detail=args.complication)
         return [
             Fact(
@@ -155,8 +154,8 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
             )
         ]
 
-    def act(self, draft: Game[W], action: Slug, _words: str) -> None:
-        if action != MOVE_ON.id or not draft.world.scene.offered:
+    def act(self, draft: Game[W], action_id: Slug, _words: str) -> None:
+        if action_id != MOVE_ON.id or not draft.world.scene.way_offered:
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
 
@@ -169,11 +168,11 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
             )
         if world.meanwhile_due:
             intent += f"\n\n{MEANWHILE_NUDGE}"
-        return self.render_request(
+        return self.render_commission(
             draft,
             guidance=self.guidance(draft.pack_id, opening=False),
             intent=intent,
-            answer=NextProposal[self.member],
+            answer_model=NextProposal[self.member],
         )
 
     async def write_next(
@@ -211,32 +210,40 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
 
         guidance = self.guidance(pack_id, opening=True)
         model = SceneProposal[self.member]
-        prompt = self.render_worldsmith(
-            source, meta.scope, OPENING_SECTIONS, OPENING, guidance, model
+        prompt = render_worldsmith(
+            self.worldsmith_role,
+            source=source,
+            scope=meta.scope,
+            world_sections=OPENING_SECTIONS,
+            intent=OPENING,
+            guidance=guidance,
+            answer_model=model,
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     async def advance(
-        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if request.operation == DEPARTURE:
-            return await self.depart(draft, request, worldsmith)
-        if request.operation == COMPLICATION:
-            return await self.complicate(draft, request, worldsmith)
-        raise ValueError(WRITES_NO.format(engine=self.id, operation=request.operation))
+        if commission.operation == DEPARTURE:
+            return await self.depart(draft, commission, worldsmith)
+        if commission.operation == COMPLICATION:
+            return await self.complicate(draft, commission, worldsmith)
+        raise ValueError(WRITES_NO.format(engine=self.id, operation=commission.operation))
 
     async def depart(
-        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         left = draft.world.scene.title
         exchanges = draft.exchanges()
         # The master's `pursuit` is free text; the narrator reads the player's own words instead.
         asked = exchanges[-1].words if exchanges else ""
-        scene = await self.write_next(draft, request.detail, worldsmith)
+        scene = await self.write_next(draft, commission.detail, worldsmith)
         return Written(tuple(self.install(draft, scene)), CROSSING.format(left=left, asked=asked))
 
     async def complicate(
-        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        scene = await self.write_next(draft, COMPLICATING.format(brief=request.detail), worldsmith)
+        scene = await self.write_next(
+            draft, COMPLICATING.format(brief=commission.detail), worldsmith
+        )
         return Written(tuple(self.install(draft, scene)), TURNING)
