@@ -1,8 +1,8 @@
 # NEXT-PLAN: human code
 
 Done after `PLAN.md`. The target: `src/aidm/engines` reads like code one person wrote. One class
-per thing, its fields written out. One place per tool. A world that writes its own facts. One type
-parameter at most, and only on a container. No family layer, no hook an engine must know exists
+per thing, its fields written out. One place per tool. A world that writes its own facts. A type
+parameter only on a container that holds the engine's own kind of thing. No family layer, no hook an engine must know exists
 before it can be read top to bottom.
 
 This plan adds lines. Every step was prototyped on `3ebf53f` with the four checks green; the sum
@@ -99,7 +99,7 @@ format --check`, `uv run basedpyright`, `UV_CACHE_DIR` unset). Two rules beyond 
    written out (`CrewSheet` is a real thing: gear, skills, credits, hindrances), `require_sheet`,
    `hired`, `carried`, `required` its own; its file and golden do not move. Loner:
    `Loner3eCast(Person)` keeps `required` over `super()`. Inherited fields are not redeclared.
-5. **One type parameter, on containers only.** `Engine[W: World[Any, Any]]`, `Game[W]`,
+5. **Type parameters on containers only.** `Engine[W: World[Any, Any]]`, `Game[W]`,
    `World[P: Person, M: Person]` stays as it is (the `player` and member types have no other
    spelling under `reportIncompatibleVariableOverride`), `SceneWorld[C]`, `SceneProposal[C]`,
    `NextProposal[C]`, `Scenario[P]`, `Character[P]` stay. `M` and `K` leave `Engine`;
