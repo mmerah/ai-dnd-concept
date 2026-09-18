@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
+from shutil import rmtree
 from typing import Any
 
 from aidm.app.launch import LauncherCatalog, LaunchTarget, check_resumes
@@ -351,6 +352,16 @@ class Runtime:
         for session in list(self._sessions.values()):
             await session.close()
         await close_client()
+
+    async def delete_save(self, slug: str) -> None:
+        session = self._sessions.get(slug)
+        if session is not None:
+            if session.working_role is not None:
+                raise Refusal(f"{slug} is taking a turn. Wait for that turn to end, then delete.")
+            del self._sessions[slug]
+            await session.close()
+        self.store.discard(slug)
+        rmtree(self.store.media_dir(slug), ignore_errors=True)
 
     def catalog(self) -> LauncherCatalog:
         return LauncherCatalog.read(self.library, self.store, self.engines)

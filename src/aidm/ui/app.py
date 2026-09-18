@@ -165,7 +165,6 @@ def _new_content() -> None:
         )
 
 
-@ui.refreshable
 def _saved_games(runtime: Runtime) -> None:
     catalog = runtime.catalog()
     heading("Saved games")
@@ -233,14 +232,16 @@ async def _confirm_delete(runtime: Runtime, slug: str) -> None:
         with ui.row():
             ui.button("Keep", on_click=dialog.close).props("flat")
             ui.button("Delete", on_click=lambda: dialog.submit(slug))
+    confirmed = await dialog
+    dialog.delete()
+    if not confirmed:
+        return
     try:
-        if await dialog:
-            runtime.store.discard(slug)
-            _saved_games.refresh()
+        await runtime.delete_save(slug)
     except Refusal as refused:
         alert(str(refused))
-    finally:
-        dialog.delete()
+        return
+    ui.navigate.reload()
 
 
 def _open_game(target: LaunchTarget) -> None:

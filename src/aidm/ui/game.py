@@ -1,4 +1,3 @@
-import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable
 from functools import partial
@@ -25,8 +24,6 @@ from aidm.ui.widgets import (
     typed,
     warn,
 )
-
-LOGGER = logging.getLogger(__name__)
 
 TURN_FAILED = "Something went wrong. The turn did not complete. Look in the server log."
 
@@ -331,11 +328,11 @@ class GamePage:
             # Both reads are of the old `seen`, so neither may move below this line.
             whole = transcript.whole_page(now, self.seen)
             self.seen = now
-            self._set_composer()
             if closed:
                 self._clear_spent_draft()
             self.refresh(whole=whole)
             self._scroll(follow=self.at_end or self.own_move)
+        self._set_composer()
         ticker, started = self.ticker, self.step_started
         if ticker is not None and started is not None and not ticker.is_deleted:
             ticker.set_text(transcript.clock(monotonic() - started))
@@ -376,11 +373,6 @@ class GamePage:
 
     async def submit(self) -> None:
         words = typed(self.box)
-        LOGGER.info(
-            "player submitted prompt: non_empty=%s working=%s",
-            bool(words),
-            self.session.working_role,
-        )
         if not words:
             return
         self.own_move = True
@@ -440,10 +432,9 @@ class GamePage:
     def _set_composer(self) -> None:
         session = self.session
         player = self.view
-        typing = transcript.can_type(player, session.working_role) and session.gate.admitted in (
-            None,
-            session,
-        )
+        admitted = session.gate.admitted
+        free = admitted is None or admitted is session
+        typing = free and transcript.can_type(player, session.working_role)
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
         action = player.action
@@ -509,7 +500,8 @@ class GamePage:
             alert(TURN_FAILED)
             raise
         finally:
-            self._set_composer()
+            if not ui.context.client.is_deleted:
+                self.poll_turn()
             # A move that changed nothing must not pull a reader down on the next change.
             self.own_move = False
         return True
