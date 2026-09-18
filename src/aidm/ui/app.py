@@ -19,6 +19,7 @@ from aidm.ui.widgets import (
     DICE_SOUND,
     DICE_SOUND_ROUTE,
     GAME_ROUTE,
+    alert,
     game_path,
     heading,
     page_body,
@@ -108,7 +109,7 @@ def home_page(runtime: Runtime) -> None:
             else:
                 ui.label("No playable scenario was found.").classes("text-negative")
         _new_content()
-        _saved_games(catalog)
+        _saved_games(runtime)
         _packs(catalog)
 
 
@@ -118,7 +119,7 @@ def mount(runtime: Runtime) -> None:
         ("/create", character_page),
         ("/scenario", scenario_page),
         ("/pack", new_pack_page),
-        ("/settings", lambda runtime: settings_page(runtime.settings)),
+        ("/settings", lambda _: settings_page(read_settings())),
     )
     asgi, manager = endpoint(runtime.gate)
     app.mount(MOUNT_PATH, asgi)
@@ -164,14 +165,22 @@ def _new_content() -> None:
         )
 
 
-def _saved_games(catalog: LauncherCatalog) -> None:
+@ui.refreshable
+def _saved_games(runtime: Runtime) -> None:
+    catalog = runtime.catalog()
     heading("Saved games")
-    if not catalog.saves:
-        ui.label("No saved games yet.").classes("text-body1 opacity-60")
-        return
     with ui.column().classes("w-full game-gap-xl"):
+        for slug in catalog.unresumable:
+            with ui.row().classes("w-full items-center game-gap-lg"):
+                ui.label(
+                    f"A save file exists at {slug!r} and cannot be resumed. "
+                    "Nothing is deleted or migrated."
+                ).classes("text-negative col")
+                _delete_button(runtime, slug)
+        if not catalog.saves:
+            ui.label("No saved games yet.").classes("text-body1 opacity-60")
         for saved in catalog.saves:
-            _saved_card(saved)
+            _saved_card(runtime, saved)
 
 
 def _packs(catalog: LauncherCatalog) -> None:
@@ -191,7 +200,7 @@ def _packs(catalog: LauncherCatalog) -> None:
                 ).props("outline dense")
 
 
-def _saved_card(saved: SaveOption) -> None:
+def _saved_card(runtime: Runtime, saved: SaveOption) -> None:
     with (
         ui.card().classes("w-full"),
         ui.row().classes("w-full items-center game-gap-2xl"),
@@ -209,6 +218,29 @@ def _saved_card(saved: SaveOption) -> None:
             icon="play_arrow",
             on_click=partial(_open_game, saved.target),
         ).props("color=primary").classes("col-12 col-sm-auto")
+        _delete_button(runtime, saved.target.slug)
+
+
+def _delete_button(runtime: Runtime, slug: str) -> None:
+    ui.button("Delete", icon="delete", on_click=partial(_confirm_delete, runtime, slug)).props(
+        "outline dense"
+    )
+
+
+async def _confirm_delete(runtime: Runtime, slug: str) -> None:
+    with ui.dialog() as dialog, ui.card():
+        ui.label(f"Delete the save {slug!r}? It cannot be brought back.")
+        with ui.row():
+            ui.button("Keep", on_click=dialog.close).props("flat")
+            ui.button("Delete", on_click=lambda: dialog.submit(slug))
+    try:
+        if await dialog:
+            runtime.store.discard(slug)
+            _saved_games.refresh()
+    except Refusal as refused:
+        alert(str(refused))
+    finally:
+        dialog.delete()
 
 
 def _open_game(target: LaunchTarget) -> None:

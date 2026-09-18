@@ -393,8 +393,6 @@ class GamePage:
             warn("The way on has changed.")
             return
         words = typed(self.box)
-        if not words:
-            return
         self.own_move = True
         if await self._run(lambda: self.session.act(action.id, words)):
             self._clear_box()
@@ -442,7 +440,10 @@ class GamePage:
     def _set_composer(self) -> None:
         session = self.session
         player = self.view
-        typing = transcript.can_type(player, session.working_role)
+        typing = transcript.can_type(player, session.working_role) and session.gate.admitted in (
+            None,
+            session,
+        )
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
         action = player.action
@@ -484,7 +485,9 @@ class GamePage:
             _ = await self._run(opening)
         finally:
             # A raise must still stop the timer: NiceGUI swallows it and fires again in 0.1s.
-            if not blocked:
+            if blocked:
+                opener.interval = 1.0
+            else:
                 opener.cancel()
 
     async def _run(self, playing: Callable[[], Awaitable[None]]) -> bool:
@@ -507,7 +510,6 @@ class GamePage:
             raise
         finally:
             self._set_composer()
-            self.poll_turn()
             # A move that changed nothing must not pull a reader down on the next change.
             self.own_move = False
         return True
