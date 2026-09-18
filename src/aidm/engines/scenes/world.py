@@ -64,7 +64,7 @@ class NextProposal[C: Person](SceneProposal[C]):
     )
 
 
-class SceneWorld[C: Person](World[C, C]):
+class SceneWorld[C: Person](World[C]):
     tempo = 6
 
     scenes: list[Scene] = Field(min_length=1)

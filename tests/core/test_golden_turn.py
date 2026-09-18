@@ -9,7 +9,7 @@ from support.table import ENGINE_IDS, ENGINES_BUILT, drain, game, open_table, pl
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import Check, Commission, Game
-from aidm.engines.tools import HIRE
+from aidm.engines.hiring import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 SEED = 19
@@ -67,7 +67,7 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
         raise Refusal("recorded")
 
     # The family's own write, not the seam's `hire`: the detail is a place to go.
-    operation = next(operation for operation in engine.unwritten if operation != HIRE)
+    operation = next(operation for operation in engine.operations() if operation != HIRE)
     commission = Commission(operation=operation, detail="Deeper in, toward the sound.")
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), commission, recording)

@@ -14,8 +14,8 @@ from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import EngineId
 from aidm.core.play import Answer
-from aidm.core.tools import Tools
 from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.turn.run import Tools
 
 BASE_URL = "http://localhost:8123"
 REVEAL_VAULT_MAP: dict[str, object] = {"name": "reveal", "arguments": {"target_id": "vault-map"}}

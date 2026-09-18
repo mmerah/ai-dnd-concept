@@ -1,22 +1,14 @@
 from collections.abc import Iterable
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
-from aidm.core.entities import Mutable, Refusal, Slug, slug
+from aidm.core.entities import Mutable, Refusal, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.views import Rows
-from aidm.engines.base import (
-    ALREADY_SHEETED,
-    NO_DICE,
-    NOT_AN_ACTOR,
-    PLAYER_ID,
-    Gauge,
-    Person,
-    joined,
-)
+from aidm.engines.base import NO_DICE, PLAYER_ID, Gauge, joined
 from aidm.engines.rooms.world import Dweller, MapProposal, Prop, RoomWorld
 
 type Ability = Literal["brute", "skulker", "erudite"]
@@ -58,36 +50,13 @@ class GoonSheet(Mutable):
         return f"Level {self.level}: {ability.capitalize()} +1, {boost.capitalize()} +1"
 
 
-class Goon(Person):
-    """The played character: always carries dice."""
-
-    hp: Gauge = Field(default_factory=lambda: Gauge(current=HP_START, maximum=HP_START))
-    sheet: GoonSheet
-    # The starting items by name; `new_game` files them as `Prop`s on the player.
-    kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
-
-    def rows(self, *, carried: int | None = None) -> Rows:
-        return (("Health", str(self.hp)), *self.sheet.rows(carried=carried))
-
-    def level(self, ability: Ability, boost: Boost) -> list[Fact]:
-        card = self.card_line(self.sheet.level_up(ability, boost, self.hp))
-        return [self.fact(card, card=card)]
-
-    def unpack_kit(self, taken: Iterable[str]) -> tuple[Prop, ...]:
-        made = [PLAYER_ID, *taken]
-        items: list[Prop] = []
-        for name in self.kit:
-            item_id = slug(name, made)
-            made.append(item_id)
-            items.append(Prop(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
-        return tuple(items)
-
-
-class Npc(Dweller):
-    """A non-player character, friend or foe; carries dice only once hired."""
+class Goon(Dweller):
+    """Someone on the map, friend or foe; carries dice only once hired. The player is one too."""
 
     hp: Gauge
     sheet: GoonSheet | None = Field(default=None, description="Leave empty.")
+    # The player's starting items by name; `new_game` files them as `Prop`s. Empty on an npc.
+    kit: tuple[str, ...] = Field(default=(), description="Leave empty.")
 
     @property
     def hired(self) -> bool:
@@ -118,12 +87,28 @@ class Npc(Dweller):
         return joined(
             super().required(),
             "no sheet" if self.sheet is not None else "",
+            "no kit" if self.kit else "",
             "health above zero" if self.hp.current == 0 else "",
         )
 
+    def unpack_kit(self, taken: Iterable[str]) -> tuple[Prop, ...]:
+        made = [PLAYER_ID, *taken]
+        items: list[Prop] = []
+        for name in self.kit:
+            item_id = slug(name, made)
+            made.append(item_id)
+            items.append(Prop(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
+        return tuple(items)
 
-class TunnelGoonsWorld(RoomWorld[Goon, Npc]):
+
+class TunnelGoonsWorld(RoomWorld[Goon]):
     tempo = 4
+
+    @model_validator(mode="after")
+    def _player_carries_a_sheet(self) -> Self:
+        if self.player.sheet is None:
+            raise ValueError("the player carries no sheet")
+        return self
 
     def sheet_rows(self) -> Rows:
         return self.player.rows(carried=len(list(self.carried(self.player.id))))
@@ -138,7 +123,7 @@ class TunnelGoonsWorld(RoomWorld[Goon, Npc]):
         facts.append(player.fact(trace, card=f"Rested — Health {player.hp}"))
         return facts
 
-    def next_to_level(self, actor: Goon | Npc) -> Npc | None:
+    def next_to_level(self, actor: Goon) -> Goon | None:
         members = [member for member in self.members() if member.hired]
         order = [self.player.id, *(member.id for member in members)]
         index = order.index(actor.id)
@@ -146,35 +131,15 @@ class TunnelGoonsWorld(RoomWorld[Goon, Npc]):
             (member for member in members[index:] if member.require_sheet().level == 1), None
         )
 
-    def require_actor(self, actor_id: Slug | None) -> Goon | Npc:
-        """The player, or a hired member here in the party."""
-        if actor_id is None or actor_id == self.player.id:
-            return self.player
-        member = self.require_member_here(actor_id)
-        if member.hired and member.id in self.party:
-            return member
-        raise Refusal(NOT_AN_ACTOR.format(name=member.name))
-
-    def require_hireable(self, entity_id: Slug) -> Npc:
-        member = self.require_member_here(entity_id)
-        if member.hired:
-            raise Refusal(ALREADY_SHEETED.format(name=member.name))
-        return member
-
 
 TunnelGoonsGame = Game[TunnelGoonsWorld]
 
-TunnelGoonsScenario = Scenario[MapProposal[Npc]]
+TunnelGoonsScenario = Scenario[MapProposal[Goon]]
 
 TunnelGoonsCharacter = Character[Goon]
 
 
-def sheet_of(actor: Goon | Npc) -> GoonSheet:
-    """The one `isinstance`: `roll` and `level_up` read one sheet the same way."""
-    return actor.sheet if isinstance(actor, Goon) else actor.require_sheet()
-
-
-def level_up_decision(actor: Goon | Npc) -> PendingDecision:
+def level_up_decision(actor: Goon) -> PendingDecision:
     """One ability by 1 and Health or Inventory by 1: six ways to spend a level."""
     prompt = f"Level up: {actor.name} — raise one ability by 1, and Health or Inventory by 1."
     options = tuple(

@@ -2,15 +2,21 @@ import pytest
 from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import Refusal
-from aidm.engines.base import PLAYER_ID
+from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.world import MapProposal, Prop, Way
-from aidm.engines.tunnelgoons.world import Goon, GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import (
+    HP_START,
+    Goon,
+    GoonSheet,
+    TunnelGoonsGame,
+    TunnelGoonsWorld,
+)
 
 GHOST = "ghost"
 
 
 def test_begin_refuses_a_draft_whose_npc_stands_in_no_place(world: TunnelGoonsWorld) -> None:
-    map_draft = MapProposal[Npc](
+    map_draft = MapProposal[Goon](
         places=world.places, ways=world.ways, npcs=world.npcs, items=world.items, start=START
     )
     map_draft.npcs[MIRA].place = GHOST
@@ -41,6 +47,19 @@ def test_a_way_to_a_non_place_is_refused(draft: TunnelGoonsGame) -> None:
 def test_the_player_stands_at_the_last_visit(draft: TunnelGoonsGame) -> None:
     draft.world.visits.append(HALL)
     assert draft.commit().world.current.id == HALL
+
+
+def test_a_player_with_no_sheet_is_refused(world: TunnelGoonsWorld) -> None:
+    unsheeted = world.player.model_copy(update={"sheet": None})
+    with pytest.raises(ValueError, match="the player carries no sheet"):
+        _ = TunnelGoonsWorld(
+            places=world.places,
+            ways=world.ways,
+            npcs=world.npcs,
+            items=world.items,
+            player=unsheeted,
+            visits=world.visits,
+        )
 
 
 def test_killing_a_party_member_drops_them_from_the_party(world: TunnelGoonsWorld) -> None:
@@ -115,7 +134,7 @@ def test_an_npc_is_required_unsheeted_alive_and_above_zero_health(
 
 def test_the_inventory_row_counts_what_the_player_carries(world: TunnelGoonsWorld) -> None:
     held = len(list(world.carried(PLAYER_ID)))
-    total = world.player.sheet.inventory
+    total = world.player.require_sheet().inventory
 
     assert dict(world.sheet_rows())["Inventory"] == f"{held}/{total}"
     assert dict(world.player.rows())["Inventory"] == str(total)
@@ -124,7 +143,7 @@ def test_the_inventory_row_counts_what_the_player_carries(world: TunnelGoonsWorl
 def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:
     world = small_world().world
     player = world.player
-    sheet = player.sheet
+    sheet = player.require_sheet()
     before_ability = sheet.abilities["brute"]
     before_hp = player.hp.maximum
 
@@ -160,6 +179,8 @@ def test_unpack_kit_seeds_the_player_id_so_an_item_named_player_does_not_collide
         name="Kael",
         brief="A wiry scavenger",
         known=True,
+        place=PLAYER_ID,
+        hp=Gauge(current=HP_START, maximum=HP_START),
         sheet=GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1}),
         kit=("Player", "Rope", "Torch"),
     )

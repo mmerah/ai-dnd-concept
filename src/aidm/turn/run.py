@@ -3,7 +3,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from typing import Self
+from typing import Protocol, Self
 
 from pydantic import JsonValue
 
@@ -30,6 +30,11 @@ ANSWERED_BY_OPTION = (
 NO_TURN = "no turn is open. The player starts one from the page. Wait to be spawned again."
 GAME_OVER = "The game is over. The player restarts from the page."
 RESTART = "The only way on is to restart."
+
+
+class Tools(Protocol):
+    def published_tools(self) -> Sequence[MasterTool]: ...
+    def call(self, name: str, raw: JsonValue) -> str: ...
 
 
 @dataclass(slots=True, kw_only=True)

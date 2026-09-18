@@ -15,7 +15,6 @@ UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
 NO_DICE = "{name} carries no dice"
 NOT_AN_ACTOR = "{name} is not the player or a hired party member"
-ALREADY_SHEETED = "{name} already carries a sheet"
 
 
 class Gauge(Mutable):
@@ -115,6 +114,10 @@ class Person(Thing):
     def headline(self) -> str:
         return super().headline + ("" if self.alive else " (dead)")
 
+    @property
+    def hired(self) -> bool:
+        return False
+
     def required(self) -> str:
         """What a fresh cast member must be for the worldsmith to write it; empty when nothing."""
         return "" if self.alive else "alive"
@@ -130,10 +133,10 @@ class Person(Thing):
         return [tag for tag in (*current, *gained) if tag not in lost]
 
 
-class World[P: Person, M: Person](Mutable):
+class World[M: Person](Mutable):
     tempo: ClassVar[int]  # counted turns between two firings of the meanwhile clock
 
-    player: P
+    player: M
     party: list[Slug] = Field(default_factory=list)
     turns_played: int = Field(default=0, ge=0)  # counted turns since the last fire
     meanwhile_due: bool = False  # the clock has fired and nothing has spent it yet
@@ -165,6 +168,15 @@ class World[P: Person, M: Person](Mutable):
     def kill(self, entity_id: Slug) -> list[Fact]: ...
     @abstractmethod
     def unmet(self) -> Iterable[Thing]: ...
+
+    def require_actor(self, actor_id: Slug | None) -> M:
+        """The player, or a hired member here in the party."""
+        if actor_id is None or actor_id == self.player.id:
+            return self.player
+        member = self.require_member_here(actor_id)
+        if member.hired and member.id in self.party:
+            return member
+        raise Refusal(NOT_AN_ACTOR.format(name=member.name))
 
     def leave_party(self, entity_id: Slug) -> list[Fact]:
         member = self.member_of(entity_id)

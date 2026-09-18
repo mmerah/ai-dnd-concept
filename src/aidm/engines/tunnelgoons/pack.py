@@ -4,8 +4,8 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen
 from aidm.core.prompt import Sections, section_if
+from aidm.engines.hiring import HIRED
 from aidm.engines.packs import Pack, PackBody, PackHead, bullets, check_lines
-from aidm.engines.tools import HIRED
 from aidm.engines.tunnelgoons.world import ABILITY_POINTS, AbilityScores
 
 AUTHORING = (

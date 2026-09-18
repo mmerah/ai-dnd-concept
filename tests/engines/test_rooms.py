@@ -21,7 +21,7 @@ from aidm.engines.rooms.tools import ELSEWHERE, MOVED_CARD, MOVES_OFFSCREEN, NOT
 from aidm.engines.rooms.world import MapProposal, Prop, Way
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.pack import TunnelGoonsPack
-from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
+from aidm.engines.tunnelgoons.world import Goon, TunnelGoonsGame
 
 
 def test_a_room_game_shows_its_place_and_its_ways_out() -> None:
@@ -376,7 +376,7 @@ def test_the_arc_reaches_the_master_and_the_worldsmith_and_nobody_else() -> None
     begun_room.world.arc = arc
 
     written = ENGINE.render_commission(
-        begun_room, intent="More map.", guidance="", answer_model=MapProposal[Npc]
+        begun_room, intent="More map.", guidance="", answer_model=MapProposal[Goon]
     )
 
     assert arc in str(ENGINE.master_sections(begun_room))

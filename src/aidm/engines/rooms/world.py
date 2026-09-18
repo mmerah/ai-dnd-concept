@@ -129,7 +129,7 @@ class RegionProposal[N: Dweller](MapProposal[N]):
     )
 
 
-class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
+class RoomWorld[N: Dweller](Dungeon[N], World[N]):
     visits: list[Slug] = Field(min_length=1)
 
     def unmet(self) -> Iterable[N]:
@@ -149,7 +149,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         return self
 
     @classmethod
-    def opening(cls, draft: MapProposal[N], player: P, items: Iterable[Prop]) -> Self:
+    def opening(cls, draft: MapProposal[N], player: N, items: Iterable[Prop]) -> Self:
         return parse(
             cls,
             {
@@ -180,7 +180,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
     def member_of(self, member_id: Slug) -> N | None:
         return self.npcs.get(member_id)
 
-    def here(self) -> Iterator[P | N]:
+    def here(self) -> Iterator[N]:
         yield self.player
         yield from self.at(self.current.id)
 
@@ -374,7 +374,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         return Fact(trace=f"the way from {start.name} to {end.name} shuts")
 
     def kill(self, entity_id: Slug) -> list[Fact]:
-        actor: P | N = (
+        actor: N = (
             self.player if entity_id == self.player.id else self.require_member_here(entity_id)
         )
         if not actor.alive:
@@ -405,7 +405,7 @@ class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
         self.add_way(anchor_id, start, known=False)
         self.add_way(start, anchor_id, known=False)
 
-    def line(self, entity: P | N | Prop) -> str:
+    def line(self, entity: N | Prop) -> str:
         return entity.line(rows=self.sheet_rows()) if entity.id == self.player.id else entity.line()
 
     def others(self) -> Iterator[N]:

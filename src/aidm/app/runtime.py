@@ -237,8 +237,8 @@ class GameService:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.commission = None
-            unwritten = self.engine.unwritten[commission.operation]
-            landed = self.engine.close(draft, (), (unwritten,), words=words, mark=mark)
+            failure_fact = self.engine.operations()[commission.operation].failure_fact
+            landed = self.engine.close(draft, (), (failure_fact,), words=words, mark=mark)
             grown = False
         finally:
             self.phase = None
@@ -400,7 +400,7 @@ class Runtime:
             if document is None
             else f"written in this app from {document.name}"
         )
-        pack = await engine.author_pack(
+        pack = await engine.pack_author.author(
             name=name,
             source=source,
             origin=origin,
@@ -420,7 +420,7 @@ class Runtime:
         pack = engine.packs.written.get(pack_id)
         if pack is None:
             raise Refusal(f"no written pack {pack_id!r} for {engine_id!r}")
-        rebuilt = engine.edited(pack, values)
+        rebuilt = engine.pack_author.edited(pack, values)
         self.packs.write(engine.id, pack_id, rebuilt)
         engine.install_pack(pack_id, rebuilt)
         LOGGER.info("pack rewritten: engine=%s slug=%s", engine.id, pack_id)

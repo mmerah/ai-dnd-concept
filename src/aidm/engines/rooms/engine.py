@@ -1,7 +1,7 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from random import Random
-from typing import Any, ClassVar
+from typing import Any
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
@@ -11,7 +11,7 @@ from aidm.core.prompt import Sections, lines_of, render_history, section_if
 from aidm.core.tools import tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import character_panel, here_panel, party_panel, party_section, trail_panel
-from aidm.engines.engine import WRITES_NO, Engine, Written
+from aidm.engines.engine import Engine, Operation, Written
 from aidm.engines.packs import Pack, render_worldsmith
 from aidm.engines.rooms.tools import (
     ELSEWHERE,
@@ -37,10 +37,13 @@ MAP_UNWRITTEN = Fact(
 )
 
 
-class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
+# The family stays generic over its dweller because it cannot import the one engine that names it.
+class RoomEngine[N: Dweller, W: RoomWorld[Any], K: Pack](Engine[W, K]):
     family_dir = Path(__file__).parent
     member: type[N]
-    unwritten: ClassVar[dict[Slug, Fact]] = {EXTEND: MAP_UNWRITTEN}
+
+    def operations(self) -> Mapping[Slug, Operation[W]]:
+        return {EXTEND: Operation(self.extend, MAP_UNWRITTEN)}
 
     def worldsmith_sections(self, draft: Game[W]) -> Sections:
         world = draft.world
@@ -206,10 +209,8 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
-    async def advance(
+    async def extend(
         self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if commission.operation == EXTEND:
-            self.install(draft, await self.write_next(draft, commission.detail, worldsmith))
-            return Written((), None)
-        raise ValueError(WRITES_NO.format(engine=self.id, operation=commission.operation))
+        self.install(draft, await self.write_next(draft, commission.detail, worldsmith))
+        return Written((), None)

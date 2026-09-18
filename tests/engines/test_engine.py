@@ -1,9 +1,7 @@
 import json
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
 from support.engine_dir import install_engine_dir
 from support.table import (
     ENGINE_IDS,
@@ -11,30 +9,17 @@ from support.table import (
     LIBRARY,
     LONER3E,
     SCENARIO_MODELS,
-    TUNNELGOONS,
-    TWENTYFOURXX,
     game,
     scenario_for,
 )
-from support.tunnelgoons import MIRA
-from support.tunnelgoons import small_world as tunnelgoons_small_world
-from support.twentyfourxx import KESTREL
-from support.twentyfourxx import small_world as twentyfourxx_small_world
 
-from aidm.core.entities import EngineId, Refusal, Slug
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyGame, Character, Check, Commission
+from aidm.core.model import Character
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.world import Loner3eWorld
-from aidm.engines.tools import HIRE
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import TunnelGoonsWorld
-
-# A hire needs a member `game()`'s own scenario never names, so a fixture world stands in.
-HIRE_GAMES: dict[EngineId, tuple[Callable[[], AnyGame], Slug]] = {
-    TUNNELGOONS: (tunnelgoons_small_world, MIRA),
-    TWENTYFOURXX: (twentyfourxx_small_world, KESTREL),
-}
 
 
 def _engine_at(tmp_path: Path) -> type[TunnelGoonsEngine]:
@@ -163,28 +148,3 @@ def test_begin_refuses_a_scenario_naming_an_uninstalled_pack(engine_id: EngineId
 
     with pytest.raises(Refusal, match="is not installed"):
         engine.begin(scenario_id, stranded, character)
-
-
-async def _stubbed[M: BaseModel](_prompt: str, _model: type[M], _check: Check[M]) -> M:
-    raise Refusal("stubbed")
-
-
-@pytest.mark.parametrize("engine_id", ENGINE_IDS)
-async def test_advance_matches_every_operation_the_engine_declares_unwritten(
-    engine_id: EngineId,
-) -> None:
-    """`unwritten` and `advance`'s `match` stay in step: a drift here surfaces a `ValueError`."""
-    engine, state = game(engine_id)
-
-    for operation in engine.unwritten:
-        if operation == HIRE:
-            small_world, target = HIRE_GAMES[engine_id]
-            draft = small_world().draft()
-        else:
-            draft, target = state.draft(), None
-        commission = Commission(
-            operation=operation, detail="a commission the stub never reads", target=target
-        )
-
-        with pytest.raises(Refusal, match="stubbed"):
-            await engine.advance(draft, commission, _stubbed)

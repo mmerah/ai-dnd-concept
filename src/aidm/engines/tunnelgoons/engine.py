@@ -1,6 +1,6 @@
+from collections.abc import Mapping
 from pathlib import Path
 from random import Random
-from typing import ClassVar
 
 from aidm.core.creation import CreationStep, Picks, picked
 from aidm.core.entities import EngineId, Refusal, Slug
@@ -9,20 +9,19 @@ from aidm.core.model import AnyCharacter, AnyScenario, Commission, WorldsmithAns
 from aidm.core.play import DecisionOption
 from aidm.core.tools import NoArgs, tool
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID
-from aidm.engines.engine import Written
+from aidm.engines.base import PLAYER_ID, Gauge
+from aidm.engines.engine import Operation, Written
+from aidm.engines.hiring import (
+    HIRE,
+    HIRE_UNWRITTEN,
+    Hire,
+    file_hire,
+    hire_target,
+    signed_on,
+)
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import MapProposal
 from aidm.engines.rooms.worldsmith import check_map
-from aidm.engines.tools import (
-    HIRE,
-    HIRE_PENDING,
-    HIRE_UNWRITTEN,
-    NO_HIRE_TARGET,
-    SIGNED_ON,
-    SIGNS_ON,
-    Hire,
-)
 from aidm.engines.tunnelgoons.pack import (
     AUTHORING,
     HIRE_GUIDANCE,
@@ -36,17 +35,16 @@ from aidm.engines.tunnelgoons.tools import LevelUp, Roll
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
+    HP_START,
     STARTING_ITEMS,
     Ability,
     Goon,
     GoonSheet,
-    Npc,
     TunnelGoonsCharacter,
     TunnelGoonsGame,
     TunnelGoonsScenario,
     TunnelGoonsWorld,
     level_up_decision,
-    sheet_of,
 )
 
 POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
@@ -54,7 +52,7 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 )
 
 
-class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
+class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     authoring = AUTHORING
@@ -66,8 +64,10 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
     head = TunnelGoonsHead
     body = TunnelGoonsBody
     world = TunnelGoonsWorld
-    member = Npc
-    unwritten: ClassVar[dict[Slug, Fact]] = {**RoomEngine.unwritten, HIRE: HIRE_UNWRITTEN}
+    member = Goon
+
+    def operations(self) -> Mapping[Slug, Operation[TunnelGoonsWorld]]:
+        return {**super().operations(), HIRE: Operation(self.write_hire, HIRE_UNWRITTEN)}
 
     @tool
     def hire(self, draft: TunnelGoonsGame, args: Hire, _rng: Random) -> list[Fact]:
@@ -75,17 +75,12 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing
         more lands this turn. A sheet is for someone hired to work, never for one who only comes
         along."""
-        member = draft.world.require_hireable(args.target_id)
-        draft.commission = Commission(operation=HIRE, detail=args.terms, target=member.id)
-        trace = HIRE_PENDING.format(name=member.name, terms=args.terms)
-        return [Fact(trace=trace)]
+        return file_hire(draft, args.target_id, args.terms)
 
     async def write_hire(
         self, draft: TunnelGoonsGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if commission.target is None:
-            raise Refusal(NO_HIRE_TARGET)
-        member = draft.world.require_hireable(commission.target)
+        member = hire_target(draft.world, commission)
         prompt = self.render_commission(
             draft,
             intent=HIRING.format(name=member.name, brief=member.brief, terms=commission.detail),
@@ -94,19 +89,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         )
         answer = await worldsmith(prompt, AbilitiesProposal, lambda _answer: None)
         summary = member.sign_on(answer.abilities)
-        world = draft.world
-        facts = world.join(member) if member.id not in world.party else []
-        trace = SIGNS_ON.format(who=member.mention, summary=summary)
-        card = SIGNS_ON.format(who=member.name, summary=summary)
-        facts.append(member.fact(trace, card=card))
-        return Written(tuple(facts), SIGNED_ON.format(name=member.name))
-
-    async def advance(
-        self, draft: TunnelGoonsGame, commission: Commission, worldsmith: WorldsmithAnswer
-    ) -> Written:
-        if commission.operation == HIRE:
-            return await self.write_hire(draft, commission, worldsmith)
-        return await super().advance(draft, commission, worldsmith)
+        return signed_on(draft.world, member, summary)
 
     @tool
     def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
@@ -138,11 +121,14 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         }
         if sum(abilities.values()) != ABILITY_POINTS:
             raise Refusal(f"the three abilities share exactly {ABILITY_POINTS} points")
+        # The player's `place` is never read: where they stand is `RoomWorld.current`.
         sheet = Goon(
             id=PLAYER_ID,
             name=name,
             brief=brief,
             known=True,
+            place=PLAYER_ID,
+            hp=Gauge(current=HP_START, maximum=HP_START),
             sheet=GoonSheet(abilities=abilities),
             kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
@@ -157,7 +143,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         return (*sheet.rows(), ("Items", ", ".join(sheet.kit)))
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsWorld:
-        draft: MapProposal[Npc] = scenario.opening
+        draft: MapProposal[Goon] = scenario.opening
         check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
@@ -170,7 +156,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         world = draft.world
         world.check_unnamed(args.what)
         actor = world.require_actor(args.actor_id)
-        sheet = sheet_of(actor)
+        sheet = actor.require_sheet()
         items = world.carried_items(actor, args.item_ids)
         npc = world.require_member_here(args.target_id) if args.target_id is not None else None
         if npc is actor:
@@ -214,7 +200,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         then to each living hired member in turn."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
-        if sheet_of(actor).level > 1:
+        if actor.require_sheet().level > 1:
             raise Refusal(f"{actor.name} has already levelled up")
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
         if args.ability is None or args.boost is None:
