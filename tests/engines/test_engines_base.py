@@ -89,7 +89,7 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     assert KAEL.change(KAEL.luck, 99, "Luck", "the strain") == []
     assert KAEL.luck.adjust(-2) == -2
 
-    player = state.payload.player
+    player = state.world.player
     player.luck.current = 0
     (own,) = player.change(player.luck, 1, "Luck", "the strain")
     assert own.card == "Luck +1 → 1/6"

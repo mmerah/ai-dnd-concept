@@ -47,17 +47,14 @@ class SixthEngine(RoomEngine[Person, Dweller, SixthWorld, Pack]):
     pack = Pack
     world = SixthWorld
 
-    def creation_steps(self, _packs: tuple[Slug, ...], _picks: Picks) -> tuple[CreationStep, ...]:
+    def creation_steps(self, _pack_id: Slug, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
 
-    def build_character(
-        self, name: str, brief: str, packs: tuple[Slug, ...], _picks: Picks
-    ) -> AnyCharacter:
+    def build_character(self, name: str, brief: str, _pack_id: Slug, _picks: Picks) -> AnyCharacter:
         return SixthCharacter(
             id=slug(name, ()),
             engine=SIXTH,
-            packs=packs,
-            payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
+            sheet=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
 
@@ -80,8 +77,8 @@ def scenario() -> SixthScenario:
             title="The Keep", premise="A keep with one gate.", scope="One keep, one visit."
         ),
         engine=SIXTH,
-        packs=("srd",),
-        payload=MapProposal[Dweller](
+        pack_id="srd",
+        opening=MapProposal[Dweller](
             places={
                 GATE: _place(GATE, "Gate", known=True),
                 YARD: _place(YARD, "Yard", known=False),

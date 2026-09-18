@@ -53,7 +53,7 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     )
 
     assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
-    assert "the vault map" in state.payload.player.tagged("gear")
+    assert "the vault map" in state.world.player.tagged("gear")
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
@@ -88,7 +88,7 @@ async def test_a_narrator_failure_still_commits_the_turn_with_no_prose(tmp_path:
 
     exchange = table.service.state.exchanges()[-1]
     assert exchange.lines == ()
-    assert "the vault map" in table.service.state.payload.player.tagged("gear")
+    assert "the vault map" in table.service.state.world.player.tagged("gear")
 
 
 async def test_a_narrator_failure_with_nothing_landed_refuses_and_keeps_the_words(
@@ -141,7 +141,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
         tool_call("join_party", target_id="tomas"),
     )
 
-    assert state.payload.party == ["tomas"]
+    assert state.world.party == ["tomas"]
 
 
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
@@ -149,7 +149,7 @@ async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -
 
     state = await play_turn(table, "I wait.", tool_call("reveal", target_id="nowhere"), FOUND)
 
-    assert state.payload.require(MAP).known
+    assert state.world.require(MAP).known
     assert any("unknown id 'nowhere'" in refusal for refusal in table.refusals)
 
 
@@ -163,7 +163,7 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
         tool_call("drive", actor_id=PLAYER_ID, goal="Find the way down."),
     )
 
-    assert state.payload.player.goal == "Find the way down."
+    assert state.world.player.goal == "Find the way down."
     assert any("goal, a motive or a nemesis" in refusal for refusal in table.refusals)
 
 
@@ -176,7 +176,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.payload.run.offered
+    assert state.world.run.offered
     assert any("already offers" in refusal for refusal in table.refusals)
 
 
@@ -191,7 +191,7 @@ async def test_a_call_after_the_ask_answers_handoff_wait_and_changes_nothing(
     )
 
     assert table.answers[1] == REQUEST_WAIT
-    assert not state.payload.require(MAP).known
+    assert not state.world.require(MAP).known
 
 
 async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
@@ -233,7 +233,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     await table.service.play(Answer(text="I take the map and read it."))
 
     assert len(table.service.state.exchanges()) == 1
-    assert table.service.state.payload.require(MAP).known
+    assert table.service.state.world.require(MAP).known
 
 
 async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
@@ -302,7 +302,7 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
         arrival="Rain takes the arcade.",
     )
 
-    assert state.payload.player.goal == "Get out of the ruin safely"
+    assert state.world.player.goal == "Get out of the ruin safely"
 
 
 async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_and_sheet(
@@ -330,8 +330,8 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
         arrival="Rain takes the arcade.",
     )
 
-    mara = state.payload.require("mara")
-    assert state.payload.run.title == "The Cloister Walk"
+    mara = state.world.require("mara")
+    assert state.world.run.title == "The Cloister Walk"
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.tags) == (before.concept, before.tags)
@@ -342,25 +342,25 @@ async def test_the_clock_counts_only_a_turn_that_played_and_landed_facts(tmp_pat
     table = open_game(tmp_path)
 
     state = await play_turn(table, "I search beneath the desk.", FOUND)
-    assert state.payload.turns_played == 1
+    assert state.world.turns_played == 1
 
     state = await play_turn(table, "I wait.")
-    assert state.payload.turns_played == 1
+    assert state.world.turns_played == 1
 
 
 async def test_the_switch_off_disarms_the_save_and_leaves_the_clock_inert(tmp_path: Path) -> None:
     """The whole chain: Settings -> Runtime._open -> resumed -> Turn.finish."""
     filed = open_game(tmp_path)
     armed = filed.state.draft()
-    armed.payload.meanwhile_due = True
+    armed.world.meanwhile_due = True
     filed.service.save(armed.commit())
 
     off = offline_settings(tmp_path).model_copy(update={"meanwhile": False})
     table = open_game(tmp_path, settings=off)
 
-    assert table.state.payload.meanwhile_due is False
+    assert table.state.world.meanwhile_due is False
 
     state = await play_turn(table, "I search beneath the desk.", FOUND)
 
-    assert state.payload.turns_played == 0
-    assert state.payload.meanwhile_due is False
+    assert state.world.turns_played == 0
+    assert state.world.meanwhile_due is False

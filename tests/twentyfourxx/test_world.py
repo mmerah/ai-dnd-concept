@@ -75,7 +75,7 @@ def test_starting_items_slug_duplicate_kit_names_in_order() -> None:
 
 
 def test_take_lead_swaps_player_and_cast_entry_and_keeps_ids(draft: TwentyfourxxGame) -> None:
-    world = hired(draft, KESTREL, skills={"Shooting": 8}).payload
+    world = hired(draft, KESTREL, skills={"Shooting": 8}).world
     dead_id = world.player.id
     world.player.alive = False
     facts = world.take_lead(KESTREL)
@@ -92,13 +92,13 @@ def test_take_lead_swaps_player_and_cast_entry_and_keeps_ids(draft: Twentyfourxx
 
 
 def test_take_lead_refused_while_the_player_lives(draft: TwentyfourxxGame) -> None:
-    world = hired(draft, KESTREL, skills={"Shooting": 8}).payload
+    world = hired(draft, KESTREL, skills={"Shooting": 8}).world
     with pytest.raises(Refusal, match="lives and leads"):
         world.take_lead(KESTREL)
 
 
 def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:
-    world = small_world().payload
+    world = small_world().world
     item = world.require_gear(world.player, "hull-armor")
     assert item.name == "Hull armor"
     with pytest.raises(Refusal, match="not among"):

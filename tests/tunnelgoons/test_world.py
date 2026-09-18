@@ -19,7 +19,7 @@ def test_begin_refuses_a_draft_whose_npc_stands_in_no_place(world: TunnelGoonsWo
 
 
 def test_an_item_on_nothing_is_refused(draft: TunnelGoonsGame) -> None:
-    draft.payload.items["stray"] = Prop(
+    draft.world.items["stray"] = Prop(
         id="stray", name="Stray", brief="Nobody's", known=True, on=GHOST
     )
     with pytest.raises(Refusal, match="on nothing"):
@@ -27,20 +27,20 @@ def test_an_item_on_nothing_is_refused(draft: TunnelGoonsGame) -> None:
 
 
 def test_an_npc_in_no_place_is_refused(draft: TunnelGoonsGame) -> None:
-    draft.payload.npcs[MIRA].place = GHOST
+    draft.world.npcs[MIRA].place = GHOST
     with pytest.raises(Refusal, match="no place"):
         _ = draft.commit()
 
 
 def test_a_way_to_a_non_place_is_refused(draft: TunnelGoonsGame) -> None:
-    draft.payload.ways[START].append(Way(to=GHOST))
+    draft.world.ways[START].append(Way(to=GHOST))
     with pytest.raises(Refusal, match="not a place"):
         _ = draft.commit()
 
 
 def test_the_player_stands_at_the_last_visit(draft: TunnelGoonsGame) -> None:
-    draft.payload.visits.append(HALL)
-    assert draft.commit().payload.current.id == HALL
+    draft.world.visits.append(HALL)
+    assert draft.commit().world.current.id == HALL
 
 
 def test_killing_a_party_member_drops_them_from_the_party(world: TunnelGoonsWorld) -> None:
@@ -54,7 +54,7 @@ def test_killing_a_party_member_drops_them_from_the_party(world: TunnelGoonsWorl
 
 
 def test_a_party_member_who_is_not_at_the_players_place_is_refused() -> None:
-    world = small_world().payload
+    world = small_world().world
     with pytest.raises(ValueError, match="not at their place"):
         TunnelGoonsWorld(
             places=world.places,
@@ -90,7 +90,7 @@ def test_the_inventory_row_counts_what_the_player_carries(world: TunnelGoonsWorl
 
 
 def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:
-    world = small_world().payload
+    world = small_world().world
     player = world.player
     sheet = player.require_sheet()
     before_ability = sheet.abilities["brute"]
@@ -108,7 +108,7 @@ def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> 
 
 
 def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix() -> None:
-    world = small_world().payload
+    world = small_world().world
     mira = world.npcs[MIRA]
     mira.sheet = GoonSheet(abilities={"brute": 0, "skulker": 0, "erudite": 0})
     before_inventory = mira.require_sheet().inventory
@@ -140,7 +140,7 @@ def test_unpack_kit_seeds_the_player_id_so_an_item_named_player_does_not_collide
 
 
 def test_the_map_so_far_names_who_stands_where_and_every_id_in_use() -> None:
-    world = small_world().payload
+    world = small_world().world
     shown = world.map_so_far()
 
     assert "  here: Mira[mira] (met), Lantern[lantern] (met)" in shown

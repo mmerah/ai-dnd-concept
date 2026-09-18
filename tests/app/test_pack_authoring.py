@@ -89,15 +89,15 @@ async def test_a_written_pack_lands_on_disk_and_in_the_running_engine(tmp_path: 
     assert pack.source.startswith("written in this app")
 
 
-async def test_a_trait_that_collides_with_the_srd_is_re_prompted_with_the_collision(
+async def test_a_head_whose_label_makes_no_id_is_re_prompted_with_the_reason(
     tmp_path: Path,
 ) -> None:
-    clashing = _head(skills=[{"label": "Quiet Hands"}, *SKILLS[1:]])
-    runtime, spawner = _runtime(tmp_path, [clashing, _head(), _body()])
+    unnamed = _head(skills=[{"label": "???"}, *SKILLS[1:]])
+    runtime, spawner = _runtime(tmp_path, [unnamed, _head(), _body()])
 
     pack_id = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")
 
-    assert "both define 'quiet-hands'" in spawner.prompts[1][1]
+    assert "makes no id" in spawner.prompts[1][1]
     assert pack_id in runtime.engines[LONER3E].packs.written
 
 

@@ -128,7 +128,7 @@ class Library:
         # One folder is one person played by several engines, so any sibling settles who that is.
         sibling = next(folder.glob("*.json"), None)
         if sibling is not None:
-            filed, named = read_model(sibling, CharacterHeader).payload.name, character.payload.name
+            filed, named = read_model(sibling, CharacterHeader).sheet.name, character.sheet.name
             if filed != named:
                 raise Refusal(f"character {character.id!r} is {filed!r}, not {named!r}")
         write_text(path, character.model_dump_json(indent=2))

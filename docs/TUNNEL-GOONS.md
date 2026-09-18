@@ -43,7 +43,8 @@ None. The starting item list is in the SRD's character creation.
 
 Packs. A Tunnel Goons pack holds items, factions, people with their `hp`, monsters and the
 setting kit every pack carries — its setting, names, locations, seeds and special rules. None
-ships. A written one is selected on the character and on the scenario, the way Loner's packs are.
+ships. A written one is selected on the scenario, and offers its tables on the character page,
+the way Loner's packs are.
 
 ## The tools
 

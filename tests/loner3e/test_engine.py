@@ -130,7 +130,7 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.payload.twist.current = TIES_PER_TWIST - 1
+    draft.world.twist.current = TIES_PER_TWIST - 1
     primed = draft.commit()
 
     action = Roll(what="Slip past", actor_id=PLAYER_ID, question="Does he slip past unheard?")
@@ -141,7 +141,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, twist = cards(facts)
     subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
     rolled = TWIST_NOTE.format(subject=subject.upper(), action=action_name.upper())
-    assert draft.payload.twist.current == 0
+    assert draft.world.twist.current == 0
     assert rolled in draft.notes
 
 
@@ -153,11 +153,11 @@ def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
     facts = ENGINE.roll(duel_draft, _duel(), Random(0))
     (oracle, *_) = cards(facts)
     assert max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled)
-    assert duel_draft.payload.twist.current == 0
+    assert duel_draft.world.twist.current == 0
 
     solo_draft = state.draft()
     _ = ENGINE.roll(solo_draft, _seal(), Random(0))
-    assert solo_draft.payload.twist.current == 1
+    assert solo_draft.world.twist.current == 1
 
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
@@ -176,7 +176,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         assert loner_sheet(draft, loser).luck.current == LUCK_MAX - abs(harm)
         assert loner_sheet(draft, unharmed).luck.current == LUCK_MAX
         # SRD: the Twist Gauge does not apply to Harm & Luck, so a conflict tie never ticks it.
-        assert draft.payload.twist.current == 0
+        assert draft.world.twist.current == 0
 
 
 def test_luck_running_out_resets_both_pools_but_the_defeat_mark_survives() -> None:
@@ -194,7 +194,7 @@ def test_luck_running_out_resets_both_pools_but_the_defeat_mark_survives() -> No
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
     assert loner_sheet(draft, FOE).defeated is True
     assert loner_sheet(draft, PLAYER_ID).defeated is False
-    assert DEFEAT_NOTE.format(name=draft.payload.require(FOE).name) in draft.notes
+    assert DEFEAT_NOTE.format(name=draft.world.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
 
@@ -207,8 +207,8 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
 
     decision = draft.pending
     assert decision is not None
-    foe = draft.payload.require(FOE)
-    expected = draft.payload.conflict_prompt(draft.payload.player, foe)
+    foe = draft.world.require(FOE)
+    expected = draft.world.conflict_prompt(draft.world.player, foe)
     assert (decision.kind, decision.prompt) == ("conflict", expected)
     assert foe.name in decision.prompt
     assert decision.options == ()
@@ -248,7 +248,7 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
     _ = change(ENGINE, draft, "reveal", target_id=MAP)
     _ = ENGINE.roll(draft, _seal(target_id=MAP), Random(0))
 
-    resisted = draft.payload.require(MAP).luck.current
+    resisted = draft.world.require(MAP).luck.current
     assert min(resisted, loner_sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
 
 

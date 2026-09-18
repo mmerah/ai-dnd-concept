@@ -91,7 +91,7 @@ class TwentyfourxxBlock(Frozen):
 
 
 class TwentyfourxxPack(Pack):
-    skills: tuple[DecisionOption, ...] = ()  # the SRD's seventeen; a supplement adds none
+    skills: tuple[DecisionOption, ...] = ()  # the SRD's seventeen; a written pack adds none
     specialties: tuple[Specialty, ...] = ()
     origins: tuple[Origin, ...] = ()
     starting_kit: tuple[Kit, ...] = ()
@@ -109,9 +109,6 @@ class TwentyfourxxPack(Pack):
 
     def specialty_lines(self) -> str:
         return "\n".join(specialty.line() for specialty in self.specialties)
-
-    def defined_ids(self) -> tuple[Slug, ...]:
-        return tuple(option.id for option in (*self.specialties, *self.origins))
 
     def counts(self) -> tuple[tuple[str, int], ...]:
         return (

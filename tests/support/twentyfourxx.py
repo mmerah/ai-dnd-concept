@@ -50,14 +50,14 @@ def small_world() -> TwentyfourxxGame:
             title="Loading Bay", premise="A cargo job gone quiet.", scope="One tense night shift."
         ),
         engine=EngineId("twentyfourxx"),
-        packs=(SRD_PACK,),
+        pack_id=SRD_PACK,
         log=[
             Chapter(
                 title="The Loading Bay",
                 focus="Can they reach the cargo before the lights come back?",
             )
         ],
-        payload=world,
+        world=world,
     )
 
 
@@ -66,8 +66,8 @@ def hired(
 ) -> TwentyfourxxGame:
     """Give a cast member a sheet and put them in the party, for tests that need a hired hand."""
     draft = state.draft()
-    draft.payload.cast[entity_id].sheet = CrewSheet(specialty="Muscle", skills=skills)
-    draft.payload.party.append(entity_id)
+    draft.world.cast[entity_id].sheet = CrewSheet(specialty="Muscle", skills=skills)
+    draft.world.party.append(entity_id)
     return draft.commit()
 
 

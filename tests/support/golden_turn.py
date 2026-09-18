@@ -35,7 +35,7 @@ def _one_exchange(state: AnyGame, words: str, said: str) -> AnyGame:
 def _loner3e_behind(state: AnyGame) -> AnyGame:
     """One played turn in the scene before this one: RECENT PLAY has to group by run, not title."""
     draft = state.draft()
-    draft.payload.runs.insert(
+    draft.world.runs.insert(
         0,
         SceneRun(
             place="vault-stair",

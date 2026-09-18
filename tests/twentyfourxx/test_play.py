@@ -34,12 +34,12 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
             "roll", what="Slip past the dockhand", skill="Stealth", risk="a fall", deadly=True
         ),
     )
-    world = state.payload
+    world = state.world
     assert world.player.alive
     assert world.player.require_sheet().hindrances == ["Maimed"]
 
     state = await play_turn(table, "Ask what else this shift wants of Kael.", the_way_on())
-    assert state.payload.run.offered
+    assert state.world.run.offered
 
     before = len(state.exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(NEXT_SCENE)]
@@ -52,7 +52,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
         arrival="The docking ring falls away, and stacked containers rise up around you.",
     )
 
-    assert state.payload.run.title == "The Cargo Bay"
+    assert state.world.run.title == "The Cargo Bay"
     assert state.exchanges()[before].words == pursuit
     assert table.saved() == table.state
 
@@ -74,15 +74,15 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
         tool_call("hire", target_id=member_id, terms="Keep the corridor guards talking"),
         narration="Vessa pockets the terms and falls in step behind Kael.",
     )
-    world = state.payload
+    world = state.world
     member = world.cast[member_id]
     assert member.id in world.party
     assert member.sheet is not None
     assert member.sheet.specialty == "Face"
 
     reloaded = table.saved()
-    hired = reloaded.payload.cast[member_id]
-    assert member_id in reloaded.payload.party
+    hired = reloaded.world.cast[member_id]
+    assert member_id in reloaded.world.party
     assert hired.sheet == member.sheet
 
     table.service.rng = Random(DISASTER_SEED)
@@ -91,7 +91,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
         "Slip past the dockhand before she clocks the override key.",
         tool_call("roll", what="Slip past", skill="Stealth", risk="a fall", deadly=True),
     )
-    assert not state.payload.player.alive
+    assert not state.world.player.alive
     assert state.pending is not None
     assert state.pending.kind == "succession"
     assert [option.id for option in state.pending.options] == [member_id]
@@ -99,7 +99,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
 
     state = await play_turn(table, Answer(option_id=member_id))
 
-    world = state.payload
+    world = state.world
     assert world.player.id == member_id
     assert world.player.sheet is not None
     assert world.player.sheet.specialty == "Face"

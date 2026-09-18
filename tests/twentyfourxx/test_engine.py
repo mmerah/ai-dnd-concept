@@ -20,8 +20,8 @@ def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
 
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> None:
     _, state = _twentyfourxx_game()
-    assert state.packs == (SRD_PACK,)
-    world = state.payload
+    assert state.pack_id == SRD_PACK
+    world = state.world
     assert list(world.player.require_sheet().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"
 
@@ -53,7 +53,7 @@ def test_master_sections_shows_hidden_entities() -> None:
 
 def test_master_sections_gear_shows_none_for_empty_gear() -> None:
     world = small_world()
-    world.payload.player.require_sheet().items.clear()
+    world.world.player.require_sheet().items.clear()
     sections = dict(ENGINE.master_sections(world))
     assert sections["GEAR"] == "- (none)"
 

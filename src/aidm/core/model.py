@@ -1,19 +1,10 @@
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Annotated, Any, Protocol, Self
+from typing import Any, Protocol, Self
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import BaseModel, Field
 
-from aidm.core.entities import (
-    EngineId,
-    Frozen,
-    Loose,
-    Mutable,
-    Refusal,
-    Slug,
-    check_unique,
-    parse,
-)
+from aidm.core.entities import EngineId, Frozen, Loose, Mutable, Refusal, Slug, parse
 from aidm.core.play import Chapter, Exchange, PendingDecision
 
 type AnyScenario = Scenario[Any]
@@ -21,15 +12,6 @@ type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
 # What `ask` asks of the value it parsed, beyond its own schema; it raises the reason to re-prompt.
 type Check[T] = Callable[[T], None]
-
-
-def _distinct_packs(ids: tuple[Slug, ...]) -> tuple[Slug, ...]:
-    check_unique("packs", ids)
-    return ids
-
-
-# assignment, not `type`: `Annotated` carries the validator into every field spelled with it
-Packs = Annotated[tuple[Slug, ...], AfterValidator(_distinct_packs)]
 
 
 class ScenarioMeta(Frozen):
@@ -60,27 +42,25 @@ class SheetHeader(Loose):
 
 class CharacterHeader(EngineHeader):
     id: Slug
-    payload: SheetHeader
-    packs: Packs
+    sheet: SheetHeader
 
 
-class Scenario[P: BaseModel](Frozen):
+class Scenario[O: BaseModel](Frozen):
     """`scenarios/<id>/world.json`: the envelope around the worldsmith's accepted draft."""
 
     meta: ScenarioMeta
     engine: EngineId
-    packs: Packs
+    pack_id: Slug
     source: str = ""
-    payload: P
+    opening: O
 
 
-class Character[P: BaseModel](Frozen):
+class Character[S: BaseModel](Frozen):
     """`characters/<id>/<engine>.json`: the envelope around the sheet this engine plays them by."""
 
     id: Slug
     engine: EngineId
-    packs: Packs
-    payload: P
+    sheet: S
 
 
 class WorldsmithAnswer(Protocol):
@@ -97,19 +77,19 @@ class Generation(Frozen):
     target: Slug | None = None
 
 
-class Game[P: BaseModel](Mutable):
+class Game[W: BaseModel](Mutable):
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
-    packs: Packs
+    pack_id: Slug
     source: str = ""
     pending: PendingDecision | None = None
     # `exclude=True` keeps it out of every save, so `restore` only refuses a hand-edited one.
     generation: Generation | None = Field(default=None, exclude=True)
     notes: list[str] = Field(default_factory=list)
     log: list[Chapter] = Field(default_factory=list)
-    payload: P
+    world: W
 
     def note(self, text: str) -> None:
         self.notes.append(text)

@@ -4,10 +4,12 @@ from pathlib import Path
 import pytest
 from support.fifth import FifthEngine, FifthGame, FifthState, engine_at, installed
 from support.sixth import SixthEngine
-from support.table import ENGINE_IDS, game, updated
+from support.sixth import scenario as sixth_scenario
+from support.table import ENGINE_IDS, game
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING
+from aidm.core.play import DecisionOption
 
 
 def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
@@ -28,14 +30,14 @@ def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(
 
     for _ in range(FifthState.tempo - 1):
         scene_engine.tick(draft, counted=True)
-    assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (
+    assert (draft.world.turns_played, draft.world.meanwhile_due) == (
         FifthState.tempo - 1,
         False,
     )
 
     scene_engine.tick(draft, counted=True)
 
-    assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (0, True)
+    assert (draft.world.turns_played, draft.world.meanwhile_due) == (0, True)
 
 
 def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
@@ -58,7 +60,7 @@ def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
 def test_a_fifth_scene_engine_begins_a_playable_game(
     scene_engine: FifthEngine, begun_scene: FifthGame
 ) -> None:
-    assert scene_engine.supplement_options() == ()
+    assert scene_engine.packs.options() == (DecisionOption(id="srd", label="The SRD"),)
     assert scene_engine.narrator_view(begun_scene).title == "The Taproom"
     assert scene_engine.master_sections(begun_scene) == (("SCENE", "The Taproom"),)
     assert [row.label for row in scene_engine.player_view(begun_scene).panels[-2].rows] == [
@@ -76,11 +78,11 @@ def test_a_game_with_no_chapter_open_is_refused(
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
-def test_validate_refuses_a_game_that_does_not_play_the_srd(engine_id: EngineId) -> None:
+def test_restore_refuses_a_save_naming_an_uninstalled_pack(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
 
-    with pytest.raises(Refusal, match="plays the 'srd' tables"):
-        engine.validate(updated(state, packs=()))
+    with pytest.raises(Refusal, match="is not installed"):
+        engine.restore(state.model_copy(update={"pack_id": "gone"}).model_dump_json())
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
@@ -115,8 +117,9 @@ def test_restore_accepts_a_save_with_a_null_generation() -> None:
     assert engine.restore(json.dumps(raw)) == state
 
 
-def test_admit_refuses_a_pack_the_engine_has_not_installed(room_engine: SixthEngine) -> None:
-    character = room_engine.create_character("Wren", "A quiet scout", ("srd",), {})
+def test_begin_refuses_a_scenario_naming_an_uninstalled_pack(room_engine: SixthEngine) -> None:
+    character = room_engine.create_character("Wren", "A quiet scout", "srd", {})
+    stranded = sixth_scenario().model_copy(update={"pack_id": "gone"})
 
-    with pytest.raises(Refusal, match="packs not installed"):
-        room_engine.admit(("srd", "gone"), character)
+    with pytest.raises(Refusal, match="is not installed"):
+        room_engine.begin("the-keep", stranded, character)

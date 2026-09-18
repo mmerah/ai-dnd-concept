@@ -30,13 +30,13 @@ ENGINE = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
 def with_entity(state: Loner3eGame, entity: Loner3eCast) -> Loner3eGame:
     """Added to the cast and to the scene; `known` alone decides present or hidden."""
     draft = state.draft()
-    draft.payload.cast[entity.id] = entity
-    draft.payload.run.here.append(entity.id)
+    draft.world.cast[entity.id] = entity
+    draft.world.run.here.append(entity.id)
     return draft.commit()
 
 
 def loner_sheet(state: Loner3eGame, entity_id: Slug) -> Loner3eCast:
-    return state.payload.require(entity_id)
+    return state.world.require(entity_id)
 
 
 def scenario() -> Loner3eScenario:

@@ -64,7 +64,7 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
     )
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
-        draft: MapProposal[N] = scenario.payload
+        draft: MapProposal[N] = scenario.opening
         check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
@@ -74,7 +74,7 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         return ()
 
     def family_sections(self, draft: Game[W]) -> Sections:
-        world = self.world_of(draft)
+        world = draft.world
         return (
             ("MAP SO FAR", world.map_so_far()),
             *section_if("THE ARC SO FAR", world.arc),
@@ -83,7 +83,7 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         )
 
     def master_sections(self, state: Game[W]) -> Sections:
-        world = self.world_of(state)
+        world = state.world
         place = world.current
         player = world.player
         return (
@@ -95,12 +95,12 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
             ("HIDDEN HERE (the player has not found these)", world.place_lines(known=False)),
             *section_if("THE ARC (the player has not found this)", world.arc),
             ("WAYS OUT", world.ways_lines()),
-            *self.packs.rules_sections(state.packs),
+            *self.packs.rules_section(state.pack_id),
             *(((ELSEWHERE, world.elsewhere_lines()),) if world.meanwhile_due else ()),
         )
 
     def narrator_view(self, state: Game[W]) -> NarratorView:
-        world = self.world_of(state)
+        world = state.world
         place = world.current
         here = tuple(entity for entity in world.here() if entity.known)
         carrying = ", ".join(item.name for item in world.carried(world.player.id))
@@ -117,7 +117,7 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         )
 
     def player_view(self, state: Game[W]) -> PlayerView:
-        world = self.world_of(state)
+        world = state.world
         player = world.player
         ways = world.ways.get(world.current.id, ())
         me = player.subject()
@@ -155,14 +155,14 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: tuple[Slug, ...],
+        pack_id: Slug,
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
         def built(draft: MapProposal[N]) -> AnyScenario:
             start = draft.places.get(draft.start)
             premise = "" if start is None else start.description
-            return self.build_scenario(meta, packs, draft, source, premise)
+            return self.build_scenario(meta, pack_id, draft, source, premise)
 
         model = MapProposal[self.member]
         prompt = self.render_worldsmith(
@@ -170,13 +170,13 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
             meta.scope,
             self.opening_sections,
             MAP_ASK,
-            self.guidance(packs, opening=True),
+            self.guidance(pack_id, opening=True),
             model,
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     def act(self, draft: Game[W], action: Slug, words: str) -> None:
-        if action != EXTEND or self.world_of(draft).frontier():
+        if action != EXTEND or draft.world.frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
@@ -192,23 +192,22 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         return {**super().worldsmith_requests(), EXTEND: Request(MAP_UNWRITTEN, self.extend)}
 
     def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
-        world_of = self.world_of
         return (
             *super().master_tools(),
             master_tool("move_item", MOVE_ITEM, MoveItem, self.move_item),
             master_tool(
-                "unlock_way", UNLOCK_WAY, UnlockWay, lambda d, a, _: world_of(d).unlock_way(a.to_id)
+                "unlock_way", UNLOCK_WAY, UnlockWay, lambda d, a, _: d.world.unlock_way(a.to_id)
             ),
-            master_tool("move", MOVE, Move, lambda d, a, _: world_of(d).move(a.to_id, a.with_ids)),
+            master_tool("move", MOVE, Move, lambda d, a, _: d.world.move(a.to_id, a.with_ids)),
             master_tool("meanwhile", MEANWHILE, Meanwhile, self.meanwhile),
         )
 
     def move_item(self, draft: Game[W], args: MoveItem, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).move_item(args.item_id, args.to_id)
+        return draft.world.move_item(args.item_id, args.to_id)
 
     def meanwhile(self, draft: Game[W], args: Meanwhile, _rng: Random) -> list[Fact]:
         """The ids resolve here; the world is handed what they name and changes its fields."""
-        world = self.world_of(draft)
+        world = draft.world
         if not world.meanwhile_due:
             raise Refusal(NOTHING_OFFSCREEN)
         facts: list[Fact] = []
@@ -228,15 +227,15 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
     ) -> RegionProposal[N]:
-        world = self.world_of(draft)
+        world = draft.world
         model = RegionProposal[self.member]
         prompt = self.render_request(
-            draft, intent=intent, guidance=self.guidance(draft.packs, opening=False), answer=model
+            draft, intent=intent, guidance=self.guidance(draft.pack_id, opening=False), answer=model
         )
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
     def install(self, draft: Game[W], extension: RegionProposal[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
-        self.world_of(draft).attach(extension, extension.start)
+        draft.world.attach(extension, extension.start)
         draft.log[-1].recap = extension.recap
         self.open_chapter(draft)

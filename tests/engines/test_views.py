@@ -57,13 +57,13 @@ def test_the_narrator_view_names_nobody_the_player_has_not_met(
 def _loner3e_dead_view() -> tuple[NarratorView, Slug]:
     engine, state = initialized()
     draft = state.draft()
-    _ = draft.payload.kill(MARA)
+    _ = draft.world.kill(MARA)
     return engine.narrator_view(draft), MARA
 
 
 def _tunnelgoons_dead_view() -> tuple[NarratorView, Slug]:
     state = tunnelgoons_world()
-    state.payload.npcs[TUNNELGOONS_MIRA].alive = False
+    state.world.npcs[TUNNELGOONS_MIRA].alive = False
     return TUNNELGOONS_ENGINE.narrator_view(state), TUNNELGOONS_MIRA
 
 

@@ -66,7 +66,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
             dangerous=True,
         ),
     )
-    world = state.payload
+    world = state.world
     assert world.current.id == "corridor"
     assert world.npcs["crawler"].alive
     assert world.player.hp.current == world.player.hp.maximum - MARGIN
@@ -79,7 +79,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
         tool_call("move", to_id="sealed-cell"),
         tool_call("rest"),
     )
-    world = state.payload
+    world = state.world
     assert world.current.id == "sealed-cell"
     assert world.player.hp.current == world.player.hp.maximum
 
@@ -97,8 +97,8 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     after = await play_turn(table, "Deeper in.", action=MORE_MAP.id)
 
     # The region lands hidden, then the words play as a turn that sees the new way out.
-    assert set(REGION["places"]) <= set(after.payload.places)
-    assert all(not after.payload.places[place].known for place in REGION["places"])
+    assert set(REGION["places"]) <= set(after.world.places)
+    assert all(not after.world.places[place].known for place in REGION["places"])
     assert [role for role, _ in table.spawner.prompts[-3:]] == ["worldsmith", "master", "narrator"]
     assert "Deep Vault" in table.spawner.prompts[-2][1]
     assert after.exchanges()[before_turn].words == "Deeper in."
@@ -137,15 +137,15 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
 async def test_the_clock_does_not_count_a_turn_the_master_never_played(tmp_path: Path) -> None:
     """A level-up cascade re-suspends without a master, so `Turn.landed()` would over-count it."""
     table = open_table(tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame)
-    world = table.state.payload
+    world = table.state.world
     world.npcs[GRIX].sheet = GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1})
     world.party.append(GRIX)
     suspended = table.state.draft()
-    suspended.pending = suspended.payload.player.level_decision()
+    suspended.pending = suspended.world.player.level_decision()
     table.service.save(suspended.commit())
 
     state = await play_turn(table, Answer(option_id="brute-health"))
 
     assert state.exchanges()[-1].facts
-    assert state.payload.turns_played == 0
+    assert state.world.turns_played == 0
     assert "master" not in [role for role, _ in table.spawner.prompts]

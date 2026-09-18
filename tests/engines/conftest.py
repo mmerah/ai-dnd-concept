@@ -16,7 +16,7 @@ def room_engine(tmp_path: Path) -> SixthEngine:
 
 @pytest.fixture
 def begun_room(room_engine: SixthEngine) -> SixthGame:
-    character = room_engine.create_character("Wren", "A quiet scout", ("srd",), {})
+    character = room_engine.create_character("Wren", "A quiet scout", "srd", {})
     return room_engine.begin("the-keep", sixth_scenario(), character)
 
 
@@ -27,5 +27,5 @@ def scene_engine(tmp_path: Path) -> FifthEngine:
 
 @pytest.fixture
 def begun_scene(scene_engine: FifthEngine) -> FifthGame:
-    character = scene_engine.create_character("Wren", "A quiet scout", ("srd",), {})
+    character = scene_engine.create_character("Wren", "A quiet scout", "srd", {})
     return scene_engine.begin("the-taproom", fifth_scenario(), character)
