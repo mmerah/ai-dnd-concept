@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import ClassVar, NamedTuple
+from typing import NamedTuple
 
 from aidm.core.creation import (
     CreationStep,
@@ -26,18 +26,17 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.engine import Written
-from aidm.engines.scenes.engine import MOVE_ON, SceneEngine
-from aidm.engines.tools import (
+from aidm.engines.engine import Operation, Written
+from aidm.engines.hiring import (
     HIRE,
-    HIRE_PENDING,
     HIRE_UNWRITTEN,
-    NO_HIRE_TARGET,
-    SIGNED_ON,
-    SIGNS_ON,
     Hire,
-    Kill,
+    file_hire,
+    hire_target,
+    signed_on,
 )
+from aidm.engines.scenes.engine import MOVE_ON, SceneEngine
+from aidm.engines.tools import Kill
 from aidm.engines.twentyfourxx.pack import (
     AUTHORING,
     HIRING,
@@ -112,7 +111,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     body = TwentyfourxxBody
     world = TwentyfourxxWorld
     member = Crewmate
-    unwritten: ClassVar[dict[Slug, Fact]] = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
+
+    def operations(self) -> Mapping[Slug, Operation[TwentyfourxxWorld]]:
+        return {**super().operations(), HIRE: Operation(self.write_hire, HIRE_UNWRITTEN)}
 
     def __init__(self, player_packs: Path) -> None:
         super().__init__(player_packs)
@@ -130,17 +131,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing
         more lands this turn. A sheet is for someone hired to work, never for one who only comes
         along."""
-        member = draft.world.require_hireable(args.target_id)
-        draft.commission = Commission(operation=HIRE, detail=args.terms, target=member.id)
-        trace = HIRE_PENDING.format(name=member.name, terms=args.terms)
-        return [Fact(trace=trace)]
+        return file_hire(draft, args.target_id, args.terms)
 
     async def write_hire(
         self, draft: TwentyfourxxGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if commission.target is None:
-            raise Refusal(NO_HIRE_TARGET)
-        member = draft.world.require_hireable(commission.target)
+        member = hire_target(draft.world, commission)
         packs = self.packs.played(draft.pack_id)
         lines = [pack.specialty_lines() for pack in packs]
         lines.append(f"Skills: {', '.join(option.name for option in self.packs.srd().skills)}")
@@ -157,19 +153,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             items_from_kits(tuple(Kit(name=name) for name in answer.items)),
             answer.hindrances,
         )
-        world = draft.world
-        facts = world.join(member) if member.id not in world.party else []
-        trace = SIGNS_ON.format(who=member.mention, summary=summary)
-        card = SIGNS_ON.format(who=member.name, summary=summary)
-        facts.append(member.fact(trace, card=card))
-        return Written(tuple(facts), SIGNED_ON.format(name=member.name))
-
-    async def advance(
-        self, draft: TwentyfourxxGame, commission: Commission, worldsmith: WorldsmithAnswer
-    ) -> Written:
-        if commission.operation == HIRE:
-            return await self.write_hire(draft, commission, worldsmith)
-        return await super().advance(draft, commission, worldsmith)
+        return signed_on(draft.world, member, summary)
 
     def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
         specialties, origins = self._offered(pack_id)
@@ -399,7 +383,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         world.check_unnamed(args.hindrance)
         return world.defend(args.actor_id, args.item_id, args.hindrance)
 
+    @tool
     def kill(self, draft: TwentyfourxxGame, args: Kill, rng: Random) -> list[Fact]:
+        """Someone here dies. When it is the lead, the crew pick who leads now."""
         facts = super().kill(draft, args, rng)
         self._succession(draft)
         return facts

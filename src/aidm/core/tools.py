@@ -1,11 +1,10 @@
 import json
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from inspect import cleandoc, signature
 from random import Random
 from types import FunctionType
-from typing import Protocol
 
 from pydantic import BaseModel, JsonValue
 
@@ -30,11 +29,6 @@ class MasterTool:
     call: Callable[[AnyGame, JsonValue, Random], tuple[Fact, ...]]
 
 
-class Tools(Protocol):
-    def published_tools(self) -> Sequence[MasterTool]: ...
-    def call(self, name: str, raw: JsonValue) -> str: ...
-
-
 def tool[F: Callable[..., Sequence[Fact]]](method: F) -> F:
     """Mark an engine method as a tool the master calls; its docstring is what the master reads."""
     if not (method.__doc__ or "").strip():
@@ -50,9 +44,16 @@ def tool[F: Callable[..., Sequence[Fact]]](method: F) -> F:
 
 def tools_of(engine: object) -> dict[str, MasterTool]:
     """Definition order, base class first; a name defined again keeps the slot it first took."""
-    marked = {
-        name: function for cls in reversed(type(engine).__mro__) for name, function in _marked(cls)
-    }
+    marked: dict[str, FunctionType] = {}
+    for cls in reversed(type(engine).__mro__):
+        members: Mapping[str, object] = vars(cls)
+        for name, value in members.items():
+            if not isinstance(value, FunctionType):
+                continue
+            if value in _MARKED:
+                marked[name] = value
+            elif name in marked:
+                raise ValueError(f"{value.__qualname__} overrides a tool but carries no @tool mark")
     return {name: _published(engine, name, function) for name, function in marked.items()}
 
 
@@ -67,14 +68,6 @@ def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
 
 def schema_text(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
-
-
-def _marked(cls: type[object]) -> Iterator[tuple[str, FunctionType]]:
-    """A class's own namespace, in definition order."""
-    members: Mapping[str, object] = vars(cls)
-    for name, value in members.items():
-        if isinstance(value, FunctionType) and value in _MARKED:
-            yield name, value
 
 
 def _published(engine: object, name: str, function: FunctionType) -> MasterTool:
@@ -92,10 +85,12 @@ def _published(engine: object, name: str, function: FunctionType) -> MasterTool:
 def _args_of(function: Callable[..., object]) -> type[BaseModel]:
     """A tool method reads `(self, draft, args, rng)`; the master fills the third parameter."""
     parameters = list(signature(function).parameters.values())
-    annotation: object = parameters[2].annotation if len(parameters) > 2 else None
-    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-        return annotation
-    raise ValueError(f"{function.__qualname__} takes no argument model")
+    args = parameters[2] if len(parameters) > 2 else None
+    if args is not None and args.name.removeprefix("_") == "args":
+        annotation: object = args.annotation
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            return annotation
+    raise ValueError(f"{function.__qualname__} does not take (self, draft, args, rng)")
 
 
 def _inline_refs(node: JsonValue, defs: Mapping[str, JsonValue]) -> None:

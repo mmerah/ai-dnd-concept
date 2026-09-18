@@ -15,7 +15,7 @@ from pydantic import Field, ValidationError
 from aidm.app.builtin import run_builtin
 from aidm.config import CliProvider, Role, RoleConfig, Settings
 from aidm.core.entities import Loose, Refusal, parse_json
-from aidm.core.tools import Tools
+from aidm.turn.run import Tools
 
 LOGGER = logging.getLogger(__name__)
 

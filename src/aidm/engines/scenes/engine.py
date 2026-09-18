@@ -1,7 +1,7 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from random import Random
-from typing import Any, ClassVar
+from typing import Any
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
@@ -25,7 +25,7 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.engine import WRITES_NO, Engine, Written
+from aidm.engines.engine import Engine, Operation, Written
 from aidm.engines.packs import Pack, render_worldsmith
 from aidm.engines.scenes.tools import MOVING_ON, SCENE_LEFT, Enter, Leave, NextScene
 from aidm.engines.scenes.world import NextProposal, SceneProposal, SceneWorld
@@ -59,10 +59,12 @@ COMPLICATION_UNWRITTEN = Fact(
 class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
     family_dir = Path(__file__).parent
     member: type[C]
-    unwritten: ClassVar[dict[Slug, Fact]] = {
-        DEPARTURE: WAY_UNWRITTEN,
-        COMPLICATION: COMPLICATION_UNWRITTEN,
-    }
+
+    def operations(self) -> Mapping[Slug, Operation[W]]:
+        return {
+            DEPARTURE: Operation(self.depart, WAY_UNWRITTEN),
+            COMPLICATION: Operation(self.complicate, COMPLICATION_UNWRITTEN),
+        }
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
         # Copied: a restart reopens the same scenario file.
@@ -220,15 +222,6 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
             answer_model=model,
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
-
-    async def advance(
-        self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
-    ) -> Written:
-        if commission.operation == DEPARTURE:
-            return await self.depart(draft, commission, worldsmith)
-        if commission.operation == COMPLICATION:
-            return await self.complicate(draft, commission, worldsmith)
-        raise ValueError(WRITES_NO.format(engine=self.id, operation=commission.operation))
 
     async def depart(
         self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer

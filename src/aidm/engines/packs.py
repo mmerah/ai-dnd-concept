@@ -7,8 +7,9 @@ from typing import Self
 
 from pydantic import BaseModel, Field, JsonValue, model_validator
 
-from aidm.core.entities import EngineId, Frozen, Refusal, Slug, content_id, slug
-from aidm.core.io import read_model
+from aidm.core.entities import EngineId, Frozen, Refusal, Slug, content_id, parse, parse_json, slug
+from aidm.core.io import decode, read_model
+from aidm.core.model import WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, section_if, sections
 from aidm.core.tools import schema_text
@@ -19,6 +20,7 @@ DASH = " — "  # parts a name from its brief (`Named`, `Pack.sections`); inside
 SEPARATOR = ", "  # parts one name from the next in the NAMES line; nowhere inside a name
 PROVENANCE = frozenset(("name", "source", "license"))  # the pack's own; no box edits it
 SRD_PACK: Slug = "srd"
+PACK_SO_FAR = "THE PACK SO FAR"
 SOURCELESS = "(none — write from what is below)"
 SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
 SOURCE_BOUND = (
@@ -231,8 +233,71 @@ class PackSet[K: Pack]:
         pack = self.require(pack_id)
         return ((f"SPECIAL RULES: {pack.name}", pack.rules),) if pack.rules else ()
 
-    def seeds(self, pack_id: Slug) -> tuple[str, ...]:
-        return self.require(pack_id).seeds
+
+@dataclass(frozen=True, slots=True)
+class PackAuthor[K: Pack]:
+    pack_model: type[K]
+    head_model: type[PackHead]
+    body_model: type[PackBody]
+    authoring: str
+    role: str  # the family's worldsmith.md, for render_worldsmith
+
+    async def author(
+        self, *, name: str, source: str, origin: str, license: str, worldsmith: WorldsmithAnswer
+    ) -> K:
+        """Head, then body; each checked by building the pack; nothing is written here."""
+
+        def built(from_head: PackHead, from_body: PackBody | None) -> K:
+            return parse(
+                self.pack_model,
+                {
+                    "name": name,
+                    # The pack's `source` is its provenance; the material it was
+                    # written from is not kept.
+                    "source": origin,
+                    "license": license,
+                    **from_head.pack_fields(),
+                    **({} if from_body is None else from_body.model_dump()),
+                },
+            )
+
+        def check_head(answer: PackHead) -> None:
+            built(answer, None)
+
+        def asked(intent: str, world_sections: Sections, answer_model: type[BaseModel]) -> str:
+            return render_worldsmith(
+                self.role,
+                source=source,
+                scope="",
+                world_sections=world_sections,
+                intent=intent,
+                guidance=self.authoring,
+                answer_model=answer_model,
+            )
+
+        head = await worldsmith(asked(HEAD_ASK, (), self.head_model), self.head_model, check_head)
+        so_far = ((PACK_SO_FAR, sections(built(head, None).sections(opening=True))),)
+
+        def check_body(answer: PackBody) -> None:
+            built(head, answer)
+
+        body = await worldsmith(
+            asked(BODY_ASK, so_far, self.body_model), self.body_model, check_body
+        )
+        return built(head, body)
+
+    def edited(self, pack: K, values: Mapping[str, str]) -> K:
+        """The boxes decoded over the pack's own dump; a field no box holds keeps its value."""
+        dumped: dict[str, JsonValue] = pack.model_dump(mode="json")
+        for field_id, box in values.items():
+            if field_id in PROVENANCE:
+                raise Refusal(f"{field_id} is the pack's own and is not edited here")
+            try:
+                dumped[field_id] = decode(box)
+            except Refusal as refused:
+                raise Refusal(f"{field_id}: {refused}") from refused
+        # Through JSON, not `parse`: strict mode reads a tuple field from a JSON array alone.
+        return parse_json(self.pack_model, json.dumps(dumped))
 
 
 def render_worldsmith(

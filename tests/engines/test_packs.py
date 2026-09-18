@@ -1,19 +1,19 @@
 from pathlib import Path
 
 import pytest
-from support.table import ENGINES_BUILT, LONER3E, TWENTYFOURXX, narrowed
+from support.table import ENGINES_BUILT, LONER3E, narrowed
 
-from aidm.core.entities import EngineId, Refusal
+from aidm.core.entities import EngineId, Refusal, parse
 from aidm.core.io import ENCODING
 from aidm.core.play import DecisionOption
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.pack import Loner3eBlock, Loner3ePack
 from aidm.engines.packs import SRD_PACK, Names, Pack, PackSet, read_packs
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.pack import (
     OriginProposal,
     SpecialtyProposal,
     TwentyfourxxHead,
+    TwentyfourxxPack,
 )
 
 TEST_ENGINE = EngineId("test")
@@ -144,13 +144,13 @@ def test_rules_section_is_empty_unless_the_pack_writes_rules() -> None:
     )
 
 
-def test_seeds_lists_the_packs_own_seeds() -> None:
+def test_require_gives_the_pack_whose_seeds_the_page_reads() -> None:
     first = Pack(name="First", source="", license="", seeds=("A vanished caravan.",))
     second = Pack(name="Second", source="", license="", seeds=("A debt come due.",))
     packs = PackSet(TEST_ENGINE, {SRD_PACK: first, "second": second}, {})
 
-    assert packs.seeds(SRD_PACK) == ("A vanished caravan.",)
-    assert packs.seeds("second") == ("A debt come due.",)
+    assert packs.require(SRD_PACK).seeds == ("A vanished caravan.",)
+    assert packs.require("second").seeds == ("A debt come due.",)
 
 
 def test_require_refuses_an_uninstalled_pack() -> None:
@@ -181,7 +181,6 @@ def test_options_lists_the_srd_first() -> None:
 
 
 def test_a_twentyfourxx_head_never_gives_two_picks_the_same_id() -> None:
-    engine = narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine)
     head = TwentyfourxxHead(
         setting="A belt station and the ships that dock there.",
         names=Names(),
@@ -192,7 +191,9 @@ def test_a_twentyfourxx_head_never_gives_two_picks_the_same_id() -> None:
         origins=(OriginProposal(name="Face", brief="Known on every deck."),),
     )
 
-    made = engine.pack_of(head, None, name="Test", origin="", license="")
+    made = parse(
+        TwentyfourxxPack, {"name": "Test", "source": "", "license": "", **head.pack_fields()}
+    )
 
     made_ids = tuple(option.id for option in (*made.specialties, *made.origins))
     assert made_ids == ("face", "face-2", "face-3")

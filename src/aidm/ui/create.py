@@ -271,7 +271,7 @@ class ScenarioForm:
         self.seed_button.set_visibility(bool(self.seeds()))
 
     def seeds(self) -> tuple[str, ...]:
-        return self.runtime.engines[self.engine_id].packs.seeds(self.pack_id)
+        return self.runtime.engines[self.engine_id].packs.require(self.pack_id).seeds
 
     def roll_seed(self) -> None:
         """A starting point the player edits; the seed is never stored on its own."""

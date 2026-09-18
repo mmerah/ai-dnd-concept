@@ -6,6 +6,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, section_if
+from aidm.engines.hiring import HIRED, UNWRITTEN_CAST
 from aidm.engines.packs import (
     Named,
     Pack,
@@ -16,7 +17,6 @@ from aidm.engines.packs import (
     check_items,
     check_lines,
 )
-from aidm.engines.tools import HIRED, UNWRITTEN_CAST
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
 AUTHORING = (

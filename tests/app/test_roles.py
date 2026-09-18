@@ -10,10 +10,10 @@ from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.play import Answer, Interjection, Narration
-from aidm.core.tools import Tools, schema_text
+from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Rows, Subject
 from aidm.engines.loner3e.world import Loner3eEntity
-from aidm.turn.run import Turn
+from aidm.turn.run import Tools, Turn
 
 
 def _view(subject: Subject) -> NarratorView:

@@ -18,7 +18,7 @@
   },
   {
     "name": "kill",
-    "description": "Someone here dies.",
+    "description": "Someone here dies. When it is the lead, the crew pick who leads now.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

@@ -8,15 +8,7 @@ from aidm.core.entities import Frozen, Mutable, Refusal, Slug, slug, tag_of
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows, filled
-from aidm.engines.base import (
-    ALREADY_SHEETED,
-    NO_DICE,
-    NOT_AN_ACTOR,
-    PLAYER_ID,
-    Person,
-    Thing,
-    joined,
-)
+from aidm.engines.base import NO_DICE, PLAYER_ID, Person, Thing, joined
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
@@ -248,21 +240,6 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         if self.player.sheet is None:
             raise ValueError("the player carries no sheet")
         return self
-
-    def require_actor(self, actor_id: Slug | None) -> Crewmate:
-        """The player, or a hired member here in the party."""
-        if actor_id is None or actor_id == self.player.id:
-            return self.player
-        member = self.require_member_here(actor_id)
-        if member.hired and member.id in self.party:
-            return member
-        raise Refusal(NOT_AN_ACTOR.format(name=member.name))
-
-    def require_hireable(self, entity_id: Slug) -> Crewmate:
-        member = self.require_member_here(entity_id)
-        if member.hired:
-            raise Refusal(ALREADY_SHEETED.format(name=member.name))
-        return member
 
     def sheet_rows(self) -> Rows:
         """The narrator and the page read the kit here; the master has its GEAR section."""

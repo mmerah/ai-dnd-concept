@@ -22,7 +22,7 @@ from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.world import Place, Prop, RegionProposal
 from aidm.engines.tunnelgoons.tools import LevelUp, Roll
-from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import Goon, GoonSheet, TunnelGoonsGame, TunnelGoonsWorld
 
 TOTAL_RE = re.compile(r"(-?\d+) vs DS")
 
@@ -40,8 +40,8 @@ def _total(card: str) -> int:
 def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.world
-    world.player.sheet.abilities["skulker"] = 2
-    world.player.sheet.inventory = 1  # carrying rope + torch (2) is 1 over
+    world.player.require_sheet().abilities["skulker"] = 2
+    world.player.require_sheet().inventory = 1  # carrying rope + torch (2) is 1 over
     facts = ENGINE.roll(
         draft,
         Roll(what="Sneak past", ability="skulker", item_ids=(ROPE,), difficulty=10),
@@ -49,7 +49,9 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
     )
     rolled = facts[1]
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.sheet.abilities["skulker"] + 1 - 1
+    assert (
+        _total(rolled.card) == sum(dice) + world.player.require_sheet().abilities["skulker"] + 1 - 1
+    )
 
 
 def test_a_what_naming_an_unmet_npc_is_refused(draft: TunnelGoonsGame) -> None:
@@ -63,21 +65,21 @@ def test_a_what_naming_an_unmet_npc_is_refused(draft: TunnelGoonsGame) -> None:
 
 def test_erudite_rolls_are_not_penalized_for_over_inventory(draft: TunnelGoonsGame) -> None:
     world = draft.world
-    world.player.sheet.abilities["erudite"] = 2
-    world.player.sheet.inventory = 1
+    world.player.require_sheet().abilities["erudite"] = 2
+    world.player.require_sheet().inventory = 1
     facts = ENGINE.roll(
         draft, Roll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
     )
     rolled = facts[1]
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.sheet.abilities["erudite"]
+    assert _total(rolled.card) == sum(dice) + world.player.require_sheet().abilities["erudite"]
 
 
 def test_a_roll_against_an_npc_that_hits_can_slay_it(draft: TunnelGoonsGame) -> None:
     world = draft.world
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].known = True
-    world.player.sheet.abilities["brute"] = 10  # min total 12 always beats DS 4
+    world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
         Roll(what="Smash it", ability="brute", target_id=MANTIS, dangerous=True),
@@ -93,7 +95,7 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here(draft: TunnelGoonsGa
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].known = True
     world.items[KEY].on = MANTIS
-    world.player.sheet.abilities["brute"] = 10  # min total 12 always beats DS 4
+    world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
         Roll(what="Smash it", ability="brute", target_id=MANTIS, dangerous=True),
@@ -108,7 +110,7 @@ def test_a_miss_against_an_npc_can_kill_the_player(draft: TunnelGoonsGame) -> No
     world.npcs[MANTIS].known = True
     world.npcs[MANTIS].hp.maximum = 20
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
-    world.player.sheet.abilities["brute"] = 0
+    world.player.require_sheet().abilities["brute"] = 0
     world.player.hp.current = 1
     _ = ENGINE.roll(
         draft,
@@ -135,7 +137,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous(draft: Tunne
 def test_dangerous_hurts_only_on_a_miss() -> None:
     draft = small_world().draft()
     world = draft.world
-    world.player.sheet.abilities["erudite"] = 12  # min total 14 always beats DS 8
+    world.player.require_sheet().abilities["erudite"] = 12  # min total 14 always beats DS 8
     before = world.player.hp.current
     _ = ENGINE.roll(
         draft,
@@ -146,7 +148,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
 
     draft2 = small_world().draft()
     world2 = draft2.world
-    world2.player.sheet.inventory = 0
+    world2.player.require_sheet().inventory = 0
     world2.items.update(
         {
             f"junk-{n}": Prop(
@@ -199,10 +201,10 @@ def test_level_up_with_no_args_opens_the_six_option_decision(draft: TunnelGoonsG
 def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> None:
     draft = small_world().draft()
     world = draft.world
-    before = world.player.sheet.level
+    before = world.player.require_sheet().level
     _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
-    assert world.player.sheet.abilities["brute"] == 2
-    assert world.player.sheet.level == before + 1
+    assert world.player.require_sheet().abilities["brute"] == 2
+    assert world.player.require_sheet().level == before + 1
 
 
 def test_level_up_needs_both_an_ability_and_a_boost_or_neither() -> None:
@@ -237,7 +239,7 @@ def test_a_direct_level_up_for_the_second_of_three_members_does_not_requeue_a_le
     draft: TunnelGoonsGame,
 ) -> None:
     world = draft.world
-    third = Npc(
+    third = Goon(
         id="third",
         name="Third",
         brief="",
@@ -288,7 +290,7 @@ def test_two_moves_open_no_chapter_and_install_closes_with_the_recap(
     assert [chapter.title for chapter in draft.log] == ["Start"]
     draft.log[-1].exchanges.append(Exchange(words="Look around.", lines=()))
 
-    region = RegionProposal[Npc](
+    region = RegionProposal[Goon](
         places={
             "beyond": Place(id="beyond", name="Beyond", brief="b", known=False, description="d")
         },

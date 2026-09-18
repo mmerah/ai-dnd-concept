@@ -1,13 +1,12 @@
-import json
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Any, ClassVar
+from typing import Any
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks, check_picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json, slug
@@ -23,15 +22,13 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import Chapter, Exchange, Mark, PendingOption, SpokenLine
-from aidm.core.prompt import Sections, sections
+from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, tool, tools_of
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import PLAYER_ID, Person, World
 from aidm.engines.packs import (
-    BODY_ASK,
-    HEAD_ASK,
-    PROVENANCE,
     Pack,
+    PackAuthor,
     PackBody,
     PackHead,
     PackSet,
@@ -39,9 +36,6 @@ from aidm.engines.packs import (
     render_worldsmith,
 )
 from aidm.engines.tools import JoinParty, Kill, LeaveParty, Reveal
-
-PACK_SO_FAR = "THE PACK SO FAR"
-WRITES_NO = "the {engine!r} engine writes no {operation!r}"
 
 type AnyEngine = Engine[Any, Any]
 
@@ -52,9 +46,13 @@ class Written:
     narrator_prompt: str | None
 
 
-class Engine[W: World[Any, Any], K: Pack](ABC):
-    # The fact filed when a worldsmith commission fails, by operation.
-    unwritten: ClassVar[dict[Slug, Fact]]
+@dataclass(frozen=True, slots=True)
+class Operation[W: World[Any]]:
+    write: Callable[[Game[W], Commission, WorldsmithAnswer], Awaitable[Written]]
+    failure_fact: Fact
+
+
+class Engine[W: World[Any], K: Pack](ABC):
     # Declared, not `ClassVar`: `type[W]` cannot be one.
     id: EngineId
     title: str
@@ -74,6 +72,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
     look: Look
     tools: dict[str, MasterTool]
     worldsmith_role: str
+    pack_author: PackAuthor[K]
 
     def __init__(self, player_packs: Path) -> None:
         self.packs = read_packs(self.id, self.directory / "packs", player_packs, self.pack)
@@ -87,6 +86,13 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
             raise ValueError(f"the {self.id!r} engine ticks every {self.world.tempo} turns")
         self.tools = tools_of(self)
         self.worldsmith_role = read_cached_text(self.family_dir / "worldsmith.md")
+        self.pack_author = PackAuthor(
+            pack_model=self.pack,
+            head_model=self.head,
+            body_model=self.body,
+            authoring=self.authoring,
+            role=self.worldsmith_role,
+        )
 
     @tool
     def reveal(self, draft: Game[W], args: Reveal, _rng: Random) -> list[Fact]:
@@ -110,71 +116,6 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
 
     def install_pack(self, pack_id: Slug, pack: K) -> None:
         self.packs = self.packs.installing(pack_id, pack)
-
-    def pack_of(
-        self, head: PackHead, body: PackBody | None, *, name: str, origin: str, license: str
-    ) -> K:
-        """Every id the pack carries is made here, by code, from the names the worldsmith wrote."""
-        return parse(
-            self.pack,
-            {
-                "name": name,
-                "source": origin,
-                "license": license,
-                **head.pack_fields(),
-                **({} if body is None else body.model_dump()),
-            },
-        )
-
-    async def author_pack(
-        self,
-        *,
-        name: str,
-        source: str,
-        origin: str,
-        license: str,
-        worldsmith: WorldsmithAnswer,
-    ) -> K:
-        """Head, then body; each checked by building the pack; nothing is written here."""
-
-        def built(from_head: PackHead, from_body: PackBody | None) -> K:
-            return self.pack_of(from_head, from_body, name=name, origin=origin, license=license)
-
-        def check_head(answer: PackHead) -> None:
-            built(answer, None)
-
-        def asked(intent: str, world_sections: Sections, answer_model: type[BaseModel]) -> str:
-            return render_worldsmith(
-                self.worldsmith_role,
-                source=source,
-                scope="",
-                world_sections=world_sections,
-                intent=intent,
-                guidance=self.authoring,
-                answer_model=answer_model,
-            )
-
-        head = await worldsmith(asked(HEAD_ASK, (), self.head), self.head, check_head)
-        so_far = ((PACK_SO_FAR, sections(built(head, None).sections(opening=True))),)
-
-        def check_body(answer: PackBody) -> None:
-            built(head, answer)
-
-        body = await worldsmith(asked(BODY_ASK, so_far, self.body), self.body, check_body)
-        return built(head, body)
-
-    def edited(self, pack: K, values: Mapping[str, str]) -> K:
-        """The boxes decoded over the pack's own dump; a field no box holds keeps its value."""
-        dumped: dict[str, JsonValue] = pack.model_dump(mode="json")
-        for field_id, box in values.items():
-            if field_id in PROVENANCE:
-                raise Refusal(f"{field_id} is the pack's own and is not edited here")
-            try:
-                dumped[field_id] = decode(box)
-            except Refusal as refused:
-                raise Refusal(f"{field_id}: {refused}") from refused
-        # Through JSON, not `parse`: strict mode reads a tuple field from a JSON array alone.
-        return parse_json(self.pack, json.dumps(dumped))
 
     def guidance(self, pack_id: Slug, /, *, opening: bool) -> str:
         block = self.packs.guidance(pack_id, opening=opening)
@@ -332,8 +273,8 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         if not state.log:
             raise Refusal(f"a {self.id!r} game has no chapter open")
         commission = state.commission
-        if commission is not None and commission.operation not in self.unwritten:
-            raise Refusal(WRITES_NO.format(engine=self.id, operation=commission.operation))
+        if commission is not None and commission.operation not in self.operations():
+            raise Refusal(f"the {self.id!r} engine writes no {commission.operation!r}")
 
     @abstractmethod
     def player_of(self, character: AnyCharacter) -> Person: ...
@@ -366,7 +307,10 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
     def act(self, draft: Game[W], action_id: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
 
-    @abstractmethod
+    def operations(self) -> Mapping[Slug, Operation[W]]:
+        return {}
+
     async def advance(
         self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
-    ) -> Written: ...
+    ) -> Written:
+        return await self.operations()[commission.operation].write(draft, commission, worldsmith)

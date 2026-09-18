@@ -6,6 +6,11 @@
     "name": "Kael",
     "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
     "known": true,
+    "place": "player",
+    "hp": {
+      "current": 10,
+      "maximum": 10
+    },
     "sheet": {
       "abilities": {
         "brute": 1,

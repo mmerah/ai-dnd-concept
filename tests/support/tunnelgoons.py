@@ -4,7 +4,13 @@ from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.world import Place, Prop, Way
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
-from aidm.engines.tunnelgoons.world import Goon, GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import (
+    HP_START,
+    Goon,
+    GoonSheet,
+    TunnelGoonsGame,
+    TunnelGoonsWorld,
+)
 from support.table import ENGINES_BUILT, TUNNELGOONS, narrowed
 
 START: Slug = "start"
@@ -28,7 +34,7 @@ ENGINE = narrowed(ENGINES_BUILT[TUNNELGOONS], TunnelGoonsEngine)
 def _map_pieces() -> tuple[
     dict[Slug, Place],
     dict[Slug, list[Way]],
-    dict[Slug, Npc],
+    dict[Slug, Goon],
     dict[Slug, Prop],
 ]:
     """A line of four places, a start->vault shortcut, and hall->vault locked."""
@@ -68,7 +74,7 @@ def _map_pieces() -> tuple[
         VAULT: [Way(to=HALL, known=False), Way(to=CRYPT, known=False), Way(to=START, known=False)],
         CRYPT: [Way(to=VAULT, known=False)],
     }
-    mira = Npc(
+    mira = Goon(
         id=MIRA,
         name="Mira",
         brief="A cautious guide",
@@ -76,7 +82,7 @@ def _map_pieces() -> tuple[
         place=START,
         hp=Gauge(current=8, maximum=8),
     )
-    mantis = Npc(
+    mantis = Goon(
         id=MANTIS,
         name="Robo Mantis",
         brief="A clicking husk of gears",
@@ -99,6 +105,8 @@ def _kael() -> Goon:
         name="Kael",
         brief="A wiry scavenger",
         known=True,
+        place=PLAYER_ID,
+        hp=Gauge(current=HP_START, maximum=HP_START),
         sheet=GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1}),
         kit=("Rope", "Torch", "Lantern"),
     )
@@ -147,7 +155,7 @@ def keep() -> TunnelGoonsGame:
         YARD: [Way(to=CELLAR), Way(to=WELL, locked=True)],
         CELLAR: [Way(to=WELL)],
     }
-    warden = Npc(
+    warden = Goon(
         id=WARDEN,
         name="Warden",
         brief="Keeps the gate",
