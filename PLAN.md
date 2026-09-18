@@ -76,8 +76,16 @@ Parts A, B, C in order. Target: `src` about +45 (10,432 → about 10,480), `test
    (`core/views.py`, every engine, `turn/run.py`, `app/runtime.py`, `ui/`). `Engine.answer`
    becomes `play_option`. `SceneWorld.offer()` and `Scene.offered` become `offer_way_on()` and
    `way_offered` (`scenes/world.py`, `scenes/engine.py`; no shipped scenario carries `offered`).
-4. **One worldsmith renderer.** In `engines/engine.py`, replace the method `render_worldsmith`
-   and the adapter `render_request` with a free function and one method:
+   Tests that spell the old names: `tests/turn/test_decisions.py`, `tests/turn/test_turn.py`,
+   `tests/twentyfourxx/test_tools.py`, `tests/twentyfourxx/test_play.py`,
+   `tests/app/test_master_tools.py`, `tests/app/test_game_service.py` (its stub engine also
+   takes the `player_packs` parameter), `tests/engines/test_hire_tool.py` and
+   `tests/engines/test_scene_bar.py` (`telling`).
+4. **One worldsmith renderer.** Replace the method `Engine.render_worldsmith` and the adapter
+   `render_request` with a free function and one method. The function lives in
+   `engines/packs.py` beside `HEAD_ASK` and `BODY_ASK`, with `SOURCELESS` and `SCOPELESS`,
+   because `engine.py` imports `packs.py` and Phase 2 puts `PackAuthor` in `packs.py`; the
+   other way round is an import cycle:
    ```python
    def render_worldsmith(
        role: str,
@@ -107,9 +115,11 @@ Parts A, B, C in order. Target: `src` about +45 (10,432 → about 10,480), `test
            )
    ```
    `author` in both families and `author_pack` call the free function with named arguments
-   (`scope=meta.scope` / `scope=""`, `world_sections=OPENING_SECTIONS` / `()`); `write_next`,
-   `write_hire` and `render_next` call `render_commission`. The rendered text is unchanged, so
-   the prompt goldens do not move.
+   (`scope=meta.scope` / `scope=""`, `world_sections=OPENING_SECTIONS` / `()`); `write_next`
+   (`rooms/engine.py`), `render_next` (`scenes/engine.py`) and both `write_hire` call
+   `render_commission`, whose keyword is `answer_model=` where they wrote `answer=`;
+   `tests/engines/test_rooms.py` passes that keyword through a helper basedpyright does not
+   see. The rendered text is unchanged, so the prompt goldens do not move.
 
 ### Part B: small renames
 
@@ -124,8 +134,13 @@ Parts A, B, C in order. Target: `src` about +45 (10,432 → about 10,480), `test
 7. **A CLI conversation is not a session.** In `app/spawn.py`: `RunResult.session` becomes
    `conversation`, `SessionId` becomes `ConversationId`, and the `session` parameter of
    `Spawner.run`, `RoleRunner.run`, `Driver.command`, `run_cli` becomes `conversation`; the local
-   in `roles.ask` follows. `tests/support/table.py` and `qa/agents.py` construct `RunResult` by
-   keyword and implement `Spawner`; update them. `GameService`-side `session` stays.
+   in `roles.ask` follows. `ClaudeDriver.command` and `CodexDriver.command` are the other two
+   definition sites of that parameter. basedpyright checks a protocol's parameter names, so
+   every stub `Spawner` follows: `tests/support/table.py` (also constructs `RunResult` by
+   keyword), `tests/app/test_roles.py` (four), `tests/app/test_mcp.py`, `qa/agents.py`;
+   `tests/app/test_builtin.py` reads `spoken.session`. `_ClaudeResult.session_id` and
+   `_CodexEvent.thread_id` are wire fields and keep their names. `GameService`-side `session`
+   stays.
 8. **Role runners named as verbs.** `app/roles.py`: `master` → `run_master`, `narrate` →
    `run_narrator`, `interject` → `run_interjection`, `worldsmith(spawner)` →
    `worldsmith_answer`. Call sites in `app/runtime.py` and tests.
@@ -150,8 +165,11 @@ Parts A, B, C in order. Target: `src` about +45 (10,432 → about 10,480), `test
     `PendingOption` (`core/play.py`), `Subject`, `Companion`, `PanelRow` (`core/views.py`),
     `CreationStep` (`core/creation.py`), `Labelled` and `Location` (`engines/packs.py`),
     `CatalogEntry` and `PackEntry` (`app/launch.py`), and every subclass (`Specialty`, `Origin`,
-    `Body`, `SkillChoice`, `SpecialtyProposal`, `OriginProposal`) and use in engines, `ui/` and
-    tests. `DiceEvent.label`, `Panel.title`, `Commission.detail` and NiceGUI `label=` stay.
+    `Body`, `SkillChoice`, `SpecialtyProposal`, `OriginProposal`) and every use in engines,
+    `app/media.py`, `app/roles.py`, `app/runtime.py`, `core/views.py::NarratorView.spoken`,
+    `ui/` and tests. `DiceEvent.label`, `Panel.title`, `Commission.detail`,
+    `SaveOption.scenario_label`/`character_label` and NiceGUI `label=` stay. No schema or turn
+    golden carries a `label` key except `DiceEvent.label`, so none moves.
     `PendingOption` already has `name` (the tool it plays): that field becomes `tool_name`
     (`level_up_decision`, `_succession`, `Engine.play_option`). Reword the two sentences of
     `HEAD_ASK` that say "labels" and "`detail`".
@@ -173,7 +191,7 @@ Parts A, B, C in order. Target: `src` about +45 (10,432 → about 10,480), `test
 
 ## Phase 2: engines
 
-Parts A, B, C in order. Target: `src` about −55 (about 10,480 → about 10,425), `tests` about
+Parts A, B, C in order. Target: `src` about −60 (about 10,480 → about 10,420), `tests` about
 −25, 760 tests. One golden regenerates in Part B.
 
 ### Part A: one table, and pack authoring off `Engine`
@@ -200,8 +218,8 @@ Parts A, B, C in order. Target: `src` about −55 (about 10,480 → about 10,425
    becomes a method `extend` and `operations` returns `{EXTEND: Operation(self.extend,
    MAP_UNWRITTEN)}`; `TunnelGoonsEngine` and `TwentyfourxxEngine` return
    `{**super().operations(), HIRE: Operation(self.write_hire, HIRE_UNWRITTEN)}`. Delete the
-   `unwritten` ClassVar everywhere, the four `advance` overrides, and `WRITES_NO`'s use in
-   `advance` (`validate` keeps it). `GameService._write_commission` reads
+   `unwritten` ClassVar everywhere, the four `advance` overrides, and `WRITES_NO` (its one
+   remaining use in `validate` becomes an inline f-string). `GameService._write_commission` reads
    `self.engine.operations()[commission.operation].failure_fact`. `tests/engines/
    test_engine.py`'s drift test between `unwritten` and `advance` goes: the table's `write`
    field is required, so a missing writer is a type error. `tests/core/test_golden_turn.py`
@@ -219,9 +237,10 @@ Parts A, B, C in order. Target: `src` about −55 (about 10,480 → about 10,425
        async def author(self, *, name, source, origin, license, worldsmith) -> K: ...
        def edited(self, pack: K, values: Mapping[str, str]) -> K: ...
    ```
-   `author` is today's `Engine.author_pack` with `pack_of` folded in as a local `built`;
-   `edited` is today's `Engine.edited`; both call `render_worldsmith(self.role, ...)`.
-   `PACK_SO_FAR` moves with them. `Engine.__init__` builds `self.pack_author = PackAuthor(
+   `author` is today's `Engine.author_pack` with `pack_of` folded in as a local `built` and
+   the `check_head`/`check_body` closures written as `lambda answer: built(answer, None)` and
+   `lambda answer: built(head, answer)`; it calls `render_worldsmith(self.role, ...)` twice.
+   `edited` is today's `Engine.edited` and renders nothing. `PACK_SO_FAR` moves with them. `Engine.__init__` builds `self.pack_author = PackAuthor(
    pack_model=self.pack, head_model=self.head, body_model=self.body, authoring=self.authoring,
    role=self.worldsmith_role)`; `Engine.guidance` reads `self.pack_author.authoring`; the
    `head`/`body`/`authoring` class attributes stay declared (the engines set them) and
@@ -230,9 +249,45 @@ Parts A, B, C in order. Target: `src` about −55 (about 10,480 → about 10,425
    the_same_id` builds its pack with `parse(TwentyfourxxPack, {"name": ..., "source": ...,
    "license": ..., **head.pack_fields()})` instead of `engine.pack_of`.
 
-### Part B: one hire flow, one goon
+### Part B: one goon, one hire flow
 
-4. **`engines/hiring.py`.** New module holding, moved out of `engines/tools.py`: `HIRE`,
+4. **One `Goon`, and `World[M]`.** One edit, because neither half type-checks alone: one
+   `World` parameter cannot hold a `Goon` player beside `Npc` dwellers, and a merged `Goon` needs
+   `RoomWorld[Goon]`. `tunnelgoons/world.py`: merge `Goon` and `Npc` into
+   ```python
+   class Goon(Dweller):
+       """A dweller who carries dice: the played character, or an npc once hired."""
+       hp: Gauge
+       sheet: GoonSheet | None = Field(default=None, description="Leave empty.")
+       kit: tuple[str, ...] = ()  # the player's starting items by name; empty on an npc
+   ```
+   with `Npc`'s `hired`, `require_sheet`, `sign_on`, `rows`, `level`, `required` and `Goon`'s
+   `unpack_kit`; `next_to_level` and `level_up_decision` take `Goon`. The old
+   `min_length=max_length=STARTING_ITEMS` on `kit` goes: `check_picks` already demands every
+   item step answered at creation. `TunnelGoonsWorld` gains the `_player_carries_a_sheet`
+   validator 24XX has. Delete `sheet_of`; `roll` and `level_up` call `actor.require_sheet()`.
+   `build_character` passes `place=PLAYER_ID` and `hp=Gauge(current=HP_START,
+   maximum=HP_START)`. `hp` stays required so the worldsmith's npc schema keeps demanding a
+   Difficulty Score. Then `engines/base.py`: `class World[M: Person]` with `player: M`;
+   `SceneWorld[C](World[C])`; `RoomWorld[N: Dweller](Dungeon[N], World[N])` with
+   `opening(..., player: N, ...)`, `here() -> Iterator[N]`, `kill`'s `actor: N`, `line(entity:
+   N | Prop)`; `Engine[W: World[Any], K]`; `RoomEngine[N: Dweller, W: RoomWorld[Any], K]` keeps
+   `member: type[N]`; `TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack])`
+   with `member = Goon`; `TunnelGoonsScenario = Scenario[MapProposal[Goon]]`. Every `Npc`
+   construction in tests becomes a `Goon` with `hp` and `place`: `tests/support/tunnelgoons.py`,
+   `tests/tunnelgoons/test_world.py`, `test_tools.py`, `test_worldsmith.py`,
+   `tests/engines/test_rooms.py`. Regenerate
+   `tests/core/fixtures/schemas/tunnelgoons/worldsmith_answer.json` (the npc schema now lists
+   `kit`, unread for an npc) and add `place` and `hp` to `characters/kael/tunnelgoons.json`.
+   Old Tunnel Goons saves go stale, which is the documented behaviour. This is the one step no
+   trial ran in exactly this shape (the trial also dropped `RoomEngine`'s `N`); budget a
+   basedpyright pass on `rooms/engine.py`.
+5. **`require_actor` and `require_hireable` on `World`.** `engines/base.py`: `Person` gains
+   `@property hired -> bool` returning `False`; `World` gains
+   `require_actor(actor_id: Slug | None) -> M` and `require_hireable(entity_id: Slug) -> M`
+   with the bodies `TwentyfourxxWorld` has today; delete the copies in `TunnelGoonsWorld` and
+   `TwentyfourxxWorld` and the now-unused `ALREADY_SHEETED`/`NOT_AN_ACTOR` imports there.
+6. **`engines/hiring.py`.** New module holding, moved out of `engines/tools.py`: `HIRE`,
    `HIRE_PENDING`, `SIGNED_ON`, `SIGNS_ON`, `HIRED`, `HIRE_UNWRITTEN`, `NO_HIRE_TARGET`,
    `UNWRITTEN_CAST`, the `Hire` args model, and two free functions:
    ```python
@@ -251,33 +306,8 @@ Parts A, B, C in order. Target: `src` about −55 (about 10,480 → about 10,425
    own docstring; both `write_hire` tails become `return signed_on(draft.world, member,
    summary)`. `engines/tools.py` keeps `ACTOR` and the five shared arg models. Tests import
    the constants from `aidm.engines.hiring`.
-5. **`require_actor` and `require_hireable` on `World`.** `engines/base.py`: `Person` gains
-   `@property hired -> bool` returning `False`; `World` gains the two methods verbatim from
-   `TwentyfourxxWorld` (`require_actor(actor_id: Slug | None) -> M`,
-   `require_hireable(entity_id: Slug) -> M`); delete the copies in `TunnelGoonsWorld` and
-   `TwentyfourxxWorld` and the now-unused `ALREADY_SHEETED`/`NOT_AN_ACTOR` imports there.
-6. **One `Goon`.** `tunnelgoons/world.py`: merge `Goon` and `Npc` into
-   ```python
-   class Goon(Dweller):
-       """A dweller who carries dice: the played character, or an npc once hired."""
-       hp: Gauge
-       sheet: GoonSheet | None = Field(default=None, description="Leave empty.")
-       kit: tuple[str, ...] = ()  # the player's starting items by name; empty on an npc
-   ```
-   with `Npc`'s `hired`, `require_sheet`, `sign_on`, `rows`, `level`, `required` and `Goon`'s
-   `unpack_kit`. `TunnelGoonsWorld(RoomWorld[Goon])` gains the `_player_carries_a_sheet`
-   validator 24XX has. Delete `sheet_of`; `roll` and `level_up` call `actor.require_sheet()`.
-   `build_character` passes `place=PLAYER_ID` and `hp=Gauge(current=HP_START,
-   maximum=HP_START)`. `TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack])`
-   with `member = Goon`; `TunnelGoonsScenario = Scenario[MapProposal[Goon]]`. `hp` stays
-   required so the worldsmith's npc schema keeps demanding a Difficulty Score.
-7. **`World[M]`.** `engines/base.py`: `class World[M: Person]` with `player: M`;
-   `SceneWorld[C](World[C])`; `RoomWorld[N: Dweller](Dungeon[N], World[N])` with `opening(...,
-   player: N, ...)`, `here() -> Iterator[N]`, `kill`'s `actor: N`, `line(entity: N | Prop)`;
-   `Engine[W: World[Any], K]`, `RoomEngine[N: Dweller, W: RoomWorld[Any], K]`. Regenerate
-   `tests/core/fixtures/schemas/tunnelgoons/worldsmith_answer.json` (the npc schema now lists
-   `kit`, unread for an npc) and add `place` and `hp` to `characters/kael/tunnelgoons.json`.
-   Old Tunnel Goons saves go stale, which is the documented behaviour.
+7. **`PackSet.seeds` goes.** A one-line pass-through; its two callers (`ui/create.py`, two
+   asserts in `tests/engines/test_packs.py`) read `packs.require(pack_id).seeds`.
 
 ### Part C: the tool mark, explicit
 
@@ -286,13 +316,15 @@ Parts A, B, C in order. Target: `src` about −55 (about 10,480 → about 10,425
    rng)")` when it is missing or not a `BaseModel`. `TunnelGoonsEngine.rest` and
    `tests/turn/test_decisions.py::Deciding.strike` spell their parameter `args` with a
    `del args` (the repo's idiom for an unused parameter).
-9. **No invisible tool.** `tools_of` walks the MRO as today, but a method whose name is already
-   marked and which carries no mark itself raises
+9. **No invisible tool.** `tools_of` walks the MRO as today, but reads every `FunctionType`
+   in `vars(cls)`, not only the marked ones (`_marked` folds into it): a method whose name is
+   already in the table and which carries no mark itself raises
    `ValueError(f"{value.__qualname__} overrides a tool but carries no @tool mark")`.
    `TwentyfourxxEngine.kill` gets `@tool` and the docstring `"""Someone here dies."""`.
    `tests/core/test_tools.py`: mark `Adding.second`, replace the test that read an unmarked
-   override's inherited description with one that reads the override's own, add one test for
-   the refused unmarked override and one for a marked method with no `args` parameter.
+   override's inherited description with one that reads the override's own, reword
+   `test_a_third_parameter_that_is_no_argument_model_is_refused_where_it_is_marked` to the new
+   message, and add one test for the refused unmarked override.
    Publication order is unchanged; `master_tools.json` goldens do not move.
 10. **`Tools` beside `Turn`.** Move the `Tools` protocol from `core/tools.py` to `turn/run.py`;
     `app/spawn.py`, `app/builtin.py`, `tests/support/table.py`, `tests/app/test_mcp.py`,
@@ -341,16 +373,23 @@ Parts A, B, C in order. Target: `src` about +30 (about 10,425 → about 10,455),
    ```
    `present` returns the illustrate coroutine (when illustration is on; `newest=None` means
    art only, say so in a comment) plus what `speak` returns (the read coroutine when `newest`
-   is not `None`). `Tasks` stays in `runtime.py`. No shared base class for `Illustrator` and
-   `Reader`.
+   is not `None`). `Illustrator.illustrate` drops its own `if not self.config.enabled` guard:
+   `present` is the one gate. `Tasks` stays in `runtime.py`. No shared base class for
+   `Illustrator` and `Reader`. Importers follow: `qa/art.py`, `tests/app/test_media.py`,
+   `tests/app/test_speech.py` (its `monkeypatch.setattr("aidm.app.speech.post_bearer", ...)`
+   strings become `aidm.app.present.post_bearer`, which now also patches the illustrator's
+   calls in that module), `tests/ui/test_game.py` (`scene_key`).
 4. **`GameService` uses it.** Replace the fields `media` and `reader` with `presenter:
    Presenter`; `Runtime._open` builds `Presenter.open(settings, self.store, target.slug,
-   style=..., icon_dirs=..., voice=...)`. Delete `presents`, `illustrate`, `speak`. `_present()`
-   stays one line: `for coroutine in self.presenter.present(view, player, newest):
-   self.tasks.retain(create_task(coroutine))`; `let_party_speak` does the same over
-   `presenter.speak`. `scene_art`, `icon`, `newest_clip` forward to the presenter. `ui/game.py`
-   reads `session.presenter.enabled` for the media timer. `tests/app/test_media.py`,
-   `test_speech.py`, `tests/ui/test_game.py` import from `aidm.app.present` and reach
+   style=..., icon_dirs=..., voice=...)`. Delete `presents`, `illustrate`, `speak`. `_present`
+   becomes public `present()` and stays one line: `for coroutine in
+   self.presenter.present(view, player, newest): self.tasks.retain(create_task(coroutine))`;
+   `let_party_speak` does the same over `presenter.speak`. `ui/game.py::build` calls
+   `session.present()` where it called `session.illustrate()` and reads
+   `session.presenter.enabled` for the media timer. `scene_art`, `icon`, `newest_clip` forward
+   to the presenter. `tests/app/test_speech.py` replaces its `session.reader = ...` with
+   `session.presenter = replace(session.presenter, reader=...)` (the presenter is frozen) and
+   reads `session.presenter.reader.clip`; `tests/ui/test_game.py` reaches
    `session.presenter.illustrator`.
 5. **One way to say a role is working.** `GameService.phase` becomes `working_role: Role |
    None`, and:
@@ -366,24 +405,31 @@ Parts A, B, C in order. Target: `src` about +30 (about 10,425 → about 10,455),
    `open` runs under `working("narrator")`; `_turn` nests `working("master")` then
    `working("narrator")` and keeps only `self.turn = None` in its `finally`;
    `_write_commission` nests `working("worldsmith")` then `working("narrator")` with `close`
-   still inside the `try` and `save` still outside it. Delete the `busy` property; `ui/game.py`
-   and `ui/transcript.py` read `session.working_role`; `unopened` reads it too.
+   still inside the `try` and `save` still outside it. Delete the `busy` property;
+   `ui/game.py` (the decision widget's `enabled=`, the `LOGGER.info` in `submit`, the restart
+   menu item, `_set_composer`, `Observed.of`) and `ui/transcript.py` read
+   `session.working_role`; `unopened` reads it too. `Observed.phase` keeps its name.
 
 ### Part C: pages read the view
 
 6. **The transcript reads `PlayerView`.** `PlayerView` gains `premise: str`, filled by every
    engine's `player_view` from `state.scenario.premise` (`scenes/engine.py`, `rooms/engine.py`,
-   `twentyfourxx/engine.py`); one parametrised test in `tests/engines/test_views.py`.
+   `twentyfourxx/engine.py`); one parametrised test in `tests/engines/test_views.py`;
+   `tests/ui/test_game.py` builds one `PlayerView` by hand and passes `premise=""`.
    `ui/transcript.py::chat` reads `view.premise` and `view.decision` instead of
    `session.state.scenario.premise` and `session.state.pending`.
 7. **Pages go through `Runtime`.** `app/runtime.py` gains `catalog() -> LauncherCatalog`,
    `engine(engine_id) -> AnyEngine`, `look(engine_id) -> Look`, `engine_options() ->
    dict[EngineId, str]`, `pack_options(engine_id)`, `seeds(engine_id, pack_id)`,
    `art_style(engine_id)`, and `pack_boxes(engine_id, pack_id) -> tuple[str, bool, dict[str,
-   str]]` (name, writable, boxes) sharing one private lookup with `rewrite_pack`, whose refusal
-   becomes `f"no pack {pack_id!r} for {engine_id!r}"`. `ui/app.py`, `ui/create.py` and
-   `ui/packs.py` use them; `create.py` keeps `runtime.engine(id)` for `creation_steps`,
-   `create_character`, `preview_character`. `PackEditor.build` holds no `Refusal` of its own.
+   str]]` (name, writable, boxes) sharing one private lookup with `rewrite_pack`. That lookup
+   refuses an unknown engine with `f"no rules {engine_id!r}"` and an unknown pack with `f"no
+   pack {pack_id!r} for {engine_id!r}"`; `rewrite_pack` then refuses a shipped pack with its
+   existing "read-only" text. `Runtime.seeds` reads `packs.require(pack_id).seeds`.
+   `ui/app.py`, `ui/create.py` and `ui/packs.py` use them; `create.py` keeps
+   `runtime.engine(id)` for `creation_steps`, `create_character`, `preview_character`.
+   `PackEditor.build` calls `pack_boxes` first, then `runtime.engine(engine_id).title` and
+   `runtime.look(engine_id)`, and holds no `Refusal` of its own.
 8. **Pure view logic in one module.** `placeholder`, `near_end`, `draft_spent`, `whole_page`
    and the `Observed` dataclass move from `ui/game.py` to `ui/transcript.py` beside `can_type`,
    `standing_proposal`, `clock`; `tests/ui/test_game.py` imports follow.
