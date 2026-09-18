@@ -11,35 +11,37 @@ OPENING_SECTIONS: Sections = (
     ("THE SCENE NOW", "(none yet)"),
 )
 OPENING = (
-    "Write the opening scene of this adventure. Name the one place the player starts in and "
-    "who is there. A scene ends when the player leaves it, so a `focus` on somewhere farther "
-    "on belongs to a later scene. `cast` is the adventure's people and things, not the "
-    "scene's. Write who is met here and who the player will meet farther in. List under "
-    "`present` and `hidden` only who is here now. The opening also writes `arc`, in a few "
-    "lines or in none."
+    "Write the opening scene of this adventure. Name the one place the player starts in. Name "
+    "who is there. A scene ends when the player leaves the place, so a `focus` on a place "
+    "farther on belongs to a later scene. `cast` holds the people and things of the adventure, "
+    "not of the scene. Write who the player meets here. Write also who the player will meet "
+    "farther in. List under `present` and `hidden` only who is here now. The opening also "
+    "writes `arc`, in a few lines or in none."
 )
 CROSSING = (
-    "The player is leaving {left} for the place in SCENE. They asked for this: "
+    "The player is leaving {left} for the place in SCENE. The player asked for this: "
     '"{asked}"\n\n'
-    "Their going is already told. Write the arrival. Cover the distance and the time in the "
-    "fewest words that make it real. End on what they see first. WHAT HAPPENED names anyone "
-    "who travelled with them. They have not acted in the new place yet, so settle nothing."
+    "The narrator told the leaving already. Write the arrival. Give the distance and the time "
+    "in the fewest words that make them real. End on what the player sees first. WHAT HAPPENED "
+    "names everyone who travelled with the player. The player has not acted in the new place, "
+    "so settle nothing."
 )
 COMPLICATING = (
-    "The game master brings a complication down on the scene the player is in: {brief}. Write "
-    "the situation it makes as a new scene. The same `place` is allowed and usual. Whoever is "
-    "here stays unless the brief moves them. Change the situation, not the player's answer to "
-    "it. They have not acted, so settle nothing for them. `recap` is the scene as it stood "
-    "before it turned."
+    "The game master brings a complication into the scene the player is in: {brief}. Write the "
+    "new situation as a new scene. You can keep the same `place`, and this is usual. Everyone "
+    "here stays, unless the brief moves them. Change the situation. Do not change the player's "
+    "answer to it. The player has not acted, so settle nothing for the player. Write in "
+    "`recap` the scene as it was before it changed."
 )
 TURNING = (
-    "The situation changes where the player stands, and they did nothing to bring it on. Write "
-    "what arrives or turns, as they see it, from SCENE and WHAT HAPPENED. End on what it asks "
-    "of them. They have not answered it, so settle nothing."
+    "The situation changes where the player stands. The player did nothing to cause the "
+    "change. Write what arrives or changes, as the player sees it, from SCENE and WHAT "
+    "HAPPENED. End on what the new situation asks of the player. The player has not answered "
+    "it, so settle nothing."
 )
 MEANWHILE_NUDGE = (
-    "Time has passed since the player last saw the people they are not with. Let one of "
-    "them have moved on without the player, if the scene has room for it."
+    "Time has passed since the player last saw the people who are not with them. Let one of "
+    "those people move on without the player, if the scene has room for it."
 )
 
 

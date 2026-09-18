@@ -10,8 +10,6 @@ BOX_ROWS = 12
 
 
 class PackEditor:
-    """Every field of one pack as a textarea; a written pack saves, a shipped one only reads."""
-
     def __init__(self, runtime: Runtime, engine_id: EngineId, pack_id: Slug) -> None:
         self.runtime = runtime
         self.engine_id = engine_id
@@ -19,7 +17,7 @@ class PackEditor:
         self.boxes: dict[str, ui.textarea] = {}
 
     def build(self) -> None:
-        """The pack arrives as plain text: `ui` may name no engine type to be handed."""
+        # The pack comes as plain text: the UI layer must not name an engine type.
         engine = self.runtime.engine(self.engine_id)
         name, written, boxes = self.runtime.pack_boxes(self.engine_id, self.pack_id)
         page_header(name, look=engine.look)
@@ -60,7 +58,7 @@ def pack_path(engine: EngineId, pack_id: Slug) -> str:
 
 
 def pack_page(runtime: Runtime, engine_id: EngineId, pack_id: Slug) -> None:
-    """Raises `Refusal` for rules or a pack that is not installed; the route shows it."""
+    """Raises `Refusal` when the rules or the pack are not installed."""
     PackEditor(runtime, engine_id, pack_id).build()
 
 

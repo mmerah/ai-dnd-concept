@@ -10,19 +10,20 @@ from aidm.engines.tunnelgoons.world import ABILITY_POINTS, AbilityScores
 
 AUTHORING = (
     "TUNNEL GOONS AUTHORING\n"
-    "Every npc needs `hp`. It is the npc's Health and its Difficulty Score at once. Grade it "
-    "as 8 easy, 10 moderate, or 12 hard. A pack's people and monsters are written to be met: "
-    "file one as an npc under a new id, a monster with the `hp` the pack prints."
+    "Every npc needs `hp`. The `hp` value is the Health of the npc and its Difficulty "
+    "Score. Set `hp` to 8 for easy, to 10 for moderate, or to 12 for hard. Use the people "
+    "and the monsters of a pack: file one as an npc under a new id. Give a monster the "
+    "`hp` that the pack prints."
 )
 HIRE_GUIDANCE = (
     "TUNNEL GOONS HIRING\n"
-    f"Spread {ABILITY_POINTS} points across three abilities. Brute is smacking things and "
-    "feats of strength. Skulker is sneaking, aiming and balancing. Erudite is reading, "
-    "perception and speaking. Answer with the abilities alone."
+    f"Divide {ABILITY_POINTS} points across the three abilities. Brute is hitting things "
+    "and acts of strength. Skulker is quiet movement, aiming and balance. Erudite is "
+    "reading, perception and speech. Give the abilities only."
 )
 HIRING = (
-    f"{HIRED}Write their three abilities from ENGINE GUIDANCE, to fit who they are and what "
-    "they were hired for."
+    f"{HIRED}Write the three abilities of this character from ENGINE GUIDANCE. Make the "
+    "abilities fit the character and the work."
 )
 
 
@@ -41,7 +42,7 @@ class TunnelGoonsBlock(Frozen):
 
 
 class TunnelGoonsPack(Pack):
-    items: tuple[str, ...] = ()  # names the create page hints with
+    items: tuple[str, ...] = ()  # the create page hints with these names
     factions: tuple[TunnelGoonsBlock, ...] = ()
     npcs: tuple[TunnelGoonsBlock, ...] = ()
     monsters: tuple[TunnelGoonsBlock, ...] = ()
@@ -70,7 +71,8 @@ class AbilitiesProposal(Frozen):
         min_length=3,
         max_length=3,
         description=(
-            f"Points in brute, skulker and erudite: exactly {ABILITY_POINTS} across the three."
+            f"Points in brute, skulker and erudite. The three share exactly "
+            f"{ABILITY_POINTS} points."
         ),
     )
 
@@ -88,7 +90,7 @@ class TunnelGoonsHead(PackHead):
     items: tuple[str, ...] = Field(
         min_length=6,
         max_length=36,
-        description="Things a goon could start with, named plainly, such as 'Bear trap'.",
+        description="Things a goon can start with. Use plain names, such as 'Bear trap'.",
     )
 
     @model_validator(mode="after")
@@ -101,7 +103,7 @@ class TunnelGoonsBody(PackBody):
     factions: tuple[TunnelGoonsBlock, ...] = Field(
         min_length=1,
         max_length=6,
-        description="The powers that hold this setting, such as a guild, a cult or a warband.",
+        description="The powers that control this setting, such as a guild, a cult or a warband.",
     )
     npcs: tuple[TunnelGoonsBlock, ...] = Field(
         min_length=1, max_length=6, description="People a player could meet and deal with."
@@ -109,6 +111,6 @@ class TunnelGoonsBody(PackBody):
     monsters: tuple[TunnelGoonsBlock, ...] = Field(
         min_length=1,
         max_length=6,
-        description="What stands against the player and is not a person: a beast, a horror, a "
+        description="What is against the player and is not a person: a beast, a horror, a "
         "thing in the dark.",
     )

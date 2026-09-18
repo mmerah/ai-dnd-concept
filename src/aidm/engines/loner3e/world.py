@@ -12,10 +12,10 @@ from aidm.engines.base import Gauge, Person, joined
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 LUCK_MAX = 6
-DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
+DIE_FACE = 6  # one d6, and an SRD table column holds six rows
 TIES_PER_TWIST = 3
-AND_AT = 4  # both dice 4+ sharpens the answer to -and
-BUT_AT = 3  # both dice 3 or under softens it to -but
+AND_AT = 4
+BUT_AT = 3
 TOLD: dict[str, str] = {
     "yes-and": "yes, and better than hoped",
     "yes": "yes",
@@ -34,12 +34,12 @@ class Outcome(Frozen):
 
     @property
     def wording(self) -> str:
-        """The answer in story words: the narrator never reads the rules."""
+        """Story words only: the narrator never reads a rule id."""
         return TOLD[self.id]
 
 
 class Loner3eEntity(Person):
-    """A character: a person, an object, a vehicle or a curse alike."""
+    """A character is a person, an object, a vehicle or a curse."""
 
     concept: str = ""
     tags: dict[TagKind, list[str]] = Field(default_factory=dict)
@@ -109,7 +109,7 @@ class Loner3eEntity(Person):
 
     def spend_luck(self, amount: int, why: str) -> list[Fact]:
         if self.defeated:
-            raise Refusal(f"{self.name} lost their last conflict; nothing to spend.")
+            raise Refusal(f"{self.name} lost their last conflict. They can spend no luck.")
         if amount > self.luck.current:
             raise Refusal(f"{self.name} has {self.luck.current} luck, not {amount}.")
         return self.change(self.luck, -amount, "Luck", why)
@@ -142,8 +142,8 @@ class Loner3eWorld(SceneWorld[Loner3eEntity]):
     def conflict_prompt(self, actor: Loner3eEntity, opponent: Loner3eEntity) -> str:
         foe = actor if opponent.id == self.player.id else opponent
         return (
-            f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
-            "attack, try something else, or break away — what do you do?"
+            f"The conflict with {foe.name} continues. No side is out of luck. Press the "
+            "attack, try something different, or break away. What do you do?"
         )
 
     def strike(
@@ -169,9 +169,9 @@ class Loner3eWorld(SceneWorld[Loner3eEntity]):
         for side in (actor, opponent):
             if side.defeated:
                 raise Refusal(
-                    f"{side.name} lost their last conflict, so it is settled, not reopened. "
-                    "Settle what it cost them, or call `restore_luck` first if this is a "
-                    "genuinely new contest."
+                    f"{side.name} lost their last conflict. That conflict is settled. Tell "
+                    "what the defeat costs them. If this is a new contest, call "
+                    "`restore_luck` first."
                 )
 
 

@@ -17,14 +17,14 @@ from aidm.ui.widgets import avatar, heading
 STEP_COPY: dict[Role, tuple[str, str]] = {
     "master": (
         "Game Master",
-        "Works out what your action actually does: who reacts, what changes, "
-        "and whether the dice decide it.",
+        "Decides what your action does: who reacts, what changes, "
+        "and if the dice decide the result.",
     ),
     "narrator": ("Narrator", "Writes what you see and hear this turn."),
     "worldsmith": (
         "Worldsmith",
-        "Writes the next scene or region, or what the game master asked for: where the story "
-        "goes and who is waiting there. This one is slow; a few minutes is normal.",
+        "Writes the next scene or region, or what the game master asks for. The text shows "
+        "where the story goes and who waits there. This step is slow. A few minutes is usual.",
     ),
 }
 MARK_LABELS: dict[Marked, str] = {
@@ -123,7 +123,6 @@ def chat(
 
 
 def live_turn(session: GameService, view: PlayerView, elapsed: float) -> ui.label | None:
-    """The turn in flight, and the ticker label the page keeps counting."""
     turn = session.turn
     player = view.player
     if turn is not None:
@@ -143,7 +142,6 @@ def journal(history: Sequence[Exchange]) -> None:
     for number, exchange in reversed(list(enumerate(history, start=1))):
         title = MARK_LABELS[exchange.mark] if exchange.mark else exchange.words
         with ui.expansion(f"turn {number}: {title}").classes("w-full game-card"):
-            # A speaker is named, because a bare quote reads as narration without bubbles.
             for line in exchange.lines:
                 if line.speaker_id is None:
                     ui.label(line.text).classes("whitespace-pre-wrap text-sm")
@@ -221,5 +219,4 @@ def whole_page(now: Observed, seen: Observed) -> bool:
 
 
 def rolled_since(facts: Sequence[Fact], seen: int) -> bool:
-    """Whether any told card fact after `seen` carries dice."""
     return any(fact.dice for fact in cards(facts[seen:]))

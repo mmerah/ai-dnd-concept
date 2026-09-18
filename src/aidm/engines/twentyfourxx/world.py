@@ -30,7 +30,7 @@ SHIP_FUNCTIONS: tuple[str, ...] = (
 SHIP_IDS: tuple[Slug, ...] = tuple(slug(name, ()) for name in SHIP_FUNCTIONS)
 UPGRADE_COST = 10
 ALREADY_BROKEN = "{name} is already broken"
-BREAKS_HARMLESSLY = "{name} breaks harmlessly: leave `hindrance` empty"
+BREAKS_HARMLESSLY = "{name} breaks harmlessly. Leave `hindrance` empty"
 
 
 class Kit(Frozen):
@@ -68,8 +68,6 @@ class Gear(Mutable):
 
 
 class CrewSheet(Mutable):
-    """The dice a crew member rolls."""
-
     items: dict[Slug, Gear] = Field(default_factory=dict)
     specialty: str
     origin: str = ""  # empty on a hired member: the worldsmith writes no origin
@@ -209,7 +207,7 @@ class Crewmate(Person):
     def raise_skill(self, skill: str) -> list[Fact]:
         sheet = self.require_sheet()
         if (new_die := raised(sheet.skills.get(skill))) is None:
-            raise Refusal(f"{self.name}'s {skill} is already at d12; raise another skill for them")
+            raise Refusal(f"{self.name}'s {skill} is already at d12. Raise another skill for them.")
         sheet.skills[skill] = new_die
         trace = f"{self.mention} — {skill} rises to d{new_die}"
         return [self.fact(trace, card=self.card_line(f"Job done: {skill} d{new_die}"))]
@@ -251,7 +249,6 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         return [member for member in self.members() if member.hired]
 
     def require_gear(self, actor: Crewmate, item_id: Slug) -> Gear:
-        """The actor's item or a ship function: both break to defend and both are repaired."""
         item = actor.require_sheet().items.get(item_id) or self.ship.get(item_id)
         if item is None:
             raise Refusal(f"{item_id!r} is not among {actor.name}'s items or the ship's functions")
@@ -298,7 +295,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
                     raise Refusal(BREAKS_HARMLESSLY.format(name=item.name))
                 continue
             if not hindrance:
-                raise Refusal(f"name the hindrance {item.name} leaves behind")
+                raise Refusal(f"name the hindrance that {item.name} leaves behind")
             if hindrance in actor.require_sheet().hindrances:
                 raise Refusal(f"{actor.name} already carries the hindrance {hindrance!r}")
 
@@ -310,7 +307,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
             return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks"))]
         if not hindrance:
-            raise Refusal("name the hindrance the hit becomes")
+            raise Refusal("name the hindrance that the hit becomes")
         sheet = actor.require_sheet()
         sheet.hindrances = actor.changed_tags("hindrance", sheet.hindrances, (hindrance,), ())
         item.broken_times += 1
@@ -331,7 +328,6 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         return [self.player.fact(trace, card=card)]
 
     def take_lead(self, member_id: Slug) -> list[Fact]:
-        """The new lead keeps their id; the dead lead is filed in the cast under theirs."""
         dead = self.player
         if dead.alive:
             raise Refusal(f"{dead.name} lives and leads")
@@ -365,7 +361,6 @@ TwentyfourxxCharacter = Character[Crewmate]
 
 
 def raised(current: SkillDie | None) -> SkillDie | None:
-    """The next step of the ladder; None once a skill stands at d12."""
     if current is None:
         return LADDER[0]
     if current == LADDER[-1]:

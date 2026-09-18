@@ -19,10 +19,10 @@ from aidm.turn import Tools
 
 LOGGER = logging.getLogger(__name__)
 
-# The child inherits nothing else: the shell that started the app may hold keys no role should see.
+# The child gets nothing else: the parent shell may hold keys no role may see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
 PROMPT_MAX_BYTES = 131_072  # Linux MAX_ARG_STRLEN: the prompt is one argv element
-# A resumed conversation id is fed back as an argv element; a leading `-` must not parse as a flag.
+# The id goes back as an argv element; a leading `-` must not parse as a flag.
 ConversationId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")]
 
 
@@ -51,8 +51,6 @@ class Spawner(Protocol):
 
 
 class _ClaudeResult(Loose):
-    """What `--output-format json` prints."""
-
     result: str
     session_id: ConversationId
     # A failed run can still exit 0 and put its error where the answer goes.
@@ -79,7 +77,7 @@ class ClaudeDriver:
     def command(
         self, role: Role, config: RoleConfig, conversation: str | None, url: str
     ) -> Sequence[str]:
-        """The prompt follows the last flag, so that flag takes no list."""
+        """The prompt follows the last flag, so the last flag takes no list."""
         argv = [
             "claude",
             "-p",
@@ -130,7 +128,7 @@ class CodexDriver:
             f"model_reasoning_effort={config.effort}",
             "-c",
             "web_search=disabled",
-            # The account's own MCP servers, which `--ignore-user-config` leaves standing.
+            # The account's own MCP servers, which `--ignore-user-config` keeps.
             "--disable",
             "apps",
             "--ignore-user-config",
@@ -140,7 +138,7 @@ class CodexDriver:
         if role == "master":
             # Only `--approve-for-me` lets an MCP call through, and it refuses `--sandbox`.
             return (*argv, "--approve-for-me", "-c", f"mcp_servers.aidm.url={url}")
-        # `resume` takes no `--sandbox`, so a writer's box rides `-c`, which both forms accept.
+        # `resume` takes no `--sandbox`, so the sandbox goes through `-c`, which both forms take.
         return (*argv, "-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
 
     def read_result(self, output: str) -> RunResult:
@@ -247,7 +245,7 @@ async def _spawn(
             stderr=subprocess.STDOUT,
             cwd=cwd,
             env=child_environment(secrets),
-            # Its own group, so an abandoned spawn cannot leave children playing on.
+            # Its own group, so an abandoned spawn leaves no child process running.
             start_new_session=True,
         )
     except OSError as failed:
@@ -255,7 +253,7 @@ async def _spawn(
     try:
         streamed = await process.communicate()
     finally:
-        # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
+        # Does nothing once it exited; an abandoned or timed-out spawn dies with its children.
         await _kill(process)
     output = streamed[0].decode(errors="replace")
     if process.returncode != 0:
@@ -278,7 +276,7 @@ def _codex_events(output: str) -> list[_CodexEvent]:
 
 
 def _said(events: Sequence[_CodexEvent]) -> str | None:
-    """The last agent message is the answer; a resumed thread carries earlier ones."""
+    """The last agent message is the answer; a resumed thread holds earlier ones."""
     spoken = (
         event.item.text
         for event in reversed(events)
@@ -292,5 +290,5 @@ async def _kill(process: subprocess.Process) -> None:
         return
     with suppress(ProcessLookupError):
         killpg(process.pid, SIGKILL)
-    # Shielded: a second cancel (`Tasks.close` after `hush`) would abandon a bare await mid-reap.
+    # Shielded: a second cancel (`Tasks.close` after `hush`) would abandon the wait mid-reap.
     await shield(process.wait())

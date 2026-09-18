@@ -1,7 +1,7 @@
 [
   {
     "name": "reveal",
-    "description": "A hidden entity here becomes known to the player.",
+    "description": "Make a hidden entity here known to the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -18,7 +18,7 @@
   },
   {
     "name": "kill",
-    "description": "Someone here dies. When it is the lead, the crew pick who leads now.",
+    "description": "A character here dies. If that character is the lead, the crew choose a new lead.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -35,7 +35,7 @@
   },
   {
     "name": "join_party",
-    "description": "A character here starts travelling with the player.",
+    "description": "Make a person here travel with the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -52,7 +52,7 @@
   },
   {
     "name": "leave_party",
-    "description": "A party member stops travelling with the player.",
+    "description": "Make a party member stop travelling with the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -69,7 +69,7 @@
   },
   {
     "name": "enter",
-    "description": "A cast member comes into the scene.",
+    "description": "Bring a cast member into the scene.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -86,7 +86,7 @@
   },
   {
     "name": "leave",
-    "description": "A cast member goes out of the scene.",
+    "description": "Send a cast member out of the scene.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -103,7 +103,7 @@
   },
   {
     "name": "next_scene",
-    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead once the player has left this place. Set `complication` instead to bring a new situation down on this place.",
+    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead when the player has left this place. Set `complication` instead to bring a new situation into this place.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -123,7 +123,7 @@
   },
   {
     "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "description": "Call this when the player hires a character here to work. The player can also hire a character who already travels with the player. The worldsmith writes the sheet of that character at the end of the turn. Nothing more happens this turn. Give a sheet only to a character hired to work. Do not give a sheet to a character who only travels along.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -145,7 +145,7 @@
   },
   {
     "name": "change_hindrances",
-    "description": "The actor picks up hindrances, sheds them, or both at once.",
+    "description": "The actor gains hindrances, loses hindrances, or does both.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -189,18 +189,18 @@
         },
         "bulky": {
           "default": false,
-          "description": "True when the item takes real space to carry.",
+          "description": "True when the item takes much space to carry.",
           "type": "boolean"
         },
         "breaks": {
           "default": 1,
-          "description": "How many times the item can break before it is ruined.",
+          "description": "How many times the item breaks before it is destroyed.",
           "minimum": 1,
           "type": "integer"
         },
         "cost": {
           "default": 0,
-          "description": "Credits paid. 0 for a thing found or given.",
+          "description": "Credits paid. Use 0 for a thing found or given.",
           "minimum": 0,
           "type": "integer"
         },
@@ -221,7 +221,7 @@
   },
   {
     "name": "drop_item",
-    "description": "The actor loses an item for good.",
+    "description": "The actor loses an item permanently.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -246,7 +246,7 @@
   },
   {
     "name": "repair_item",
-    "description": "The actor mends a broken item.",
+    "description": "The actor repairs a broken item.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -277,7 +277,7 @@
   },
   {
     "name": "spend",
-    "description": "The actor pays credits for something that is not an item or a repair.",
+    "description": "The actor pays credits for a thing that is not an item and not a repair.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -342,7 +342,7 @@
   },
   {
     "name": "defend",
-    "description": "A carried item or a ship function breaks so a hit becomes a hindrance.",
+    "description": "A carried item or a ship function breaks. The hit becomes a hindrance.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -352,7 +352,7 @@
         },
         "hindrance": {
           "default": "",
-          "description": "What the harm becomes, as a hindrance. Empty for an item that breaks harmlessly.",
+          "description": "What the harm becomes, as a hindrance. Empty for an item that breaks with no harm.",
           "type": "string"
         },
         "actor_id": {
@@ -372,7 +372,7 @@
   },
   {
     "name": "roll",
-    "description": "Call this when the outcome of an action matters. The engine picks the dice, rolls them, and reads the result.",
+    "description": "Call this when the result of an action is important. The engine selects the dice, rolls the dice, and reads the result.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -382,12 +382,12 @@
         },
         "risk": {
           "default": "",
-          "description": "What the actor suffers in full on a disaster, named before the roll. Empty when they are in no danger.",
+          "description": "What the actor takes in full on a disaster. Name it before the roll. Empty when the actor is in no danger.",
           "type": "string"
         },
         "deadly": {
           "default": false,
-          "description": "Whether `risk` is death. A disaster then kills the actor instead of leaving `risk` on them as a hindrance; a setback then maims them.",
+          "description": "True when `risk` is death. A disaster then kills the actor. The actor does not get `risk` as a hindrance. A setback then maims the actor.",
           "type": "boolean"
         },
         "defend_with_id": {
@@ -396,11 +396,11 @@
             "null"
           ],
           "default": null,
-          "description": "Exact id of the actor's item or a ship function that breaks to spare them. Null when nothing shields them."
+          "description": "Exact id of an item of the actor, or of a ship function. That item or that function breaks and protects the actor. Null when nothing protects the actor."
         },
         "hindrance": {
           "default": "",
-          "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
+          "description": "What the hit leaves behind after the gear takes it, as a hindrance. Empty when the gear breaks with no harm.",
           "type": "string"
         },
         "actor_id": {
@@ -413,12 +413,12 @@
         },
         "skill": {
           "default": "",
-          "description": "Which skill to roll. Empty rolls the plain d6.",
+          "description": "The skill to roll. Empty rolls the plain d6.",
           "type": "string"
         },
         "helped": {
           "default": "",
-          "description": "Why circumstances help. Empty when none do.",
+          "description": "Why the conditions help. Empty when nothing helps.",
           "type": "string"
         },
         "helped_by": {
@@ -426,12 +426,12 @@
           "properties": {
             "risk": {
               "default": "",
-              "description": "What the helper suffers in full on a disaster, named before the roll. Empty when helping puts them in no danger.",
+              "description": "What the helper takes in full on a disaster. Name it before the roll. Empty when the help puts the helper in no danger.",
               "type": "string"
             },
             "deadly": {
               "default": false,
-              "description": "Whether `risk` is death. A disaster then kills the helper instead of leaving `risk` on them as a hindrance; a setback then maims them.",
+              "description": "True when `risk` is death. A disaster then kills the helper. The helper does not get `risk` as a hindrance. A setback then maims the helper.",
               "type": "boolean"
             },
             "defend_with_id": {
@@ -440,11 +440,11 @@
                 "null"
               ],
               "default": null,
-              "description": "Exact id of the helper's item or a ship function that breaks to spare them. Null when nothing shields them."
+              "description": "Exact id of an item of the helper, or of a ship function. That item or that function breaks and protects the helper. Null when nothing protects the helper."
             },
             "hindrance": {
               "default": "",
-              "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
+              "description": "What the hit leaves behind after the gear takes it, as a hindrance. Empty when the gear breaks with no harm.",
               "type": "string"
             },
             "actor_id": {
@@ -453,7 +453,7 @@
             },
             "hindered": {
               "default": "",
-              "description": "Why the helper is hindered. Empty when none is.",
+              "description": "Why the helper is hindered. Empty when nothing hinders them.",
               "type": "string"
             }
           },
@@ -465,11 +465,11 @@
             "null"
           ],
           "default": null,
-          "description": "The hired member who rolls their own die. Null when none helps."
+          "description": "The hired member who rolls their own die. Null when nobody helps."
         },
         "hindered": {
           "default": "",
-          "description": "Why the actor is hindered. Empty when none is.",
+          "description": "Why the actor is hindered. Empty when nothing hinders them.",
           "type": "string"
         }
       },
@@ -481,12 +481,12 @@
   },
   {
     "name": "ask_world",
-    "description": "Call this to ask about the world's bad luck when nobody acts. The engine rolls one d6 and reads it.",
+    "description": "Call this to ask about bad luck in the world when no character acts. The engine rolls one d6 and reads the die.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "question": {
-          "description": "A closed question about the world where nobody is acting.",
+          "description": "A closed question about the world when no character acts.",
           "type": "string"
         }
       },
@@ -498,7 +498,7 @@
   },
   {
     "name": "job",
-    "description": "Call this to look for work with `find`, to record agreed work with `take`, and to close the job with `finish`. With `find` the engine rolls the SRD's d6. With `finish` it raises one skill for each operator and pays each of them d6 credits.",
+    "description": "Call this with `find` to look for work, with `take` to record agreed work, and with `finish` to close the job. With `find` the engine rolls the d6 of the SRD. With `finish` the engine raises one skill for each operator, then pays each operator d6 credits.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -518,7 +518,7 @@
         },
         "terms": {
           "default": "",
-          "description": "Who wants what done, what that looks like, and what it pays. Required with `take`.",
+          "description": "Who wants the work, what the work is, and what the work pays. Required with `take`.",
           "type": "string"
         },
         "raises": {
@@ -536,7 +536,7 @@
                 "description": "Exact id of a hired party member here who acts. Null for the player."
               },
               "skill": {
-                "description": "The skill the job called on for them. A skill not on their sheet is added at d8.",
+                "description": "The skill that the job used for this operator. A skill that is not on their sheet is added at d8.",
                 "type": "string"
               }
             },

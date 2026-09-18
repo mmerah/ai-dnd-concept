@@ -7,35 +7,36 @@ from aidm.engines.loner3e.world import DIE_FACE, TagKind
 from aidm.engines.tools import Attempt
 
 TWIST_NOTE = (
-    "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
-    "arriving. Develop it this turn. Say what it set in motion, what it costs, and what it "
-    "changes."
+    "A twist interrupts the scene: {subject} / {action}. The narration showed the twist "
+    "arrive. Develop the twist this turn. Tell what the twist starts. Tell what the twist "
+    "costs. Tell what the twist changes."
 )
 DEFEAT_NOTE = (
-    "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
-    "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
-    "lasting mark with `change_tags`, as a `condition`. Then let the story move on. They are "
-    "marked defeated and take no new luck exchange until `restore_luck` puts it behind them."
+    "{name} is out of luck and lost this conflict. Roll no more dice for this conflict. "
+    "Tell how the conflict ends for them: captured, badly injured, driven off, cornered, "
+    "or conceding. Write a lasting mark with `change_tags`, as a `condition`. Then let the "
+    "story move on. They are marked defeated and take no new luck exchange. Call "
+    "`restore_luck` to put the defeat behind them."
 )
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
 class ChangeTags(Frozen):
-    actor_id: Slug = Field(description="Exact id of the player or someone here.")
+    actor_id: Slug = Field(description="Exact id of the player, or of a character here.")
     kind: TagKind = Field(
         description="`gear` for a thing taken or lost. `condition` for a lasting mark such as "
         "`Poisoned`."
     )
     gained: tuple[str, ...] = Field(
-        default=(), description="Title-case tags gained, such as `Rusty Key`."
+        default=(), description="Tags gained, in title case, such as `Rusty Key`."
     )
-    lost: tuple[str, ...] = Field(default=(), description="Exact tags lost, lifted or used up.")
+    lost: tuple[str, ...] = Field(default=(), description="Exact tags lost, removed, or used up.")
 
     @model_validator(mode="after")
     def _at_least_one(self) -> Self:
         if not self.gained and not self.lost:
-            raise ValueError("at least one gained or lost tag")
+            raise ValueError("give at least one gained tag or one lost tag")
         return self
 
 
@@ -43,17 +44,21 @@ class Drive(Frozen):
     actor_id: Slug = Field(description="Exact id of the player or a living character here.")
     goal: str = Field(
         default="",
-        description="What they now pursue, in one line. Empty keeps the current goal.",
+        description="What the character now wants, in one line. Empty keeps the current goal.",
     )
-    motive: str = Field(default="", description="Why, in one line. Empty keeps the current motive.")
+    motive: str = Field(
+        default="",
+        description="Why the character wants it, in one line. Empty keeps the current motive.",
+    )
     nemesis: str = Field(
-        default="", description="Who or what stands in their way. Empty keeps the current nemesis."
+        default="",
+        description="Who or what is against the character. Empty keeps the current nemesis.",
     )
 
     @model_validator(mode="after")
     def _at_least_one(self) -> Self:
         if not self.goal and not self.motive and not self.nemesis:
-            raise ValueError("a goal, a motive or a nemesis")
+            raise ValueError("give a goal, a motive or a nemesis")
         return self
 
 
@@ -63,31 +68,33 @@ class RestoreLuck(Frozen):
 
 class SpendLuck(Frozen):
     actor_id: Slug = Field(description="Exact id of the player or a living character here.")
-    amount: int = Field(ge=1, description="The luck spent: the cost the SPECIAL RULES print.")
-    why: str = Field(min_length=1, description="What it buys, in one line, read by the player.")
+    amount: int = Field(ge=1, description="The luck to spend. SPECIAL RULES prints the cost.")
+    why: str = Field(
+        min_length=1, description="What the luck buys, in one line. The player reads this text."
+    )
 
 
 class Roll(Attempt):
     actor_id: Slug = Field(description="Exact id of the character here who acts.")
     question: str = Field(
         min_length=1,
-        description="Closed question where yes means the actor gets what they want. Only you "
-        "read it.",
+        description="A closed question. Yes means the actor gets what they want. Only you "
+        "read this question.",
     )
     position: Position = Field(
         default="neutral",
-        description="Which side the relevant tags and situation favour.",
+        description="Which side the tags and the situation help.",
     )
     edge: str = Field(
         default="",
-        description="Tag or circumstance that sets the position, read by the player. Empty "
-        "for neutral.",
+        description="The tag or the condition that sets the position. The player reads this "
+        "text. Empty for neutral.",
     )
     target_id: Slug | None = Field(
         default=None,
-        description="Exact id of the character here whose endurance is worn down, for a contest "
-        "run as luck exchanges. Null for one decisive question or a single key action, even "
-        "against someone who resists.",
+        description="Exact id of the character here who loses luck. Use this field for a "
+        "contest of luck exchanges. Null for one decisive question, or for one key action, "
+        "even against a character who resists.",
     )
 
     def faces(self) -> tuple[tuple[int, ...], tuple[int, ...]]:

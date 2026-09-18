@@ -22,7 +22,7 @@ class Place(Thing):
 
 
 class Way(Mutable):
-    """One directed passage from the place under which it is filed."""
+    """One way out, in one direction, from the place it is filed under."""
 
     to: Slug
     known: bool = False
@@ -36,8 +36,8 @@ class Dungeon[N: Dweller](Mutable):
     items: dict[Slug, Prop] = Field(default_factory=dict)
     arc: str = Field(
         default="",
-        description="What is really going on in this map: secrets, what can come, and what ties "
-        "one hidden thing to another. The player never reads it.",
+        description="The truth behind this map: secrets, what can come, and what ties one "
+        "hidden thing to another. The player never reads it.",
     )
 
     @model_validator(mode="after")
@@ -93,7 +93,7 @@ class Dungeon[N: Dweller](Mutable):
         return (npc for npc in self.npcs.values() if npc.place == place_id)
 
     def carried(self, holder_id: Slug) -> Iterator[Prop]:
-        """A place holds what lies loose in it, the same way an npc holds what it carries."""
+        """A place holds what lies loose in it, the way an npc holds what it carries."""
         return (item for item in self.items.values() if item.on == holder_id)
 
     def things_at(self, place_id: Slug) -> Iterator[N | Prop]:
@@ -124,8 +124,8 @@ class MapProposal[N: Dweller](Dungeon[N]):
 class RegionProposal[N: Dweller](MapProposal[N]):
     recap: str = Field(
         min_length=1,
-        description="One paragraph on the part of the map the player leaves behind: what they "
-        "did there, cost, learned and missed.",
+        description="One paragraph on the part of the map the player leaves behind: what the "
+        "player did there, paid, learned and missed.",
     )
 
 
@@ -185,11 +185,9 @@ class RoomWorld[N: Dweller](Dungeon[N], World[N]):
         yield from self.at(self.current.id)
 
     def holders_here(self) -> set[Slug]:
-        """The player, whoever stands with them, and the place itself."""
         return {self.current.id, *(entity.id for entity in self.here())}
 
     def require_dweller(self, entity_id: Slug) -> N:
-        """An npc of this map who is still alive, wherever they stand."""
         npc = self.npcs.get(entity_id)
         if npc is None:
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
@@ -254,7 +252,7 @@ class RoomWorld[N: Dweller](Dungeon[N], World[N]):
                 f"{options or '(none)'}"
             )
         if way.locked:
-            raise Refusal(f"the way to {destination.name} is locked and must be dealt with first")
+            raise Refusal(f"the way to {destination.name} is locked; open the lock first")
         self._open_way(way, destination)
         facts = destination.reveal()
         check_unique("with_ids", with_ids)
@@ -447,7 +445,7 @@ class RoomWorld[N: Dweller](Dungeon[N], World[N]):
         return [place for place in self._visited() if place.id != self.current.id]
 
     def can_move_offscreen(self) -> bool:
-        """Something the master is shown offscreen that one of the three powers could touch."""
+        """True when `meanwhile` could touch something the master is shown offscreen."""
         here = self.current.id
         away = {place.id for place in self.elsewhere()}
         if not away:

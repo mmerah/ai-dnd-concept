@@ -22,19 +22,18 @@ from aidm.engines.twentyfourxx.world import Kit, SkillDie
 AUTHORING = (
     "24XX AUTHORING\n"
     f"{UNWRITTEN_CAST}The player is an operator on a job in a hard science-fiction future. "
-    "Write scenes as work sites, stations, ships, and the people who hold them."
+    "Write each scene as a work site, a station or a ship. Write the people who control "
+    "these places."
 )
 HIRING = (
-    f"{HIRED}Write their sheet from the specialties in ENGINE GUIDANCE. Write someone who "
-    "could plausibly be hired for this work. The specialty's own skills belong in `skills`; "
-    "invent a fitting skill beyond that list when none printed suits them."
+    f"{HIRED}Write the sheet of this character from the specialties in ENGINE GUIDANCE. "
+    "Write a character that a crew can hire for this work. Put the skills of the specialty "
+    "in `skills`. Invent one skill that fits when no printed skill fits."
 )
 SKILL_COUNT = 17
 
 
 class SkillChoice(DecisionOption):
-    """One printed pick: Muscle's Hand-to-hand or Shooting; Psychic's both at d8 or one at d10."""
-
     skills: dict[str, SkillDie]
 
 
@@ -42,7 +41,7 @@ class Specialty(DecisionOption):
     skills: dict[str, SkillDie]  # the fixed ones, at d8
     choice: tuple[SkillChoice, ...] = ()
     kit: tuple[Kit, ...] = ()
-    kit_choice: tuple[Kit, ...] = ()  # Muscle: "a sword, firearm, or cyber-arm" -- pick one
+    kit_choice: tuple[Kit, ...] = ()  # Muscle picks one of "a sword, firearm, or cyber-arm"
 
     def line(self) -> str:
         fixed = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
@@ -132,21 +131,22 @@ class TwentyfourxxPack(Pack):
 
 
 class SheetProposal(Frozen):
-    """A hired member's sheet."""
+    """The sheet of a hired member."""
 
     specialty: str = Field(description="One of the specialties in ENGINE GUIDANCE.")
     skills: dict[str, SkillDie] = Field(
         min_length=1,
         max_length=3,
-        description="One to three skills, at d8, d10 or d12. Prefer ENGINE GUIDANCE; invent one "
-        "that fits when none printed does.",
+        description="One to three skills, at d8, d10 or d12. Use ENGINE GUIDANCE first. "
+        "Invent one skill that fits when no printed skill fits.",
     )
     items: tuple[str, ...] = Field(
-        max_length=3, description="What they carry, three at most, named plainly."
+        max_length=3,
+        description="What the character carries, three items at most. Use plain names.",
     )
     hindrances: tuple[str, ...] = Field(
         default=(),
-        description="What already slows them down, if anything: an injury, a debt, a fear.",
+        description="What already slows the character, if anything: an injury, a debt, a fear.",
     )
 
     def check(self, packs: Sequence[TwentyfourxxPack]) -> None:
@@ -158,26 +158,27 @@ class SheetProposal(Frozen):
 
 
 class SpecialtyProposal(Named):
-    """A written pack offers no picks-within-a-pick, so a specialty names its skills outright."""
+    """A written pack has no pick inside a pick, so a specialty names its own skills."""
 
     # `default=...` is pydantic for required: a pick's prompt text, which `Named` lets be empty.
     brief: str = Field(
         default=...,
         min_length=1,
         max_length=200,
-        description="The line a player reads when picking this specialty, such as "
-        "'You cut steel and read the welds'.",
+        description="The line a player reads for this specialty, such as 'You cut steel "
+        "and read the welds'.",
     )
     skills: tuple[str, ...] = Field(
         min_length=1,
         max_length=3,
-        description="The skills this specialty starts at d8, named plainly, such as 'Salvage'.",
+        description="The skills that this specialty starts at d8. Use plain names, such as "
+        "'Salvage'.",
     )
     kit: tuple[str, ...] = Field(
         default=(),
         max_length=3,
-        description="What this specialty starts with, such as 'cutting torch'; empty where it "
-        "starts with nothing of its own.",
+        description="What this specialty starts with, such as 'cutting torch'. Empty when "
+        "the specialty starts with nothing of its own.",
     )
 
     @model_validator(mode="after")
@@ -189,34 +190,34 @@ class SpecialtyProposal(Named):
 
 
 class OriginProposal(Named):
-    """Where an operator comes from: what it hands them at creation, beyond the prose."""
+    """Where an operator comes from, and what the origin gives at creation."""
 
     brief: str = Field(
         default=...,
         min_length=1,
         max_length=200,
-        description="The line a player reads when picking this origin, such as "
-        "'Born on the belt, and it shows'.",
+        description="The line a player reads for this origin, such as 'Born on the belt, "
+        "and it shows'.",
     )
     increases: int = Field(
         default=0,
         ge=0,
         le=3,
-        description="How many starting skills this origin raises one step, such as 3 for a "
-        "generalist origin.",
+        description="How many starting skills this origin raises by one step, such as 3 for "
+        "an origin with many skills.",
     )
     invents: int = Field(
         default=0,
         ge=0,
         le=3,
-        description="How many traits of their own this origin lets a player invent, such as 2 "
-        "for an alien origin.",
+        description="How many traits this origin lets a player invent, such as 2 for an "
+        "alien origin.",
     )
 
 
 class TwentyfourxxHead(PackHead):
     specialties: tuple[SpecialtyProposal, ...] = Field(
-        min_length=1, max_length=6, description="The trades a player picks their operator from."
+        min_length=1, max_length=6, description="The trades a player selects an operator from."
     )
     origins: tuple[OriginProposal, ...] = Field(
         min_length=1, max_length=6, description="Where an operator can come from in this setting."
@@ -260,7 +261,7 @@ class TwentyfourxxBody(PackBody):
     factions: tuple[TwentyfourxxBlock, ...] = Field(
         min_length=1,
         max_length=6,
-        description="The powers that hold this setting, such as a company, a union or a fleet.",
+        description="The powers that control this setting, such as a company, a union or a fleet.",
     )
     npcs: tuple[TwentyfourxxBlock, ...] = Field(
         min_length=1, max_length=6, description="People a player could meet and work with."
@@ -268,6 +269,5 @@ class TwentyfourxxBody(PackBody):
     monsters: tuple[TwentyfourxxBlock, ...] = Field(
         min_length=1,
         max_length=6,
-        description="What stands against the player: a boarding crew, a drone, a thing in the "
-        "hold.",
+        description="What is against the player: a boarding crew, a drone, a thing in the hold.",
     )

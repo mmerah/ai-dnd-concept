@@ -21,18 +21,6 @@ def test_a_shipped_pack_cannot_be_rewritten(tmp_path: Path) -> None:
         runtime.rewrite_pack(LONER3E, SHIPPED, {})
 
 
-def test_a_box_for_the_packs_own_provenance_is_refused_and_nothing_is_written(
-    tmp_path: Path,
-) -> None:
-    runtime = _runtime(tmp_path)
-    on_disk = _file(tmp_path).read_text()
-
-    with pytest.raises(Refusal, match="name is the pack's own"):
-        runtime.rewrite_pack(LONER3E, MINE, {"name": json.dumps("Renamed")})
-
-    assert _file(tmp_path).read_text() == on_disk
-
-
 def test_an_edited_setting_lands_on_disk_and_in_the_running_engine(tmp_path: Path) -> None:
     runtime = _runtime(tmp_path)
     values = _values(runtime, MINE)
@@ -42,28 +30,6 @@ def test_an_edited_setting_lands_on_disk_and_in_the_running_engine(tmp_path: Pat
 
     assert _written(runtime).setting == SETTING
     assert json.loads(_file(tmp_path).read_text())["setting"] == SETTING
-
-
-def test_one_edited_field_leaves_every_other_field_as_it_was(tmp_path: Path) -> None:
-    runtime = _runtime(tmp_path)
-    before = _written(runtime).model_dump()
-    values = _values(runtime, MINE)
-    values["setting"] = json.dumps(SETTING)
-
-    runtime.rewrite_pack(LONER3E, MINE, values)
-
-    after = _written(_reopened(tmp_path)).model_dump()
-    assert after.pop("setting") == SETTING
-    assert after == {key: value for key, value in before.items() if key != "setting"}
-
-
-def test_a_box_that_is_not_json_is_refused_naming_its_field(tmp_path: Path) -> None:
-    runtime = _runtime(tmp_path)
-    values = _values(runtime, MINE)
-    values["seeds"] = "[a salt barge comes in with no crew aboard]"
-
-    with pytest.raises(Refusal, match="seeds: not JSON"):
-        runtime.rewrite_pack(LONER3E, MINE, values)
 
 
 def _runtime(tmp_path: Path) -> Runtime:

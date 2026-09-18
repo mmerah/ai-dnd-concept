@@ -11,7 +11,7 @@
     },
     "focus": {
       "default": "",
-      "description": "What this scene is about, in one line the player reads. Name nothing hidden. Empty when the situation says it all.",
+      "description": "What this scene is about, in one line the player reads. Name nothing hidden. Leave it empty when the situation says it all.",
       "type": "string"
     },
     "situation": {
@@ -35,11 +35,11 @@
       "type": "array"
     },
     "cast": {
-      "description": "New people and things, each filed under its own id. A brief and a sheet are read once the player meets that entry, so neither names what is still hidden.",
+      "description": "New people and things, each filed under its own id. The player reads a brief and a sheet after they meet that entry. Name nothing still hidden in either one.",
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
           "additionalProperties": false,
-          "description": "A character: a person, an object, a vehicle or a curse alike.",
+          "description": "A character is a person, an object, a vehicle or a curse.",
           "properties": {
             "id": {
               "type": "string"
@@ -136,11 +136,11 @@
     },
     "arc": {
       "default": "",
-      "description": "The setup beyond this scene: pressures, motives, secrets, what can come. The player never reads it, so what ties one hidden thing to another belongs here.",
+      "description": "The setup beyond this scene: pressures, motives, secrets, and what can come. The player never reads it. Put here what ties one hidden thing to another.",
       "type": "string"
     },
     "recap": {
-      "description": "One paragraph on the scene the player leaves: what they did, cost, learned and missed.",
+      "description": "One paragraph on the scene the player leaves: what the player did, paid, learned and missed.",
       "type": "string"
     }
   },

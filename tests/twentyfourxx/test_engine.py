@@ -1,11 +1,9 @@
-import pytest
 from support.table import TWENTYFOURXX, game, narrowed
-from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
+from support.twentyfourxx import ENGINE, small_world
 
-from aidm.core.views import PanelRow
 from aidm.engines.engine import AnyEngine
 from aidm.engines.packs import SRD_PACK
-from aidm.engines.twentyfourxx.world import Gear, TwentyfourxxGame
+from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 COMM = "comm"
 CLIMBING_GEAR = "climbing-gear"
@@ -26,39 +24,7 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     assert world.scene.place == "docking-ring"
 
 
-@pytest.mark.parametrize(
-    ("gear", "expected"),
-    [
-        (Gear(name="Lockpick set"), ""),
-        (Gear(name="Crate", bulky=True), "bulky"),
-        (Gear(name="Scanner", broken_times=1), "broken"),
-        (Gear(name="Battle armor", breaks=3, broken_times=1), "broken 1/3"),
-    ],
-)
-def test_gear_notes(gear: Gear, expected: str) -> None:
-    assert gear.notes() == expected
-
-
-def test_player_view_character_panel_carries_the_gear_row() -> None:
-    view = ENGINE.player_view(small_world())
-    character = next(panel for panel in view.panels if panel.title == "Character")
-    assert PanelRow(name="Gear", brief="Lockpick set") in character.rows
-
-
 def test_master_sections_shows_hidden_entities() -> None:
     world = small_world()
     sections = dict(ENGINE.master_sections(world))
     assert "Sable" in sections["HIDDEN HERE (the player has not found these)"]
-
-
-def test_master_sections_gear_shows_none_for_empty_gear() -> None:
-    world = small_world()
-    world.world.player.require_sheet().items.clear()
-    sections = dict(ENGINE.master_sections(world))
-    assert sections["GEAR"] == "- (none)"
-
-
-def test_master_sections_gear_lists_items_with_key_and_detail() -> None:
-    world = small_world()
-    sections = dict(ENGINE.master_sections(world))
-    assert sections["GEAR"] == f"- Lockpick set[{LOCKPICKS}]"

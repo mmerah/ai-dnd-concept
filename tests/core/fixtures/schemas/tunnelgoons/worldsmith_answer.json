@@ -40,7 +40,7 @@
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
           "items": {
             "additionalProperties": false,
-            "description": "One directed passage from the place under which it is filed.",
+            "description": "One way out, in one direction, from the place it is filed under.",
             "properties": {
               "to": {
                 "type": "string"
@@ -69,7 +69,7 @@
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
           "additionalProperties": false,
-          "description": "Someone on the map, friend or foe; carries dice only once hired. The player is one too.",
+          "description": "A character on the map, friend or enemy. Only a hired goon has dice. The player is one.",
           "properties": {
             "id": {
               "type": "string"
@@ -119,7 +119,6 @@
             },
             "sheet": {
               "additionalProperties": false,
-              "description": "Leave empty.",
               "properties": {
                 "abilities": {
                   "additionalProperties": {
@@ -153,7 +152,8 @@
                 "object",
                 "null"
               ],
-              "default": null
+              "default": null,
+              "description": "Leave empty."
             },
             "kit": {
               "default": [],
@@ -213,7 +213,7 @@
     },
     "arc": {
       "default": "",
-      "description": "What is really going on in this map: secrets, what can come, and what ties one hidden thing to another. The player never reads it.",
+      "description": "The truth behind this map: secrets, what can come, and what ties one hidden thing to another. The player never reads it.",
       "type": "string"
     },
     "start": {
@@ -221,7 +221,7 @@
       "type": "string"
     },
     "recap": {
-      "description": "One paragraph on the part of the map the player leaves behind: what they did there, cost, learned and missed.",
+      "description": "One paragraph on the part of the map the player leaves behind: what the player did there, paid, learned and missed.",
       "type": "string"
     }
   },

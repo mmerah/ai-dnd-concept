@@ -35,8 +35,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class DocumentUpload:
-    """One uploaded source file, kept until the page is deleted."""
-
     def __init__(self) -> None:
         self.document: Path | None = None
         self.uploads: Path | None = None
@@ -277,7 +275,6 @@ class ScenarioForm:
         return self.runtime.engine(self.engine_id).packs.require(self.pack_id).seeds
 
     def roll_seed(self) -> None:
-        """A starting point the player edits; the seed is never stored on its own."""
         if seeds := self.seeds():
             self.premise.value = random.choice(seeds)  # the page's own die: it rolls no game die
 
@@ -402,7 +399,6 @@ def new_pack_page(runtime: Runtime) -> None:
 def _form_page(
     runtime: Runtime, engine_id: EngineId, *, eyebrow: str, title: str, lead: str
 ) -> Generator[None]:
-    """The shape every create form wears: header, body, intro, one card."""
     page_header(title, look=runtime.engine(engine_id).look)
     with page_body():
         page_intro(eyebrow, title, lead)
@@ -426,7 +422,6 @@ def _pack_select(
     chosen: Slug,
     on_change: Callable[[ValueChangeEventArguments[str]], None],
 ) -> None:
-    """The one pack choice; no select where the engine offers one pack alone."""
     if len(offered) == 1:
         return
     ui.select(

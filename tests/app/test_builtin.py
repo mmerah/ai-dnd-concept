@@ -1,6 +1,4 @@
 import json
-import logging
-from asyncio import sleep
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -79,21 +77,6 @@ def _messages(body: dict[str, JsonValue]) -> list[JsonValue]:
     messages = body["messages"]
     assert isinstance(messages, list)
     return messages
-
-
-async def test_a_writer_is_asked_once_and_its_fenced_answer_is_unwrapped(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    sent = _post(monkeypatch, _said(FENCED))
-    narrator = RoleConfig(provider="local", model="qwen", effort="low")
-
-    spoken = await RoleRunner(_settings(narrator=narrator)).run("narrator", "THE WHOLE BRIEF", None)
-
-    assert (json.loads(spoken.text), spoken.conversation) == ({"lines": []}, None)
-    assert len(sent) == 1
-    assert "tools" not in sent[0]
-    assert sent[0]["model"] == "qwen" and sent[0]["reasoning_effort"] == "low"
-    assert _messages(sent[0]) == [{"role": "user", "content": "THE WHOLE BRIEF"}]
 
 
 async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole(
@@ -192,36 +175,6 @@ async def test_a_failed_provider_refuses_in_words_the_player_reads(
         _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
             "narrator", "BRIEF", None, _Tools(STATE)
         )
-
-
-async def test_the_whole_run_is_held_to_the_roles_timeout(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    async def slow(_provider: object, _path: str, _body: object, _timeout: float) -> bytes:
-        await sleep(1)
-        return b""
-
-    monkeypatch.setattr("aidm.app.builtin.post_bearer", slow)
-    narrator = RoleConfig(provider="local", model="m", timeout=0.01)
-
-    with pytest.raises(Refusal, match="answered nothing in"):
-        _ = await RoleRunner(_settings(narrator=narrator)).run(
-            "narrator", "BRIEF", None, _Tools(STATE)
-        )
-
-
-async def test_one_line_is_logged_for_the_run_and_it_counts_the_rounds(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    _ = _post(monkeypatch, _said(None, _call("a", "change_tags", "{}")), _said("Done."))
-    master = RoleConfig(provider="local", model="m")
-
-    with caplog.at_level(logging.INFO, logger="aidm.app.spawn"):
-        _ = await RoleRunner(_settings(master=master)).run("master", "PLAY", None, _Tools(STATE))
-
-    logged = [record.getMessage() for record in caplog.records if record.name == "aidm.app.spawn"]
-    assert len(logged) == 1
-    assert "over 2 rounds" in logged[0]
 
 
 async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(

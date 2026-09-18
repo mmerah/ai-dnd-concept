@@ -12,7 +12,7 @@ from aidm.turn import Tools
 
 
 class _Echoed(BaseModel):
-    """Kept whole: a reply goes back in the next request, reasoning and all."""
+    """Kept whole: a reply goes back in the next request, with its reasoning."""
 
     model_config = ConfigDict(extra="allow", frozen=True, strict=True)
 
@@ -50,7 +50,7 @@ class _Completion(Loose):
 async def run_builtin(
     role: Role, config: RoleConfig, provider: ProviderConfig, prompt: str, tools: Tools | None
 ) -> tuple[str, int]:
-    """Stateless: nothing is ever resumed, and a retry resends the whole prompt."""
+    """Stateless: nothing resumes, and a retry sends the whole prompt again."""
     try:
         said, rounds = await _converse(role, config, provider, prompt, tools)
     except HTTPError as failed:
@@ -83,7 +83,7 @@ async def _converse(
 
 
 def _answer(tools: Tools, call: _ToolCall) -> str:
-    """A refusal is a result the model reads and carries on from, not an error."""
+    """A refusal is a result the model reads and continues from, not an error."""
     try:
         return tools.call(call.function.name, decode(call.function.arguments))
     except Refusal as refused:

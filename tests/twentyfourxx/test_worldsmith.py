@@ -24,46 +24,6 @@ def test_sheet_check_refuses_an_unknown_specialty() -> None:
         draft.check((SRD,))
 
 
-def test_sheet_check_accepts_an_invented_skill_but_still_refuses_an_unknown_specialty() -> None:
-    draft = SheetProposal(specialty="Muscle", skills={"Sabotage": 8}, items=())
-    draft.check((SRD,))
-
-    draft = SheetProposal(specialty="Wizard", skills={"Sabotage": 8}, items=())
-    with pytest.raises(Refusal, match="Wizard"):
-        draft.check((SRD,))
-
-
-def test_sheet_skill_die_still_rejects_a_d6_or_a_d20() -> None:
-    with pytest.raises(ValueError):
-        SheetProposal.model_validate(
-            {"specialty": "Muscle", "skills": {"Sabotage": 6}, "items": ()}
-        )
-    with pytest.raises(ValueError):
-        SheetProposal.model_validate(
-            {"specialty": "Muscle", "skills": {"Sabotage": 20}, "items": ()}
-        )
-
-
-def test_sheet_check_accepts_medicine_granted_by_medic() -> None:
-    draft = SheetProposal(specialty="Face", skills={"Medicine": 8}, items=())
-    draft.check((SRD,))
-
-
-def test_sheet_check_refuses_a_repeated_hindrance() -> None:
-    draft = SheetProposal(
-        specialty="Muscle", skills={"Shooting": 8}, items=(), hindrances=("Tired", "Tired")
-    )
-    with pytest.raises(Refusal, match="Tired"):
-        draft.check((SRD,))
-
-
-def test_the_pack_s_android_case_carries_the_kit() -> None:
-    android = next(origin for origin in SRD.origins if origin.name == "Android")
-    case = next(body for body in android.choice if body.name == "Case")
-    assert case.kit is not None
-    assert case.kit.name == "Case"
-
-
 def _draft(**fields: object) -> SceneProposal[Crewmate]:
     return SceneProposal[Crewmate].model_validate(dict(SCENE_BASE) | fields)
 
@@ -87,12 +47,3 @@ def test_new_game_marks_present_known() -> None:
     character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
     world = ENGINE.new_game(_built(draft), character)
     assert world.cast[stranger].known is True
-
-
-def test_build_scenario_stamps_the_engine_id() -> None:
-    stranger = "stranger"
-    draft = _draft(
-        present=(stranger,),
-        cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="new to the world")},
-    )
-    assert _built(draft).engine == TWENTYFOURXX

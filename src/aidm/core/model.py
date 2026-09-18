@@ -10,7 +10,7 @@ from aidm.core.play import Chapter, Exchange, PendingDecision
 type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
-# What `ask` asks of the value it parsed, beyond its own schema; it raises the reason to re-prompt.
+# An extra check on a parsed value; it raises the reason to ask the model again.
 type Check[T] = Callable[[T], None]
 
 
@@ -46,8 +46,6 @@ class CharacterHeader(EngineHeader):
 
 
 class Scenario[O: BaseModel](Frozen):
-    """`scenarios/<id>/world.json`: the envelope around the worldsmith's accepted draft."""
-
     meta: ScenarioMeta
     engine: EngineId
     pack_id: Slug
@@ -56,8 +54,6 @@ class Scenario[O: BaseModel](Frozen):
 
 
 class Character[S: BaseModel](Frozen):
-    """`characters/<id>/<engine>.json`: the envelope around the sheet this engine plays them by."""
-
     id: Slug
     engine: EngineId
     sheet: S

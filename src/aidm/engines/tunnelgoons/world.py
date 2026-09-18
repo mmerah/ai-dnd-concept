@@ -22,8 +22,6 @@ STARTING_ITEMS = 3
 
 
 class GoonSheet(Mutable):
-    """The three ability scores a goon rolls with."""
-
     abilities: AbilityScores = Field(
         default_factory=lambda: dict.fromkeys(ABILITIES, 0), min_length=3, max_length=3
     )
@@ -39,7 +37,6 @@ class GoonSheet(Mutable):
         )
 
     def level_up(self, ability: Ability, boost: Boost, hp: Gauge) -> str:
-        """One level: the chosen ability by 1, and Health or Inventory by 1."""
         self.abilities[ability] += 1
         if boost == "health":
             hp.maximum += 1
@@ -51,7 +48,7 @@ class GoonSheet(Mutable):
 
 
 class Goon(Dweller):
-    """Someone on the map, friend or foe; carries dice only once hired. The player is one too."""
+    """A character on the map, friend or enemy. Only a hired goon has dice. The player is one."""
 
     hp: Gauge
     sheet: GoonSheet | None = Field(default=None, description="Leave empty.")
@@ -140,8 +137,7 @@ TunnelGoonsCharacter = Character[Goon]
 
 
 def level_up_decision(actor: Goon) -> PendingDecision:
-    """One ability by 1 and Health or Inventory by 1: six ways to spend a level."""
-    prompt = f"Level up: {actor.name} — raise one ability by 1, and Health or Inventory by 1."
+    prompt = f"Level up: {actor.name}. Raise one ability by 1. Raise Health or Inventory by 1."
     options = tuple(
         PendingOption(
             id=f"{ability}-{boost}",

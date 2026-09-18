@@ -58,9 +58,11 @@ class RoleConfig(Configured):
     model: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     effort: Effort = "medium"
     timeout: float = Field(
-        default=300.0, gt=0.0, description="bounds the whole run: the CLI process or the API rounds"
+        default=300.0,
+        gt=0.0,
+        description="the time limit for the whole run: the CLI process, or the API rounds",
     )
-    max_rounds: int = Field(default=30, gt=0, description="read only over a completion API")
+    max_rounds: int = Field(default=30, gt=0, description="used only with a completion API")
 
 
 class MediaConfig(Configured):

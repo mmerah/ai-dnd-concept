@@ -127,7 +127,6 @@ def labeled_value(label: str, value: str) -> None:
 
 
 def typed(box: ui.input | ui.textarea) -> str:
-    """What the player typed, with every kind of blank trimmed off both ends."""
     return (box.value or "").strip(BLANK)
 
 

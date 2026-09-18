@@ -6,7 +6,6 @@ from nicegui import ui
 from aidm.core.io import read_cached_text
 from aidm.core.views import Look
 
-# The single source for every hex value: the first paint, `set_look` and the Quasar colours.
 NEUTRAL_PALETTE: Mapping[str, str] = {
     "game-bg": "#111519",
     "game-surface": "#1a2026",
@@ -40,7 +39,6 @@ def set_look(look: Look | None) -> None:
 
 
 def install() -> None:
-    # One look for every call site: the defaults live here so no widget repeats a prop or class.
     ui.button.default_props("no-caps")
     ui.badge.default_props("outline")
     ui.input.default_props("outlined stack-label")

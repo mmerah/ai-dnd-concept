@@ -20,12 +20,12 @@ COMMISSION_WAIT = (
     "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
 )
 ANSWERED_BY_OPTION = (
-    "The player chose the option above and the rules have applied it. Develop what it caused; "
-    "do not settle it again."
+    "The player chose the option above and the rules applied the option. Tell what the option "
+    "caused. Do not decide the option again."
 )
-NO_TURN = "no turn is open. The player starts one from the page. Wait to be spawned again."
+NO_TURN = "no turn is open. The player starts a turn from the page. Wait until you start again."
 GAME_OVER = "The game is over. The player restarts from the page."
-RESTART = "The only way on is to restart."
+RESTART = "The game continues only after a restart."
 
 
 class Tools(Protocol):
@@ -69,7 +69,7 @@ class Turn:
             if consumed is not None:
                 draft.note(
                     PAUSED_TO_ASK.format(prompt=consumed.prompt)
-                    + "The PLAYER ACTION is their answer."
+                    + "The PLAYER ACTION is the player's answer."
                 )
             self.words = self.player_action = answer.text
             return
@@ -92,7 +92,7 @@ class Turn:
 
     @property
     def narrates(self) -> bool:
-        """A hand-over that moved no fiction gets no prose."""
+        """A hand-over that told the player nothing gets no prose."""
         waiting = self.draft.pending is not None or self.draft.commission is not None
         return any(fact.told for fact in self.facts) or not waiting
 
@@ -101,7 +101,6 @@ class Turn:
         return bool(self.facts) or self.draft.pending is not None
 
     def call(self, name: str, raw: JsonValue) -> str:
-        """The one gate every published tool passes; returns what changed as the master reads it."""
         if (ended := self.engine.ending(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
         found = self.engine.require_tool(name)

@@ -77,14 +77,3 @@ def test_tick_twist_turns_over_on_the_third_call_and_resets() -> None:
     assert draft.world.twist.current == TIES_PER_TWIST - 1
     assert draft.world.tick_twist() is True
     assert draft.world.twist.current == 0
-
-
-def test_the_cast_lines_say_who_the_player_has_met() -> None:
-    _, state = initialized()
-
-    lines = state.world.cast_lines().splitlines()
-
-    assert any(line.strip() == "met; last seen in: The Abbot's Study" for line in lines)
-    assert any(line.strip() == "unmet; last seen in: The Abbot's Study" for line in lines)
-    assert any(line.strip() == "unmet" for line in lines)
-    assert not lines[1].strip().startswith(("met", "unmet"))

@@ -48,11 +48,11 @@ class Interjection(Frozen):
     """What a party member says after a turn, unprompted."""
 
     lines: tuple[Line, ...] = Field(
-        description="What they say, as dialogue. Empty when they would keep quiet."
+        description="What the party member says, as dialogue. Give no lines to stay quiet."
     )
     proposal: str = Field(
         default="",
-        description="What they propose the party do now. Empty when they only talk.",
+        description="What the party member asks the party to do now. Leave empty to only speak.",
     )
 
     @field_validator("proposal")
@@ -69,8 +69,6 @@ class DecisionOption(Frozen):
 
 
 class PendingOption(DecisionOption):
-    """The frozen call an engine plays this option by: one of its tools, and the arguments."""
-
     tool_name: str = Field(min_length=1)
     args: dict[str, JsonValue] = Field(default_factory=dict)
 

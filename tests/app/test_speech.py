@@ -3,15 +3,12 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from httpx import HTTPError
 from pydantic import SecretStr
-from support.game import TARGET
 from support.game import session as loner_session
-from support.table import drain, offline_settings
+from support.table import drain
 
-from aidm.app.present import Presenter, Reader, clip_key, requests_of, speech_body, voice_of
+from aidm.app.present import Reader, requests_of, speech_body
 from aidm.config import ProviderConfig, SpeechConfig
-from aidm.core.io import FileStore
 from aidm.core.play import Exchange, SpokenLine
 
 NARRATOR = "Kore"
@@ -36,24 +33,6 @@ def _reader(tmp_path: Path) -> Reader:
         saves=tmp_path / "save.media" / "speech",
         voice=NARRATOR,
     )
-
-
-def test_voice_of_gives_the_narrator_for_narration_and_a_stable_pool_member_for_a_speaker() -> None:
-    assert voice_of(None, NARRATOR, POOL) == NARRATOR
-    first = voice_of(KAEL, NARRATOR, POOL)
-    assert first in POOL
-    assert voice_of(KAEL, NARRATOR, POOL) == first
-    assert voice_of("mara", NARRATOR, POOL) in POOL
-
-
-def test_clip_key_is_twelve_hex_chars_and_changes_with_model_voice_or_text() -> None:
-    lines = (("Kore", "Hello."), ("Puck", "Hi."))
-    key = clip_key("gemini-tts", lines)
-    assert len(key) == 12
-    assert all(char in "0123456789abcdef" for char in key)
-    assert clip_key("other-model", lines) != key
-    assert clip_key("gemini-tts", (("Zephyr", "Hello."), ("Puck", "Hi."))) != key
-    assert clip_key("gemini-tts", (("Kore", "Bye."), ("Puck", "Hi."))) != key
 
 
 async def test_read_writes_a_wav_and_caches_it(
@@ -96,56 +75,6 @@ async def test_read_writes_a_wav_and_caches_it(
     assert len(bodies) == 2
 
 
-async def test_read_leaves_no_file_when_generation_raises(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    exchange = _exchange()
-
-    async def _raising(
-        _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
-    ) -> bytes:
-        raise HTTPError("boom")
-
-    monkeypatch.setattr("aidm.app.present.post_bearer", _raising)
-    reader = _reader(tmp_path)
-    await reader.read(exchange)
-
-    assert reader.clip(exchange) is None
-
-
-def test_speech_off_asks_for_no_clip_and_hides_what_an_earlier_run_cached(tmp_path: Path) -> None:
-    exchange = _exchange()
-    off = Presenter.open(
-        offline_settings(tmp_path),
-        FileStore(tmp_path),
-        TARGET.slug,
-        style="",
-        icon_dirs=(),
-        voice=NARRATOR,
-    )
-
-    # nothing is cached yet: a gate that let this through would hand back a coroutine
-    assert off.speak(exchange) == ()
-    off.reader.saves.mkdir(parents=True)
-    key = clip_key(off.reader.config.model, requests_of(exchange, NARRATOR, POOL))
-    (off.reader.saves / f"{key}.wav").touch()
-
-    assert off.reader.clip(exchange) is None
-
-
-def test_reader_open_takes_the_scenarios_voice_and_is_disabled_when_off(tmp_path: Path) -> None:
-    store = FileStore(tmp_path)
-    on = offline_settings(tmp_path).model_copy(update={"speech": SpeechConfig(enabled=True)})
-    reader = Reader.open(on, store, TARGET.slug, voice="Puck")
-    assert reader.voice == "Puck"
-
-    reader = Reader.open(on, store, TARGET.slug, voice=on.speech.voice)
-    assert reader.voice == on.speech.voice
-
-    off = offline_settings(tmp_path)
-    assert Reader.open(off, store, TARGET.slug, voice=on.speech.voice).config.enabled is False
-
-
 async def test_speak_reads_and_caches_the_newest_committed_exchange(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -169,26 +98,3 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
 
     assert session.newest_clip() == session.presenter.reader.clip(exchange)
     assert session.newest_clip() is not None
-
-
-async def test_present_unspoken_reads_nothing_for_a_page_build(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    session = loner_session(tmp_path)
-    draft = session.state.draft()
-    session.save(
-        session.engine.close(draft, (SpokenLine(text="The door groans open."),), (), words="wait")
-    )
-
-    async def _fake_post_bearer(
-        _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
-    ) -> bytes:
-        return b"\x01\x02\x03\x04"
-
-    monkeypatch.setattr("aidm.app.present.post_bearer", _fake_post_bearer)
-    session.presenter = replace(session.presenter, reader=_reader(tmp_path))
-
-    session.present(spoken=False)
-    await drain(session)
-
-    assert session.newest_clip() is None

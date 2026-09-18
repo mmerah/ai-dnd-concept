@@ -37,7 +37,7 @@ MAP_UNWRITTEN = Fact(
 )
 
 
-# The family stays generic over its dweller because it cannot import the one engine that names it.
+# Generic over its dweller: the family cannot import the one engine that names it.
 class RoomEngine[N: Dweller, W: RoomWorld[Any], K: Pack](Engine[W, K]):
     family_dir = Path(__file__).parent
     member: type[N]
@@ -125,23 +125,24 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any], K: Pack](Engine[W, K]):
 
     @tool
     def move_item(self, draft: Game[W], args: MoveItem, _rng: Random) -> list[Fact]:
-        """An item moves to a new holder."""
+        """Move an item to a new holder."""
         return draft.world.move_item(args.item_id, args.to_id)
 
     @tool
     def unlock_way(self, draft: Game[W], args: UnlockWay, _rng: Random) -> list[Fact]:
-        """A locked way out of this place opens."""
+        """Open a locked way out of this place."""
         return draft.world.unlock_way(args.to_id)
 
     @tool
     def move(self, draft: Game[W], args: Move, _rng: Random) -> list[Fact]:
-        """Call this to carry the player through an unlocked way out of this place."""
+        """Move the player through an unlocked way out of this place."""
         return draft.world.move(args.to_id, args.with_ids)
 
     @tool
     def meanwhile(self, draft: Game[W], args: Meanwhile, _rng: Random) -> list[Fact]:
-        """Time has passed where the player is not. Move a dweller, move a loose item, and shut a
-        way they know — any combination, in one call, while ELSEWHERE is shown."""
+        """Time passes where the player is not. Move a dweller, move a loose item, and shut a
+        way the player knows. Use any combination in one call. Call this only while ELSEWHERE is
+        shown."""
         world = draft.world
         if not world.meanwhile_due:
             raise Refusal(NOTHING_OFFSCREEN)

@@ -12,7 +12,7 @@ _client: AsyncClient | None = None
 
 @dataclass(slots=True)
 class Claims:
-    """Keys being generated now, so two callers never both pay for one image or clip."""
+    """Keys in generation now, so two callers never both pay for one image or clip."""
 
     held: set[str] = field(default_factory=set)
 
@@ -29,7 +29,7 @@ class Claims:
 
 
 def client() -> AsyncClient:
-    """One pool for the process: a client per call pays a new handshake."""
+    """One pool for the process: a new client per call pays a new handshake."""
     global _client
     if _client is None:
         _client = AsyncClient()
@@ -46,7 +46,7 @@ async def close_client() -> None:
 async def post_bearer(
     provider: ProviderConfig, path: str, body: Mapping[str, JsonValue], timeout: float
 ) -> bytes:
-    """Returns bytes: one reply is JSON, another audio."""
+    """Returns bytes: one reply is JSON, another reply is audio."""
     reply = await client().post(
         f"{provider.base_url}{path}",
         headers={"Authorization": f"Bearer {provider.api_key.get_secret_value()}"},

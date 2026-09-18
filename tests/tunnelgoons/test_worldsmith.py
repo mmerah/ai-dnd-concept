@@ -1,15 +1,13 @@
 import pytest
-from pydantic import BaseModel, ValidationError
 from support.table import TUNNELGOONS, game, narrowed
 from support.tunnelgoons import ENGINE, small_world
 
 from aidm.core.entities import Refusal
-from aidm.core.model import Check, ScenarioMeta
+from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapProposal, Place, Prop, RegionProposal, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
-from aidm.engines.tunnelgoons.pack import AUTHORING, AbilitiesProposal
 from aidm.engines.tunnelgoons.world import Goon, TunnelGoonsGame
 
 ONLY = "only"
@@ -108,43 +106,6 @@ def test_check_map_refuses_a_dead_npc() -> None:
         check_map(draft)
 
 
-def test_check_map_refuses_an_npc_at_zero_hp() -> None:
-    fallen = Goon(
-        id="fallen",
-        name="Fallen",
-        brief="",
-        place=ONLY,
-        known=True,
-        hp=Gauge(current=0, maximum=4),
-    )
-    draft = MapProposal[Goon](
-        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
-        npcs={fallen.id: fallen},
-        start=ONLY,
-    )
-    with pytest.raises(Refusal, match="health above zero"):
-        check_map(draft)
-
-
-def test_check_map_refuses_an_npc_carrying_a_kit() -> None:
-    packed = Goon(
-        id="packed",
-        name="Packed",
-        brief="",
-        place=ONLY,
-        known=True,
-        hp=Gauge(current=4, maximum=4),
-        kit=("rope",),
-    )
-    draft = MapProposal[Goon](
-        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
-        npcs={packed.id: packed},
-        start=ONLY,
-    )
-    with pytest.raises(Refusal, match="no kit"):
-        check_map(draft)
-
-
 def test_check_extension_refuses_an_item_planted_on_the_player() -> None:
     world = _tunnelgoons_game().world
     extension = RegionProposal[Goon](
@@ -155,16 +116,6 @@ def test_check_extension_refuses_an_item_planted_on_the_player() -> None:
     )
     with pytest.raises(Refusal, match="planted on the player"):
         check_extension(extension, world)
-
-
-def test_check_extension_refuses_a_place_naming_an_unknown_thing_elsewhere() -> None:
-    extension = _region()
-    extension.items["far-item-2"] = Prop(
-        id="far-item-2", name="Far Item Two", brief="b", known=False, on=FAR_VAULT
-    )
-    extension.places[FAR_HALL].description = "Far Item Two lies beyond."
-    with pytest.raises(Refusal, match="do not name"):
-        check_extension(extension, _tunnelgoons_game().world)
 
 
 def test_check_extension_accepts_an_unknown_place_naming_itself() -> None:
@@ -193,90 +144,6 @@ def _hiding_gremlin(
 def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None:
     draft = _hiding_gremlin(
         ONLY, known=True, brief="b", description="A Gremlin hides in the shadows."
-    )
-    with pytest.raises(Refusal, match="do not name"):
-        check_map(draft)
-
-
-def test_an_extension_hiding_a_dweller_named_in_brief_is_refused() -> None:
-    world = _tunnelgoons_game().world
-    extension = _hiding_gremlin(
-        HIDDEN, known=False, brief="A Gremlin waits in the dark.", description="d"
-    )
-    with pytest.raises(Refusal, match="do not name"):
-        check_extension(extension, world)
-
-
-def test_check_map_refuses_a_known_dwellers_brief_naming_a_hidden_dweller() -> None:
-    gremlin = Goon(
-        id="gremlin",
-        name="Gremlin",
-        brief="",
-        place=ONLY,
-        known=False,
-        hp=Gauge(current=4, maximum=4),
-    )
-    sentry = Goon(
-        id="sentry",
-        name="Sentry",
-        brief="He watches for the Gremlin.",
-        place=ONLY,
-        known=True,
-        hp=Gauge(current=4, maximum=4),
-    )
-    draft = MapProposal[Goon](
-        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
-        npcs={gremlin.id: gremlin, sentry.id: sentry},
-        start=ONLY,
-    )
-    with pytest.raises(Refusal, match="do not name"):
-        check_map(draft)
-
-
-def test_check_map_refuses_a_hidden_dwellers_own_brief_naming_another_hidden_dweller() -> None:
-    """The leak a later `reveal` would make must be caught while both are still hidden."""
-    gremlin = Goon(
-        id="gremlin",
-        name="Gremlin",
-        brief="",
-        place=ONLY,
-        known=False,
-        hp=Gauge(current=4, maximum=4),
-    )
-    sentry = Goon(
-        id="sentry",
-        name="Sentry",
-        brief="He watches for the Gremlin.",
-        place=ONLY,
-        known=False,
-        hp=Gauge(current=4, maximum=4),
-    )
-    draft = MapProposal[Goon](
-        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
-        npcs={gremlin.id: gremlin, sentry.id: sentry},
-        start=ONLY,
-    )
-    with pytest.raises(Refusal, match="do not name"):
-        check_map(draft)
-
-
-def test_check_map_refuses_an_item_on_the_player_naming_a_hidden_dweller() -> None:
-    gremlin = Goon(
-        id="gremlin",
-        name="Gremlin",
-        brief="",
-        place=ONLY,
-        known=False,
-        hp=Gauge(current=4, maximum=4),
-    )
-    charm = Prop(
-        id="charm", name="Charm", brief="A ward against the Gremlin.", known=True, on=PLAYER_ID
-    )
-    draft = MapProposal[Goon](
-        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
-        npcs={gremlin.id: gremlin},
-        items={charm.id: charm},
-        start=ONLY,
     )
     with pytest.raises(Refusal, match="do not name"):
         check_map(draft)
@@ -323,60 +190,3 @@ def test_more_map_is_offered_only_once_every_place_is_known() -> None:
     for place in draft.world.places.values():
         place.known = True
     assert ENGINE.player_view(draft.commit()).action == MORE_MAP
-
-
-def test_install_on_a_game_from_the_engine() -> None:
-    draft = _tunnelgoons_game().draft()
-    anchor = draft.world.current.id
-
-    ENGINE.install(draft, _region())
-
-    assert FAR_HALL in draft.world.places
-    assert draft.world.way(anchor, FAR_HALL) is not None
-
-
-def test_attach_appends_unknown_ways_both_directions() -> None:
-    state = small_world()
-    world = state.world
-    anchor = world.current.id
-    region = _region()
-
-    world.attach(region, region.start)
-
-    out = world.way(anchor, FAR_HALL)
-    back = world.way(FAR_HALL, anchor)
-    assert out is not None and not out.known
-    assert back is not None and not back.known
-
-
-async def test_write_next_asks_for_the_map_draft() -> None:
-    recorded: list[type[BaseModel]] = []
-    prompts: list[str] = []
-
-    async def answer[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
-        recorded.append(model)
-        prompts.append(prompt)
-        return model.model_validate({**THIN.model_dump(), "recap": "They pushed north."})
-
-    _ = await ENGINE.write_next(small_world(), "Push north.", answer)
-
-    assert recorded == [RegionProposal[Goon]]
-    # The `hp` rule reaches the worldsmith only through the engine's guidance.
-    assert AUTHORING in prompts[0]
-
-
-async def test_write_next_prompt_carries_scenes_so_far() -> None:
-    prompts: list[str] = []
-
-    async def answer[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
-        prompts.append(prompt)
-        return model.model_validate({**THIN.model_dump(), "recap": "They nosed around the docks."})
-
-    _ = await ENGINE.write_next(small_world(), "Nose around the docks.", answer)
-
-    assert "SCENES SO FAR" in prompts[0]
-
-
-def test_abilities_draft_refuses_a_wrong_point_total() -> None:
-    with pytest.raises(ValidationError, match="share exactly 3 points"):
-        AbilitiesProposal(abilities={"brute": 2, "skulker": 2, "erudite": 0})

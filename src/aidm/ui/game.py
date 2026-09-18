@@ -28,7 +28,7 @@ from aidm.ui.widgets import (
 
 LOGGER = logging.getLogger(__name__)
 
-TURN_FAILED = "Something went wrong. The turn did not land — check the server log."
+TURN_FAILED = "Something went wrong. The turn did not complete. Look in the server log."
 
 SCENE_TAB = "scene"
 JOURNAL_TAB = "journal"
@@ -40,7 +40,7 @@ RAIL: tuple[tuple[str, str, str], ...] = (
 
 
 class GamePage:
-    """One per tab; several tabs may share one session."""
+    """One page object per browser tab; several tabs can share one session."""
 
     def __init__(self, session: GameService) -> None:
         self.session = session
@@ -118,7 +118,7 @@ class GamePage:
                 ) as self.tabs:
                     ui.tab(SCENE_TAB, label="Scene")
                     ui.tab(JOURNAL_TAB, label="Journal")
-                # Below 600px the drawer covers the header, so it carries its own way out.
+                # Below 600px the drawer covers the header, so it needs its own close button.
                 ui.button(icon="close", on_click=self.drawer.hide).props("flat round").classes(
                     "lt-sm"
                 )
@@ -191,7 +191,6 @@ class GamePage:
             button.classes(add="game-rail-on" if name == active else "", remove="game-rail-on")
 
     def toggle_scene(self) -> None:
-        """A phone shows the scene as a strip; the tap opens the whole frame."""
         self.scene_open = not self.scene_open
         self.scene_card.classes(toggle="game-scene-open")
 
@@ -211,7 +210,6 @@ class GamePage:
                     ui.label(self.view.scene_title).classes("game-title game-scene-title")
                     ui.label(self.view.situation).classes("text-sm opacity-80 game-scene-situation")
                 if art is not None:
-                    # Whole frame, faded into the header, not cropped; only the phone strip crops.
                     ui.image(media_url(art)).props("fit=contain").classes("game-scene-art")
             ui.icon("expand_more").classes("game-scene-chevron lt-sm")
 
@@ -234,14 +232,13 @@ class GamePage:
 
     @ui.refreshable_method
     def way_on_panel(self) -> None:
-        """The banner: legible after a reload, once the asking has scrolled away."""
         action = self.view.action
         if action is None:
             return
         with ui.row().classes(transcript.DECISION_ROW):
             ui.icon("arrow_forward").classes("game-card-icon")
             ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
-            ui.label(f"{action.brief} Press {action.name} with your words.").classes(
+            ui.label(f"{action.brief} Type your words, then press {action.name}.").classes(
                 "text-xs opacity-60"
             )
 
@@ -457,7 +454,6 @@ class GamePage:
         self.restart_item.set_enabled(session.working_role is None)
 
     def _dice_landed(self, now: transcript.Observed) -> bool:
-        """Whether the closed turn's tail or the live turn rolled dice since the last poll."""
         since = self.seen.facts
         closed = False
         if now.exchanges > self.seen.exchanges:
@@ -475,7 +471,6 @@ class GamePage:
         get_running_loop().call_later(0.1, lambda: self.scroll.scroll_to(percent=1.0))
 
     async def _opened(self, opener: ui.timer) -> None:
-        """Retries while the gate is held at either end; anything else is persistent."""
         blocked = False
 
         async def opening() -> None:

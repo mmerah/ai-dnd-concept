@@ -29,7 +29,7 @@ class PackEntry:
     name: str
     rules: str
     written: bool
-    tables: str  # `Pack.summary()`: what the pack holds, counted
+    tables: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +58,6 @@ class LauncherCatalog:
     characters: tuple[CatalogEntry, ...]
     packs: tuple[PackEntry, ...]
     saves: tuple[SaveOption, ...]
-    # Only entries whose stem equals a rendered `LaunchTarget.slug` are ever looked up by slug.
     unresumable: tuple[str, ...]
 
     def scenario(self, scenario_id: Slug) -> CatalogEntry:
@@ -125,7 +124,7 @@ class LauncherCatalog:
         for slug in store.slugs():
             try:
                 option = _save_option(slug, store, engines, titles, played_by, metas)
-            # Skipped, never deleted: one save the app cannot resume must not hide the rest.
+            # Skipped, never deleted: one save that does not resume must not hide the rest.
             except Refusal as unreadable:
                 LOGGER.warning("skipping save %r: %s", slug, unreadable)
                 unresumable.append(slug)
@@ -142,7 +141,6 @@ class LauncherCatalog:
 
 
 def check_resumes(state: AnyGame, target: LaunchTarget, meta: ScenarioMeta) -> None:
-    """The one rule for resuming a save: it is this game, and its scenario has not moved on."""
     if (state.scenario_id, state.character_id) != (target.scenario_id, target.character_id):
         raise Refusal(
             f"save is {state.scenario_id!r}/{state.character_id!r}, "
@@ -161,7 +159,7 @@ def _save_option(
 ) -> SaveOption | None:
     raw = store.read(slug)
     if raw is None:
-        # Vanished between `slugs()` and `read`: listing it would hide a Start that works.
+        # Gone between `slugs()` and `read`: listing it would hide a Start that works.
         return None
     engine = routed(decode(raw), engines)
     state = engine.restore(raw)

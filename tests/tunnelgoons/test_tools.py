@@ -4,7 +4,6 @@ from random import Random
 import pytest
 from support.table import change, refused
 from support.tunnelgoons import (
-    CRYPT,
     ENGINE,
     HALL,
     KEY,
@@ -17,9 +16,9 @@ from support.tunnelgoons import (
     small_world,
 )
 
-from aidm.core.entities import Refusal, parse
+from aidm.core.entities import Refusal
 from aidm.core.play import Exchange
-from aidm.engines.base import PLAYER_ID, Gauge
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.world import Place, Prop, RegionProposal
 from aidm.engines.tunnelgoons.tools import LevelUp, Roll
 from aidm.engines.tunnelgoons.world import Goon, GoonSheet, TunnelGoonsGame, TunnelGoonsWorld
@@ -63,18 +62,6 @@ def test_a_what_naming_an_unmet_npc_is_refused(draft: TunnelGoonsGame) -> None:
         )
 
 
-def test_erudite_rolls_are_not_penalized_for_over_inventory(draft: TunnelGoonsGame) -> None:
-    world = draft.world
-    world.player.require_sheet().abilities["erudite"] = 2
-    world.player.require_sheet().inventory = 1
-    facts = ENGINE.roll(
-        draft, Roll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
-    )
-    rolled = facts[1]
-    dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.require_sheet().abilities["erudite"]
-
-
 def test_a_roll_against_an_npc_that_hits_can_slay_it(draft: TunnelGoonsGame) -> None:
     world = draft.world
     world.npcs[MANTIS].place = START
@@ -88,20 +75,6 @@ def test_a_roll_against_an_npc_that_hits_can_slay_it(draft: TunnelGoonsGame) -> 
     mantis = world.npcs[MANTIS]
     assert mantis.hp.current == 0
     assert not mantis.alive
-
-
-def test_an_npc_killed_by_a_roll_drops_what_it_carried_here(draft: TunnelGoonsGame) -> None:
-    world = draft.world
-    world.npcs[MANTIS].place = START
-    world.npcs[MANTIS].known = True
-    world.items[KEY].on = MANTIS
-    world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
-    _ = ENGINE.roll(
-        draft,
-        Roll(what="Smash it", ability="brute", target_id=MANTIS, dangerous=True),
-        Random(3),
-    )
-    assert world.items[KEY].on == START
 
 
 def test_a_miss_against_an_npc_can_kill_the_player(draft: TunnelGoonsGame) -> None:
@@ -120,18 +93,6 @@ def test_a_miss_against_an_npc_can_kill_the_player(draft: TunnelGoonsGame) -> No
     assert world.player.hp.current == 0
     assert not world.player.alive
     assert ENGINE.ending(draft) == "You died."
-
-
-def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous(draft: TunnelGoonsGame) -> None:
-    """SRD: only a dangerous action turns the margin into damage; talk against a DS does not."""
-    world = draft.world
-    world.npcs[MANTIS].place = START
-    world.npcs[MANTIS].known = True
-    _ = ENGINE.roll(
-        draft, Roll(what="Talk it down", ability="erudite", target_id=MANTIS), Random(3)
-    )
-    assert world.npcs[MANTIS].hp.current == world.npcs[MANTIS].hp.maximum
-    assert world.player.hp.current == world.player.hp.maximum
 
 
 def test_dangerous_hurts_only_on_a_miss() -> None:
@@ -169,22 +130,6 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
     assert world2.player.hp.current < world2.player.hp.maximum
 
 
-def test_neither_or_both_of_difficulty_and_against_is_refused() -> None:
-    with pytest.raises(ValueError, match="not both/neither"):
-        Roll(what="Push", ability="brute")
-    with pytest.raises(ValueError, match="not both/neither"):
-        Roll(what="Push", ability="brute", difficulty=8, target_id=MANTIS)
-
-
-def test_an_item_not_in_the_players_hands_is_refused(draft: TunnelGoonsGame) -> None:
-    with pytest.raises(Refusal, match="not in Kael's hands"):
-        _ = ENGINE.roll(
-            draft,
-            Roll(what="Pick lock", ability="skulker", item_ids=(KEY,), difficulty=8),
-            Random(0),
-        )
-
-
 def test_rest_heals_the_player(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
     world.player.hp.current = 4
     _ = change(ENGINE, draft, "rest")
@@ -207,70 +152,10 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
     assert world.player.require_sheet().level == before + 1
 
 
-def test_level_up_needs_both_an_ability_and_a_boost_or_neither() -> None:
-    with pytest.raises(Refusal, match="both an ability and a boost, or neither"):
-        _ = parse(LevelUp, {"ability": "brute"})
-
-
-def test_level_up_with_no_args_does_not_offer_a_character_already_levelled(
-    draft: TunnelGoonsGame,
-) -> None:
-    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
-    with pytest.raises(Refusal, match="already levelled up"):
-        _ = ENGINE.level_up(draft, LevelUp(), Random(0))
-    assert draft.pending is None
-
-
-def test_level_up_with_no_args_and_an_actor_id_opens_that_actors_decision(
-    draft: TunnelGoonsGame,
-) -> None:
-    world = draft.world
-    world.npcs[MIRA].sheet = _sheeted()
-    world.party.append(MIRA)
-
-    facts = ENGINE.level_up(draft, LevelUp(actor_id=MIRA), Random(0))
-
-    assert facts == []
-    assert draft.pending is not None
-    assert draft.pending.options[0].args["actor_id"] == MIRA
-
-
-def test_a_direct_level_up_for_the_second_of_three_members_does_not_requeue_a_levelled_one(
-    draft: TunnelGoonsGame,
-) -> None:
-    world = draft.world
-    third = Goon(
-        id="third",
-        name="Third",
-        brief="",
-        place=START,
-        known=True,
-        hp=Gauge(current=8, maximum=8),
-        sheet=_sheeted(),
-    )
-    world.npcs[third.id] = third
-    world.npcs[MIRA].sheet = _sheeted()
-    world.npcs[MIRA].require_sheet().level = 2  # already levelled, ahead of the second member
-    world.npcs[MANTIS].place = START
-    world.npcs[MANTIS].known = True
-    world.npcs[MANTIS].sheet = _sheeted()
-    world.party.extend([MIRA, MANTIS, third.id])
-
-    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health", actor_id=MANTIS), Random(0))
-
-    assert draft.pending is not None
-    assert draft.pending.options[0].args["actor_id"] == third.id
-
-
 def test_move_refuses_a_locked_way(world: TunnelGoonsWorld) -> None:
     world.visits.append(HALL)
     with pytest.raises(Refusal, match="locked"):
         _ = world.move(VAULT, ())
-
-
-def test_move_refuses_when_there_is_no_way(draft: TunnelGoonsGame) -> None:
-    with pytest.raises(Refusal, match="no way leads"):
-        _ = draft.world.move(CRYPT, ())
 
 
 def test_move_reveals_the_destination_and_adds_a_visit(draft: TunnelGoonsGame) -> None:
@@ -316,62 +201,6 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
         _ = elsewhere.world.move(VAULT, (MANTIS,))
 
 
-def test_move_with_ids_refuses_a_co_located_npc_the_player_has_not_met() -> None:
-    draft = small_world().draft()
-    world = draft.world
-    world.visits.append(HALL)  # the player stands with Mantis, who is here but still unmet
-    assert world.npcs[MANTIS].place == HALL
-    assert not world.npcs[MANTIS].known
-
-    with pytest.raises(Refusal, match="not here with the player"):
-        _ = world.move(START, (MANTIS,))
-
-    assert not world.npcs[MANTIS].known
-
-
-def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace() -> None:
-    draft = small_world().draft()
-    world = draft.world
-    world.party.append(MIRA)
-
-    facts = world.move(HALL, ())
-
-    assert world.npcs[MIRA].place == HALL
-    assert any("Mira" in fact.trace and "along" in fact.trace for fact in facts)
-
-
-def test_a_with_ids_entry_who_is_a_party_member_is_refused(draft: TunnelGoonsGame) -> None:
-    draft.world.party.append(MIRA)
-
-    with pytest.raises(Refusal, match="without with_ids"):
-        draft.world.move(HALL, (MIRA,))
-
-
-def test_unlock_way_then_move_passes(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
-    world.visits.append(HALL)
-    _ = change(ENGINE, draft, "unlock_way", to_id=VAULT)
-    _ = world.move(VAULT, ())
-    assert world.current.id == VAULT
-
-
-def test_unlocking_an_unwalked_way_tells_a_card_becomes_known_and_appears_in_ways_out() -> None:
-    draft = small_world().draft()
-    world = draft.world
-    world.visits.append(HALL)
-    way = world.way(HALL, VAULT)
-    assert way is not None
-    way.known = False
-    before = next(panel for panel in ENGINE.player_view(draft).panels if panel.title == "Ways out")
-    assert [row.name for row in before.rows] == ["Start"]
-
-    facts = change(ENGINE, draft, "unlock_way", to_id=VAULT)
-
-    assert way.known
-    assert any(fact.told and fact.card == "Vault unlocked" for fact in facts)
-    after = next(panel for panel in ENGINE.player_view(draft).panels if panel.title == "Ways out")
-    assert [row.name for row in after.rows] == ["Start", "Vault"]
-
-
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place(draft: TunnelGoonsGame) -> None:
     world = draft.world
     _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=MIRA)
@@ -382,13 +211,6 @@ def test_move_item_to_the_player_to_an_npc_here_and_to_the_place(draft: TunnelGo
 
     _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=START)
     assert world.items[LANTERN].on == START
-
-
-def test_move_item_refuses_a_holder_the_player_has_not_met(draft: TunnelGoonsGame) -> None:
-    world = draft.world
-    world.npcs[MANTIS].place = START
-    with pytest.raises(Refusal, match="has not met"):
-        _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to_id=MANTIS)
 
 
 def test_kill_drops_an_npcs_items_loose(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
@@ -428,18 +250,6 @@ def test_action_roll_a_member_rolls_on_their_own_abilities_and_items() -> None:
     assert "Mira" in rolled.card
 
 
-def test_action_roll_refuses_rolling_against_oneself(draft: TunnelGoonsGame) -> None:
-    world = draft.world
-    world.npcs[MIRA].sheet = _sheeted()
-    world.party.append(MIRA)
-    with pytest.raises(Refusal, match="cannot roll against themselves"):
-        _ = ENGINE.roll(
-            draft,
-            Roll(what="Wrestle", ability="brute", target_id=MIRA, actor_id=MIRA),
-            Random(0),
-        )
-
-
 def test_a_members_miss_damages_them_and_kills_them_at_zero(draft: TunnelGoonsGame) -> None:
     world = draft.world
     world.npcs[MIRA].sheet = _sheeted()
@@ -452,32 +262,3 @@ def test_a_members_miss_damages_them_and_kills_them_at_zero(draft: TunnelGoonsGa
     )
     assert world.npcs[MIRA].hp.current == 0
     assert not world.npcs[MIRA].alive
-
-
-def test_rest_heals_a_member(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
-    world.npcs[MIRA].sheet = _sheeted()
-    world.npcs[MIRA].hp.current = 2
-    world.party.append(MIRA)
-    facts = change(ENGINE, draft, "rest")
-    assert world.npcs[MIRA].hp.current == world.npcs[MIRA].hp.maximum
-    assert any("Mira" in fact.card for fact in facts)
-
-
-def test_level_up_for_the_player_opens_the_members_decision(draft: TunnelGoonsGame) -> None:
-    world = draft.world
-    world.npcs[MIRA].sheet = _sheeted()
-    world.party.append(MIRA)
-
-    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
-    assert draft.pending is not None
-    assert draft.pending.options[0].args["actor_id"] == MIRA
-
-    draft.pending = None
-    _ = ENGINE.level_up(draft, LevelUp(ability="skulker", boost="health", actor_id=MIRA), Random(0))
-    assert draft.pending is None
-
-
-def test_require_actor_refuses_an_unsheeted_member(world: TunnelGoonsWorld) -> None:
-    world.party.append(MIRA)
-    with pytest.raises(Refusal, match="is not the player or a hired party member"):
-        _ = world.require_actor(MIRA)

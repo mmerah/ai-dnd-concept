@@ -62,7 +62,7 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
 
     def __init__(self, player_packs: Path) -> None:
         super().__init__(player_packs)
-        srd = self.packs.srd()  # always the SRD's own table: no other pack publishes one
+        srd = self.packs.srd()  # only the SRD pack publishes the twist table
         if srd.twist_subjects is None or srd.twist_actions is None:
             raise ValueError("the SRD table set has no twist columns")
         self.twists: Rows = tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
@@ -100,7 +100,6 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
         self, name: str, brief: str, pack_id: Slug, picks: Picks
     ) -> Loner3eCharacter:
         steps = self.creation_steps(pack_id, picks)
-        # The steps already carry the SRD's options and the chosen pack's.
         by_id = {step.id: step for step in steps}
 
         def taken(step_id: Slug) -> str:
@@ -148,7 +147,7 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
 
     @tool
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
-        """A character here gains tags, loses tags, or both."""
+        """A character here gains tags, loses tags, or does both."""
         world = draft.world
         world.check_unnamed(*args.gained)
         actor = world.require_living_here(args.actor_id)
@@ -156,7 +155,7 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
 
     @tool
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
-        """A living character's goal, motive or nemesis changes."""
+        """Change the goal, the motive or the nemesis of a living character."""
         world = draft.world
         world.check_unnamed(args.goal, args.motive, args.nemesis)
         actor = world.require_living_here(args.actor_id)
@@ -164,15 +163,15 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
 
     @tool
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        """A character's luck refills and any defeat is behind them."""
+        """Fill the luck of a character. Any defeat of that character ends."""
         actor = draft.world.require_living_here(args.actor_id)
-        # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
+        # Full luck and no defeat is a quiet no-op: a zero delta writes no fact.
         return actor.recover("the conflict is behind them")
 
     @tool
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
-        """Call this for one closed dramatic question. The engine rolls Chance against Risk, reads
-        the answer, and moves luck in a conflict."""
+        """Call this for one closed question about the story. The engine rolls Chance against
+        Risk and reads the answer. In a conflict, the engine also moves luck."""
         world = draft.world
         world.check_unnamed(args.what, args.edge)
         actor = world.require_living_here(args.actor_id)
@@ -218,8 +217,8 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
 
     @tool
     def spend_luck(self, draft: Loner3eGame, args: SpendLuck, _rng: Random) -> list[Fact]:
-        """A character here spends luck on a cost the selected pack's SPECIAL RULES name, such as a
-        spell."""
+        """A character here spends luck. The SPECIAL RULES of the selected pack gives the cost,
+        for example a spell."""
         if not self.packs.require(draft.pack_id).spends_luck:
             raise Refusal("this pack does not spend luck")
         world = draft.world
@@ -228,12 +227,11 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
         return actor.spend_luck(args.amount, args.why)
 
     def _twist(self, draft: Loner3eGame, actor: Loner3eEntity, rng: Random) -> list[Fact]:
-        """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
+        """The dice must trace, so the SRD table is rolled here; the model reads the pairing."""
         rolled = roll((DIE_FACE, DIE_FACE), "twist — subject, action", rng, label="Twist")
         subject_face, action_face = rolled.event.rolled
         subject, action = twist_pairing(subject_face, action_face, self.twists)
         draft.note(TWIST_NOTE.format(subject=subject.upper(), action=action.upper()))
-        # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
         due = actor.fact(
             f"a twist interrupts the scene: {subject} / {action}",
             card=f"Twist — {subject} / {action}",

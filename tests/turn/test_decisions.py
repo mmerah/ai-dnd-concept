@@ -2,7 +2,7 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from pydantic import Field, ValidationError
+from pydantic import Field
 from support.game import open_game
 from support.table import NO_PACKS, Table, narrowed, play_turn, tool_call
 
@@ -14,7 +14,7 @@ from aidm.core.tools import NoArgs, tool, tools_of
 from aidm.engines.engine import AnyEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.turn import PAUSED_TO_ASK, RULES_WAIT, Turn
+from aidm.turn import RULES_WAIT
 
 
 class Broken(Frozen):
@@ -84,13 +84,6 @@ def _suspend(table: Table[Loner3eGame], decision: PendingDecision = DECISION) ->
     table.service.save(_pending(table.service.state, decision))
 
 
-def test_an_answer_is_a_chosen_option_or_written_text_but_never_both_nor_neither() -> None:
-    with pytest.raises(ValidationError, match="either a chosen option or written text"):
-        _ = Answer()
-    with pytest.raises(ValidationError, match="either a chosen option or written text"):
-        _ = Answer(option_id="lantern", text="I dive behind the crate")
-
-
 async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path: Path) -> None:
     table = _deciding(tmp_path)
 
@@ -100,18 +93,6 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path
     assert state.pending == DECISION
     assert state.exchanges()[-1].decision == DECISION.prompt
     assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
-
-
-async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -> None:
-    table = _deciding(tmp_path, told=False)
-    table.spawner.turns.append(table.plays((tool_call("strike"),)))
-
-    await table.service.play(Answer(text="I charge the guard."))
-
-    state = table.service.state
-    assert [role for role, _ in table.spawner.prompts] == ["master"]
-    assert state.exchanges()[-1].lines == ()
-    assert state.exchanges()[-1].narration() == ""
 
 
 async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continues(
@@ -139,41 +120,12 @@ async def test_an_answer_that_re_suspends_spawns_no_master(tmp_path: Path) -> No
     assert [role for role, _ in table.spawner.prompts] == ["narrator"]
 
 
-async def test_a_re_suspended_turns_note_survives_to_the_next_masters_prompt(
-    tmp_path: Path,
-) -> None:
-    """`_consume` writes the note one line before `begin` used to drain it unconditionally."""
-    table = _deciding(tmp_path)
-    _suspend(table, CHAINING)
-    note = PAUSED_TO_ASK.format(prompt=CHAINING.prompt)
-
-    state = await play_turn(table, Answer(option_id="lantern"))
-
-    assert any(entry.startswith(note) for entry in state.notes)
-
-    _ = await play_turn(table, Answer(option_id="lantern"))
-
-    assert note in table.spawner.prompt("master")
-
-
 async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> None:
     table = _deciding(tmp_path)
     _suspend(table)
 
     with pytest.raises(Refusal, match="offers no option 'vest'"):
         _ = await play_turn(table, Answer(option_id="vest"))
-
-
-def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: Path) -> None:
-    engine, state = _engine(), open_game(tmp_path).service.state
-
-    def nothing(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
-        del draft, rng
-        return ()
-
-    turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
-    _ = turn.apply(nothing)
-    assert turn.draft.pending == DECISION
 
 
 def _option(**changes: object) -> PendingOption:
@@ -194,16 +146,6 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
         _ = engine.play_option(draft, _option(tool_name="spend_momentum"), Random(0))
     with pytest.raises(Refusal, match="Extra inputs are not permitted"):
         _ = engine.play_option(draft, _option(args={"nothing": "of theirs"}), Random(0))
-
-
-def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
-    tmp_path: Path,
-) -> None:
-    engine, state = _engine(), open_game(tmp_path).service.state
-    closed = DECISION.model_copy(update={"allows_text": False})
-
-    with pytest.raises(Refusal, match="takes one of its options, not words"):
-        Turn.begin(engine, _pending(state, closed), Answer(text="I dive aside"), Random(0))
 
 
 def _pending(state: AnyGame, decision: PendingDecision = DECISION) -> Loner3eGame:

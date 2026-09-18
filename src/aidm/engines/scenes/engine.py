@@ -131,19 +131,19 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
 
     @tool
     def enter(self, draft: Game[W], args: Enter, _rng: Random) -> list[Fact]:
-        """A cast member comes into the scene."""
+        """Bring a cast member into the scene."""
         return draft.world.enter(args.target_id)
 
     @tool
     def leave(self, draft: Game[W], args: Leave, _rng: Random) -> list[Fact]:
-        """A cast member goes out of the scene."""
+        """Send a cast member out of the scene."""
         return draft.world.leave(args.target_id)
 
     @tool
     def next_scene(self, draft: Game[W], args: NextScene, _rng: Random) -> list[Fact]:
-        """Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead
-        once the player has left this place. Set `complication` instead to bring a new situation
-        down on this place."""
+        """Call this with nothing set when the scene reaches a stopping point. Set `pursuit`
+        instead when the player has left this place. Set `complication` instead to bring a new
+        situation into this place."""
         if args.pursuit:
             draft.commission = Commission(operation=DEPARTURE, detail=args.pursuit)
             return [SCENE_LEFT]
@@ -153,7 +153,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
         return [
             Fact(
                 trace=f"the worldsmith writes the complication once this turn ends: "
-                f"{args.complication}. Nothing more lands this turn; stop and exit",
+                f"{args.complication}. Nothing more happens this turn; stop and exit",
             )
         ]
 
@@ -167,7 +167,8 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
         if world.arc:
             intent += (
                 f"\n\nThe arc as last written:\n{world.arc}\n"
-                "Revise `arc` only where what happened warrants it. Leave it empty to keep it."
+                "Revise `arc` only where what happened makes a change necessary. Leave "
+                "`arc` empty to keep it."
             )
         if world.meanwhile_due:
             intent += f"\n\n{MEANWHILE_NUDGE}"

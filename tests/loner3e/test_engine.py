@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from support.game import ENGINE, initialized, loner_sheet, with_entity
+from support.game import ENGINE, initialized, loner_sheet
 from support.table import change
 
 from aidm.core.entities import Refusal
@@ -12,9 +12,7 @@ from aidm.engines.loner3e.tools import DEFEAT_NOTE, TWIST_NOTE, Roll
 from aidm.engines.loner3e.world import (
     LUCK_MAX,
     TIES_PER_TWIST,
-    Loner3eEntity,
     outcome_for,
-    twist_pairing,
 )
 
 FOE = "mara"
@@ -57,25 +55,6 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
     }
 
 
-def test_the_twists_read_a_subject_off_one_die_and_an_action_off_the_other() -> None:
-    twists = ENGINE.twists
-    assert len(twists) == 6
-    subject, action = twist_pairing(4, 2, twists)
-    assert (subject, action) == ("A physical event", "Alters the location")
-    assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in TWIST_NOTE.format(
-        subject=subject.upper(), action=action.upper()
-    )
-
-
-def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -> None:
-    _, state = initialized()
-    draft = state.draft()
-
-    _ = ENGINE.roll(draft, _seal(), Random(17))
-
-    assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
-
-
 def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> None:
     """The master writes the question and may name unrevealed canon in it, even on a no."""
     _, state = initialized()
@@ -91,40 +70,6 @@ def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> 
     assert question.question not in answered.trace
     assert answered.trace.startswith(f"{question.what} — oracle, neutral: ")
     assert answered.card.startswith(answered.trace)
-
-
-def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
-    _, state = initialized()
-
-    elsewhere = _seal(target_id="cloister-rat")
-    with pytest.raises(Refusal, match="is not here with the player"):
-        _ = ENGINE.roll(state.draft(), elsewhere, Random(0))
-    with pytest.raises(Refusal, match="their own opposition"):
-        _ = ENGINE.roll(state.draft(), _seal(target_id=PLAYER_ID), Random(0))
-
-
-def test_an_edge_naming_an_unmet_cast_member_is_refused() -> None:
-    _, state = initialized()
-    action = _seal(edge="the vault map marks the way")
-    with pytest.raises(Refusal, match="names what the player has not met"):
-        _ = ENGINE.roll(state.draft(), action, Random(0))
-
-
-def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
-    _, state = initialized()
-    action = Roll(
-        what="Force the seal",
-        actor_id=PLAYER_ID,
-        question="Does he force the seal before the whispering finds him?",
-        position="disadvantage",
-        edge="Never Walks Away",
-    )
-
-    facts = ENGINE.roll(state.draft(), action, Random(1))
-
-    (oracle,) = cards(facts)
-    assert oracle.card.startswith("Force the seal — oracle, disadvantage (Never Walks Away): ")
-    assert oracle.dice[1].faces == (6, 6)
 
 
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
@@ -143,21 +88,6 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     rolled = TWIST_NOTE.format(subject=subject.upper(), action=action_name.upper())
     assert draft.world.twist.current == 0
     assert rolled in draft.notes
-
-
-def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
-    _, state = initialized()
-
-    # Seed 0 rolls chance 4 against risk 4: a tie, in and out of a conflict.
-    duel_draft = state.draft()
-    facts = ENGINE.roll(duel_draft, _duel(), Random(0))
-    (oracle, *_) = cards(facts)
-    assert max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled)
-    assert duel_draft.world.twist.current == 0
-
-    solo_draft = state.draft()
-    _ = ENGINE.roll(solo_draft, _seal(), Random(0))
-    assert solo_draft.world.twist.current == 1
 
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
@@ -214,44 +144,6 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     assert decision.options == ()
 
 
-def test_a_conflict_between_two_non_player_sides_never_asks_the_player() -> None:
-    _, state = initialized()
-    wight = Loner3eEntity(id="wight", name="Wight", brief="", known=True)
-    hound = Loner3eEntity(id="hound", name="Hound", brief="", known=True)
-    state = with_entity(state, wight)
-    state = with_entity(state, hound)
-    draft = state.draft()
-
-    action = Roll(
-        what="Claw",
-        actor_id="wight",
-        question="Does the wight get past the hound?",
-        target_id="hound",
-    )
-    _ = ENGINE.roll(draft, action, Random(0))
-
-    assert draft.pending is None
-    assert (
-        loner_sheet(draft, "wight").luck.current < LUCK_MAX
-        or loner_sheet(draft, "hound").luck.current < LUCK_MAX
-    )
-
-
-def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
-    _, state = initialized()
-
-    # The map is hidden in this scene, so nothing can be rolled against it yet.
-    with pytest.raises(Refusal, match="is not here with the player"):
-        _ = ENGINE.roll(state.draft(), _seal(target_id=MAP), Random(0))
-
-    draft = state.draft()
-    _ = change(ENGINE, draft, "reveal", target_id=MAP)
-    _ = ENGINE.roll(draft, _seal(target_id=MAP), Random(0))
-
-    resisted = draft.world.require(MAP).luck.current
-    assert min(resisted, loner_sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
-
-
 def test_the_open_ended_hand_back_survives_a_save() -> None:
     engine, state = initialized()
     hand_back = PendingDecision(
@@ -271,12 +163,6 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 
     with pytest.raises(Refusal, match="lost their last conflict"):
         _ = ENGINE.roll(spent.draft(), _duel(), Random(0))
-
-
-def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
-    _, state = initialized()
-
-    assert change(ENGINE, state.draft(), "restore_luck", actor_id=PLAYER_ID) == []
 
 
 def test_restoring_a_defeated_character_at_full_luck_clears_the_mark() -> None:

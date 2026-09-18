@@ -66,7 +66,6 @@ class Engine[W: World[Any], K: Pack](ABC):
     body: type[PackBody] = PackBody
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
-    # Derived by __init__ from the above.
     packs: PackSet[K]
     instructions: str
     look: Look
@@ -96,22 +95,22 @@ class Engine[W: World[Any], K: Pack](ABC):
 
     @tool
     def reveal(self, draft: Game[W], args: Reveal, _rng: Random) -> list[Fact]:
-        """A hidden entity here becomes known to the player."""
+        """Make a hidden entity here known to the player."""
         return draft.world.reveal_hidden(args.target_id)
 
     @tool
     def kill(self, draft: Game[W], args: Kill, _rng: Random) -> list[Fact]:
-        """Someone here dies."""
+        """Kill someone here."""
         return draft.world.kill(args.target_id)
 
     @tool
     def join_party(self, draft: Game[W], args: JoinParty, _rng: Random) -> list[Fact]:
-        """A character here starts travelling with the player."""
+        """Make a person here travel with the player."""
         return draft.world.join_party(args.target_id)
 
     @tool
     def leave_party(self, draft: Game[W], args: LeaveParty, _rng: Random) -> list[Fact]:
-        """A party member stops travelling with the player."""
+        """Make a party member stop travelling with the player."""
         return draft.world.leave_party(args.target_id)
 
     def install_pack(self, pack_id: Slug, pack: K) -> None:
@@ -229,13 +228,13 @@ class Engine[W: World[Any], K: Pack](ABC):
     def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> Game[W]:
         if scenario.engine != self.id:
             raise Refusal(
-                f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
-                f"which the {self.id!r} engine does not play"
+                f"{scenario_id!r} is authored for the {scenario.engine!r} rules. "
+                f"The {self.id!r} engine does not play them."
             )
         if character.engine != self.id:
             raise Refusal(
-                f"{character.id!r} is written for the {character.engine!r} rules, "
-                f"which the {self.id!r} engine does not play"
+                f"{character.id!r} is written for the {character.engine!r} rules. "
+                f"The {self.id!r} engine does not play them."
             )
         self.packs.require(scenario.pack_id)
         state = parse(
@@ -254,9 +253,8 @@ class Engine[W: World[Any], K: Pack](ABC):
         return self.accept(state)
 
     def player_as[S: Person](self, character: AnyCharacter, sheet: type[S]) -> S:
-        """The one check every engine's `player_of` makes: the player's sheet, of this kind."""
         if character.sheet.id != PLAYER_ID or not character.sheet.known:
-            raise Refusal("a character sheet is the player's: id 'player', known")
+            raise Refusal("a character sheet is the player's: the id is 'player', and it is known")
         if not isinstance(character.sheet, sheet):
             raise Refusal(f"{character.id!r} is not a {self.title} sheet")
         return deepcopy(character.sheet)
@@ -269,7 +267,7 @@ class Engine[W: World[Any], K: Pack](ABC):
         return self.build_character(name, brief, pack_id, picks)
 
     def validate(self, state: Game[W]) -> None:
-        """Refuse a state this engine cannot play; a family adds its check after `super()`."""
+        """A family adds its own check after `super()`."""
         if not state.log:
             raise Refusal(f"a {self.id!r} game has no chapter open")
         commission = state.commission
