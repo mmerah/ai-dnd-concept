@@ -1,8 +1,8 @@
 # Tabletop content structure: options
 
-Input for a future PLAN.md. Not scheduled. Facts about today's code were checked against the
-tree and by two adversarial reviews; anything marked *decide* is open. Option 2 (rename `packs`
-to `setting`, keep the list) was dropped: no simplification.
+Input for a future PLAN.md phase. Not scheduled. Facts about today's code were checked
+against the tree and by two adversarial reviews. Every decision is taken; the chosen design is
+option 1, one pack per character and per scenario.
 
 ## How real tables layer content
 
@@ -78,35 +78,37 @@ has no generic.
   one `PACK:` block each; `qa/s_create.py` picks AP01 on the multi-select and then picks SRD
   skills and gear (pooling, end to end); README and `docs/24XX.md` describe the list.
 
-## Option 1: one setting per character and per scenario
+## Option 1: one pack per character and per scenario
 
-One id, not a list. The SRD pack stays as the engine's rules kit and is offered as the "no
-setting" choice, so the field is never empty and Tunnel Goons and 24XX change nothing visible.
+One id, not a list. The word is "pack" everywhere: the field, the dropdown, the home page,
+the class, the folder. The SRD pack stays as the engine's rules kit and is offered as the
+"no pack" choice, so the field is never empty and Tunnel Goons and 24XX change nothing
+visible.
 
 ### Rule
 
-- A character is made for one setting. A scenario is written for one setting. A game plays the
-  scenario's setting.
-- The SRD pack is always read for rules-level tables. The chosen setting is read for setting
+- A character is made with one pack. A scenario is written with one pack. A game plays the
+  scenario's pack.
+- The SRD pack is always read for rules-level tables. The chosen pack is read for setting
   prose, names, rules, locations, seeds and cast. Every creation table is the SRD's entries
-  followed by the setting's; nothing pools two chosen packs. `setting="srd"` means no setting
+  followed by the chosen pack's; nothing pools two chosen packs. `pack="srd"` means no setting
   prose and no seeds, exactly as today.
-- Admission: `character.setting in (SRD_PACK, setting)`. A generic character travels; a
-  character made for a setting stays in it. This keeps today's subset behaviour for the one
-  case anyone uses.
+- Admission: `character.pack in (SRD_PACK, pack)`. A character made with the SRD alone plays
+  any scenario; a character made with a pack plays that pack's scenarios. This keeps today's
+  subset behaviour for the one case anyone uses.
 
-### Creation tables per engine (extend everywhere)
+### Creation tables per engine (SRD then pack, everywhere)
 
-| Engine | Table | SRD holds | A setting holds | Read as |
+| Engine | Table | SRD holds | A chosen pack holds | Read as |
 | --- | --- | --- | --- | --- |
-| Loner | concepts, skills, frailties, gear | 5 / 6 / 5 / 6, this repo's | 36 each (AP) or 6 to 36 (written) | SRD + setting |
+| Loner | concepts, skills, frailties, gear | 5 / 6 / 5 / 6, this repo's | 36 each (AP) or 6 to 36 (written) | SRD + pack |
 | 24XX | skills | 17 | none (`()` by shape) | rules-level, SRD always |
-| 24XX | specialties, origins | 6 / 3 | 1 to n (written; `min_length=1`) | SRD + setting |
+| 24XX | specialties, origins | 6 / 3 | 1 to n (written; `min_length=1`) | SRD + pack |
 | 24XX | starting_kit | 1 | none | rules-level |
-| Tunnel Goons | items (hint text) | 18 | 0 to n | SRD + setting |
+| Tunnel Goons | items (hint text) | 18 | 0 to n | SRD + pack |
 | Loner | twists | 6 + 6 | `None` | rules-level |
 
-`spends_luck`, `rules`: the setting's alone.
+`spends_luck`, `rules`: the chosen pack's alone.
 
 ### Model (`core/model.py`)
 
@@ -114,23 +116,23 @@ setting" choice, so the field is never empty and Tunnel Goons and 24XX change no
 class Scenario[P: BaseModel](Frozen):
     meta: ScenarioMeta
     engine: EngineId
-    setting: Slug  # a pack id; "srd" is the engine's rules kit, no setting prose
+    pack: Slug  # "srd" is the engine's rules kit, no setting prose
     source: str = ""
     payload: P
 
 class Character[P: BaseModel](Frozen):
     id: Slug
     engine: EngineId
-    setting: Slug
+    pack: Slug
     payload: P
 
 class Game[P: BaseModel](Mutable):
     ...
-    setting: Slug
+    pack: Slug
 ```
 
-Delete `Packs`, `_distinct_packs`. `CharacterHeader.packs` → `setting`; `CatalogEntry.packs`
-→ `setting`.
+Delete `Packs`, `_distinct_packs`. `CharacterHeader.packs` → `pack`; `CatalogEntry.packs`
+→ `pack`.
 
 ### Pack set (`engines/packs.py`)
 
@@ -144,18 +146,18 @@ class PackSet[K: Pack]:
 
     def srd(self) -> K: ...
 
-    def require(self, setting: Slug) -> K:
-        found = self.installed.get(setting)
+    def require(self, pack_id: Slug) -> K:
+        found = self.installed.get(pack_id)
         if found is None:
-            raise Refusal(f"setting {setting!r} is not installed for {self.engine!r}")
+            raise Refusal(f"pack {pack_id!r} is not installed for {self.engine!r}")
         return found
 
-    def settings(self) -> tuple[tuple[Slug, K], ...]:
-        return tuple(self.installed.items())
+    def options(self) -> tuple[DecisionOption, ...]:
+        return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.installed.items())
 
-    def guidance(self, setting: Slug, *, opening: bool) -> str: ...
-    def rules_section(self, setting: Slug) -> Sections: ...
-    def seeds(self, setting: Slug) -> tuple[str, ...]: ...
+    def guidance(self, pack_id: Slug, *, opening: bool) -> str: ...
+    def rules_section(self, pack_id: Slug) -> Sections: ...
+    def seeds(self, pack_id: Slug) -> tuple[str, ...]: ...
 ```
 
 Delete `MAX_SUPPLEMENTS`, `select`, `chosen`, `supplements`, `Pack.defined_ids` and its two
@@ -164,58 +166,55 @@ overrides, `check_addable` (a written pack must only not shadow a shipped id and
 ### Seam (`engines/seam.py`)
 
 ```python
-def setting_options(self) -> tuple[DecisionOption, ...]:
-    return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.settings())
-
-def admit(self, setting: Slug, character: AnyCharacter) -> None:
-    self.packs.require(setting)
-    if character.setting not in (SRD_PACK, setting):
+def admit(self, pack_id: Slug, character: AnyCharacter) -> None:
+    self.packs.require(pack_id)
+    if character.pack not in (SRD_PACK, pack_id):
         raise Refusal(
-            f"{character.id!r} was made for {character.setting!r}; "
-            f"this scenario plays {setting!r}"
+            f"{character.id!r} was made with {character.pack!r}; "
+            f"this scenario plays {pack_id!r}"
         )
 ```
 
-- `select_packs`, `supplement_options` go. `guidance(setting, *, opening)`.
-- `creation_steps(setting, picks)`, `create_character(name, brief, setting, picks)`,
-  `build_character(...)`, `sheet_character(name, sheet, setting)`, `build_scenario(meta,
-  setting, ...)`, `author(meta, source, setting, ...)`.
+- `select_packs`, `supplement_options` go; the create pages read `engine.packs.options()`.
+  `guidance(pack_id, *, opening)`.
+- `creation_steps(pack_id, picks)`, `create_character(name, brief, pack_id, picks)`,
+  `build_character(...)`, `sheet_character(name, sheet, pack_id)`, `build_scenario(meta,
+  pack_id, ...)`, `author(meta, source, pack_id, ...)`.
 - `validate`: drop the `SRD_PACK in state.packs` check. `restore`: `self.packs.require
-  (state.setting)`.
+  (state.pack)`.
 - `edited`, `author_pack`: unchanged.
 
 ### Engines
 
-- Loner: `pack = self.packs.require(setting)`; `skills = (*srd.skills, *pack.skills)` and the
-  same for concepts, frailties, gear; `spends_luck = pack.spends_luck`; `master_sections`
-  glossary reads the SRD and the setting. Twists stay `srd()`.
-- 24XX: `_offered(setting)` = SRD + setting; `write_sheet` and `SheetDraft.check` take that
+- Loner: `chosen = self.packs.require(pack_id)`; `skills = (*srd.skills, *chosen.skills)`
+  and the same for concepts, frailties, gear; `spends_luck = chosen.spends_luck`;
+  `master_sections` glossary reads the SRD and the chosen pack. Twists stay `srd()`.
+- 24XX: `_offered(pack_id)` = SRD + chosen; `write_sheet` and `SheetDraft.check` take that
   pair; `skills` and `starting_kit` stay `srd()`.
-- Tunnel Goons: `items` hint = SRD + setting.
-- Choosing `srd` as the setting reads the SRD once, not twice.
-- `SceneEngine`, `RoomEngine`: `rules_sections` → `rules_section`; `guidance(draft.setting, ...)`.
+- Tunnel Goons: `items` hint = SRD + chosen.
+- Choosing `srd` reads the SRD once, not twice.
+- `SceneEngine`, `RoomEngine`: `rules_sections` → `rules_section`; `guidance(draft.pack, ...)`.
 - Test engines `tests/support/fifth.py`, `sixth.py` (their `packs=` fixtures at lines 54 to 59
   and 91 to 96): same contract.
 
 ### UI
 
-- `create.py`: one `ui.select` (not `multiple`), label "Setting", default `"srd"` shown as the
-  SRD pack's name. `CharacterForm.choose_setting` resets picks; `ScenarioForm.
-  follow_character_id` sets the select to the character's setting. Delete `_packs_select`,
+- `create.py`: one `ui.select` (not `multiple`), label "Pack", default `"srd"` shown as the
+  SRD pack's name. `CharacterForm.choose_pack` resets picks; `ScenarioForm.
+  follow_character_id` sets the select to the character's pack. Delete `_packs_select`,
   `_selected_packs`, `_offered`, `choose_packs`, `follow_supplements`; keep `_drop_stale`.
   `roll_seed` reads one pack.
-- Home: `_packs` lists "Settings"; `PackEntry` unchanged. Pack page: unchanged.
-- Player-facing word: "setting". *decide*: rename `pack` in code and file names too.
-  Recommendation: no; a setting book is a pack of tables, and the rename buys nothing.
+- Home: `_packs` unchanged; `PackEntry` unchanged. Pack page: unchanged.
+- The word "setting" is never shown to the player for a pack: it is the app's Settings page.
 
 ### Content, docs, qa
 
 - `scenarios/*/world.json` (3), `characters/kael/*.json` (3): `"packs": ["srd"]` →
-  `"setting": "srd"`.
+  `"pack": "srd"`.
 - Saves: stale, skipped with a warning (accepted rule).
 - Shipped pack JSON and `scripts/srd_packs.py`: unchanged.
 - Goldens (three `worldsmith.txt`): unchanged text expected; regenerate and diff.
-- `qa/s_create.py`: the `loner-supplements` block picks AP01 on a single "Setting" select;
+- `qa/s_create.py`: the `loner-supplements` block picks AP01 on a single "Pack" select;
   its SRD picks ("Quiet Hands", "Pry Bar") still exist under extend; the shot is retaken.
 - README: the pack paragraph and "Pick it on a character and on a scenario"; `docs/24XX.md`
   lines 36 to 38 ("selected on the character and on the scenario").
@@ -225,15 +224,16 @@ def admit(self, setting: Slug, character: AnyCharacter) -> None:
 - `tests/engines/test_packs.py`: drop overlap, cap and `select` cases; add `require` refusal.
 - `tests/engines/test_integrity_boundaries.py` (lines 126, 159, 167) and
   `tests/engines/test_scene_bar.py` (338, 345: `..._no_packs_is_refused...`): the duplicate,
-  missing and uninstalled cases become one uninstalled-setting case.
-- `tests/engines/test_seam.py`, `test_rooms.py`: `admit` with `srd`, same, and other setting.
+  missing and uninstalled cases become one uninstalled-pack case.
+- `tests/engines/test_seam.py`, `test_rooms.py`: `admit` with `srd`, the same pack, and
+  another pack.
 - `tests/loner3e/test_create.py`, `tests/twentyfourxx/test_create.py`, `tests/tunnelgoons/
-  test_engine.py`: one setting; the options are the SRD's then the setting's.
-- `tests/loner3e/test_tools.py` (163, 174): `draft.setting = "ap01-fantasy"` for `spend_luck`.
+  test_engine.py`: one pack; the options are the SRD's then the chosen pack's.
+- `tests/loner3e/test_tools.py` (163, 174): `draft.pack = "ap01-fantasy"` for `spend_luck`.
 - `tests/loner3e/test_prompt_budget.py`: worst case is the single largest AP file; the
   `MAX_SUPPLEMENTS` import goes.
 - `tests/scripts/test_srd_packs.py` (13, 156): drop the `defined_ids` collision assertion.
-- `tests/ui/test_create.py`: single select; character setting follows into the scenario form.
+- `tests/ui/test_create.py`: single select; the character's pack follows into the scenario form.
 - `tests/app/test_launcher.py`, `test_pack_authoring.py`, `test_pack_editing.py`,
   `test_master_tools.py` (257), `tests/twentyfourxx/test_worldsmith.py` (11), `tests/support/
   tunnelgoons.py` (119), `twentyfourxx.py` (53): field rename.
@@ -250,223 +250,51 @@ Losses:
 
 - Stacking two adventure packs (fantasy + horror). No shipped content does it; a written pack
   is the way to "dark fantasy".
-- The allowed-sources list as a concept. A written 24XX setting and a second written 24XX
-  setting can no longer both feed one character.
+- The allowed-sources list as a concept. Two written 24XX packs can no longer both feed one
+  character.
 
 Unchanged problems:
 
-- Editing a written setting still changes scenarios and characters that name it. Deleting one
-  still breaks their saves. As today. A drift pin (a hash of the pack on scenario, character
-  and save, refused on mismatch, half a day) or option 3 would fix it; neither is chosen.
+- Editing a written pack still changes scenarios and characters that name it. Deleting one
+  still breaks their saves. As today; see "Considered and rejected".
 
 ### Contract for a future engine
 
 1. Ship `packs/srd.json`: rules-level tables and, where the game has one, a starter creation
    set. No setting prose. A hack is a new engine, not a pack.
 2. Rules-level fields come from `self.packs.srd()`. Setting prose, names, rules, locations,
-   seeds and cast come from `self.packs.require(setting)`. A creation table is the SRD's
-   entries followed by the setting's. A written pack leaves rules-level fields
+   seeds and cast come from `self.packs.require(pack_id)`. A creation table is the SRD's
+   entries followed by the chosen pack's. A written pack leaves rules-level fields
    empty or `None` (today: Loner twists `None`, 24XX `skills` `()`).
 3. Never pool two chosen packs.
 
-Shapes checked against this contract: a D&D-like (classes in the SRD, a setting adds
+Shapes checked against this contract: a D&D-like (classes in the SRD, a pack adds
 subclasses, races and backgrounds), PbtA (playbooks
-in the SRD, a setting extends them), a game with no creation tables (SRD ships tables `()`,
-`creation_steps` ignores the setting), a game whose setting is its rules (Mothership: the SRD
-pack carries the setting prose too, and the engine offers no other setting).
+in the SRD, a pack adds more), a game with no creation tables (SRD ships tables `()`,
+`creation_steps` ignores the pack), a game whose setting is its rules (Mothership: the SRD
+pack carries the setting prose too, and the engine ships no other pack).
 
 ### Estimate
 
 One day. 20 source files, 25 test files, one qa script, two docs.
 
-## Option 3: a campaign embeds its setting (not chosen; kept as the later shape)
+## Considered and rejected
 
-The real-life shape: a table starts a campaign in one setting with one party, then plays
-adventures inside it. The campaign holds a *copy* of the setting, so a sourcebook edit or
-deletion never reaches a game in play. Includes option 1 (one setting) and adds layer 4.
-
-### Rule
-
-- A campaign is made once from an installed pack: the campaign folder holds the copy.
-- A character is made inside a campaign, from the copy's tables.
-- A game is one campaign, one scenario, one character.
-- The installed packs (shipped and written) are templates. The pack page edits templates only.
-- Scenarios, *decide*: (a) written inside a campaign, under its folder; (b) stay top-level,
-  each naming the setting it was written for, and any campaign of that setting (or of `srd`)
-  may run it. Real modules are portable (Tomb of Horrors runs in any world), which is (b).
-  Recommendation: (b). Then `admit` survives as `scenario.setting in (SRD_PACK, campaign
-  setting id)`, and the copy is the campaign's, not the scenario's.
-
-### Files (with (b))
-
-```
-campaigns/<campaign>/
-  campaign.json                 # meta, engine, the setting copy (a full Pack)
-  characters/<id>/character.json
-  characters/<id>/icons/        # runtime.py:472 reads a per-character icons dir
-scenarios/<id>/world.json       # as option 1: setting id, no copy
-saves/<campaign>--<scenario>--<character>.json
-```
-
-`characters/<id>/<engine>.json` today lets one person play three engines from one folder. A
-campaign character is one engine's by construction. Kael becomes three characters in three
-shipped campaigns. Accept: the cross-engine folder was a filing trick, not a rule of play.
-
-### Model (`core/model.py`)
-
-```python
-class CampaignMeta(Frozen):
-    title: str
-    brief: str = ""
-
-class Campaign[K: BaseModel](Frozen):
-    """`campaigns/<id>/campaign.json`: the setting this table plays, copied at creation."""
-    meta: CampaignMeta
-    engine: EngineId
-    setting_id: Slug  # the template it was copied from; the scenario admission reads it
-    setting: K
-
-class Character[P: BaseModel](Frozen):
-    id: Slug
-    engine: EngineId
-    payload: P
-
-class Game[P: BaseModel](Mutable):
-    campaign_id: Slug
-    scenario_id: Slug
-    character_id: Slug
-    ...
-```
-
-`Campaign[K: BaseModel]` in `core` is the same shape as `Scenario[P: BaseModel]`: core still
-knows no world shape, and `tests/core/test_package_boundary.py` holds.
-
-### How the engine reaches the copy during play (*decide*, one choice)
-
-Today `self.packs.chosen(draft.packs)` is read inside tools and requests: 24XX `write_sheet`,
-Loner `spend_luck`, `master_sections`, scene and room `guidance`. Three ways:
-
-1. `Game` gets `setting: K`. `Game[P]` → `Game[P, K]`, which ripples into `AnyGame`,
-   `MasterTool[G: Game[Any]]` (`core/tools.py`), `Request[G]`, `Engine.game`, `tools`,
-   `requests`, every `*Game` alias including `FifthGame`/`SixthGame`. A Loner AP is 38 KB
-   (`ap01-fantasy.json`) against a 3.6 KB scenario: every turn `FileStore.write` writes it,
-   `Game.draft()` deep-copies it, `Game.commit()` re-validates it.
-2. Tools and requests receive the pack beside the draft. `MasterTool.call` and `Request.write`
-   in `core` grow a parameter whose only meaning is a `Pack`: a layering smell.
-3. The engine holds an in-memory `campaigns: dict[Slug, K]`, filled by the runtime when a
-   session opens (as `install_pack` fills `packs.written` today), and reads
-   `self.campaign_pack(draft.campaign_id)`. Saves, `Game`, and every tool signature stay as
-   they are. The engine already owns mutable installed state, so this adds no new kind of thing.
-
-Recommendation: 3. Drift check: `Campaign` gets a `check_drift(other)` like `ScenarioMeta`'s,
-comparing the copy; the runtime runs it when a session opens against the campaign file. The
-launcher does not compare copies; it reads each campaign file once for the catalog.
-
-### Engine seam
-
-- `creation_steps(pack, picks)`, `create_character(name, brief, pack, picks)`, `author(meta,
-  source, pack, ...)`, `guidance(pack, *, opening)`. Replace or extend per the option 1 table,
-  with the SRD still from `self.packs.srd()`.
-- `admit(scenario, campaign)`: engines equal, `scenario.setting in (SRD_PACK,
-  campaign.setting_id)`.
-- `restore`: no pack lookup. `validate`: no pack check.
-- `PackSet` shrinks to `shipped`, `written`, `installed`, `srd()`, `require(id)`.
-
-### Runtime, library, wiring
-
-- `Settings.campaigns_dir` (`config.py`), read by `app` and `ui` only. `qa/server.py:42`
-  copies `("scenarios", "characters")` into its work dir and builds `Settings` with four dirs:
-  add `campaigns`.
-- `Library.campaigns: Path`; `read_campaigns(models)` through `routed()` like `read_scenario`;
-  `read_campaign`, `write_campaign`; character readers take a campaign id.
-- `Runtime.new_campaign(engine_id, meta, pack_id)`: copies `engine.packs.require(pack_id)`.
-  *decide*: also a campaign from a premise, the worldsmith writing the setting at once (today's
-  New pack flow, landing in the campaign) with a "save as template" toggle. Recommendation:
-  yes; otherwise one act is two pages.
-- `new_scenario(engine_id, meta, document, setting)` as option 1. *decide*: the character
-  select stays on the scenario page (today `check` runs `engine.begin` with a character to
-  prove the opening starts). Recommendation: keep it, listing characters of campaigns whose
-  setting admits this scenario.
-- `new_character(campaign_id, name, brief, picks)`.
-- `LaunchTarget(campaign_id, scenario_id, character_id)`; `slug` is three parts;
-  `SAVE_SLUG_PATTERN` unchanged; the comment above it in `core/io.py` ("Two content ids joined
-  by `--`") changes. `GAME_ROUTE` gains a segment (`ui/app.py::_game`, `ui/widgets.py::
-  game_path`). `FileStore.media_dir` unchanged. `runtime.py:472` icon roots: scenario folder
-  and the campaign's character folder.
-- `LauncherCatalog`: campaigns, each with its characters; scenarios top-level with their
-  setting; `_save_option` resolves titles by `(campaign_id, character_id)` and checks the
-  scenario's setting against the campaign's.
-
-### UI
-
-- Home: "Campaigns" (each with its party) beside "Scenarios"; pick a campaign, then a scenario
-  it admits, then one of its characters. "New campaign" button. Settings list stays, as
-  templates.
-- New campaign page: rules, title, setting select (or premise / document for a written one).
-- New character page: campaign select first; no setting select.
-- New scenario page: as option 1.
-- Pack page: unchanged. A campaign page showing the copy read-only: later, when asked.
-
-### Content, docs, qa
-
-- `characters/kael/*` become three shipped campaigns, one per engine, each with an `srd` copy
-  and one Kael (icons move with them). `scenarios/` stays, gaining `setting`.
-- `.gitignore`: `/packs/` stays. Saves: stale.
-- `qa/`: `s_home.py`, `s_create.py`, `server.py`, `run_all.sh` shots that drive the home page.
-- README: campaign paragraph; the characters line; `docs/24XX.md` as option 1.
-
-### Tests
-
-- Everything under option 1, plus: `Library` campaign reads and writes; three-level
-  `LauncherCatalog`; campaign `check_drift`; three-part save slug and route; the copy is
-  byte-equal to the template; a template edit after the copy does not reach the campaign (the
-  test that proves the option); `admit` of a scenario against a campaign.
-- `fifth.py`, `sixth.py`: a campaign fixture each.
-
-### Feature impact
-
-Gains:
-
-- Editing or deleting a template never touches a game in play. The pack page becomes safe.
-- The home page reads like a table: my campaigns, each with its party, and the adventures
-  they can run.
-- Room for a party of several characters and an order of scenarios without moving files again.
-
-Losses:
-
-- A character no longer plays across engines from one folder.
-- One more page and one more step before play: campaign, then character, then scenario. The
-  shipped campaigns hide it for a first run.
-- A written pack is copied, so a fix to it does not reach old campaigns. That is the point,
-  but a player who wants the fix re-creates the campaign.
-
-### Contract for a future engine
-
-As option 1, with "the pack the runtime installed for this campaign" in place of
-`require(setting)` during play. An engine never looks a setting up by id after creation.
-
-### Estimate
-
-Three to four days on top of option 1's day: `Library`, `LauncherCatalog`, home page, three
-create pages, route, content move, `qa/`.
-
-## Sequencing
-
-- Option 1 is the work: one phase, one round of stale saves.
-- Option 3 stays on file for when a party of several characters or an ordered series of
-  adventures is wanted. It contains option 1, so nothing done now is undone.
+- **Option 2, rename `packs` and keep the list.** No simplification.
+- **Option 3, a campaign folder that embeds a copy of the pack, with its own characters.**
+  Its one unique gain is the copy, which only protects a running game from an edit or a delete
+  of a written pack. A party of several characters or an ordered series of adventures would
+  need it, and neither is a feature. A scenario already embeds its cast, arc and opening, so a
+  well-written scenario is self-contained without it. Three to four days for a home page
+  shaped like a table. The full write-up is in git history (commit cb5bcbc).
+- **A drift pin** (a hash of the pack on scenario, character and save, refused on mismatch).
+  Half a day. Not taken: editing a written pack under a running game is the player's own act,
+  and today's behaviour (the tables change in play) is accepted.
 
 ## Decided
 
-- Option 1 alone. No drift pin, no campaign layer now.
-- Every creation table is the SRD's entries followed by the setting's, in every engine.
-- Admission: a character made for `srd` plays any scenario; one made for a setting plays that
-  setting only.
-
-## Decisions to take before a PLAN.md
-
-1. Rename `pack` in code, or only in player-facing words.
-2. Under 3: scenarios top-level (portable) or under the campaign.
-3. Under 3: how the engine reaches the copy (recommendation: an in-memory map on the engine).
-4. Under 3: a campaign written from a premise on the campaign page, or only from a template.
-5. Under 3: the character select stays on the scenario page.
+- Option 1 alone. No drift pin, no campaign layer, now or later.
+- The word is "pack" everywhere; "setting" is the app's Settings page and a pack's prose field.
+- Every creation table is the SRD's entries followed by the chosen pack's, in every engine.
+- Admission: a character made with `srd` plays any scenario; one made with a pack plays that
+  pack's scenarios.
