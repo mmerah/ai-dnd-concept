@@ -88,22 +88,22 @@ setting" choice, so the field is never empty and Tunnel Goons and 24XX change no
 - A character is made for one setting. A scenario is written for one setting. A game plays the
   scenario's setting.
 - The SRD pack is always read for rules-level tables. The chosen setting is read for setting
-  prose, names, rules, locations, seeds and cast. For each creation table the engine declares
-  in code whether the setting *replaces* the SRD's entries or *extends* them; nothing pools two
-  chosen packs. `setting="srd"` means no setting prose and no seeds, exactly as today.
+  prose, names, rules, locations, seeds and cast. Every creation table is the SRD's entries
+  followed by the setting's; nothing pools two chosen packs. `setting="srd"` means no setting
+  prose and no seeds, exactly as today.
 - Admission: `character.setting in (SRD_PACK, setting)`. A generic character travels; a
   character made for a setting stays in it. This keeps today's subset behaviour for the one
   case anyone uses.
 
-### Creation tables per engine, replace or extend (*decide*, with counts)
+### Creation tables per engine (extend everywhere)
 
-| Engine | Table | SRD holds | A setting holds | Recommendation |
+| Engine | Table | SRD holds | A setting holds | Read as |
 | --- | --- | --- | --- | --- |
-| Loner | concepts, skills, frailties, gear | 5 / 6 / 5 / 6, this repo's | 36 each (AP) or 6 to 36 (written) | replace: the printed game has no generic list |
+| Loner | concepts, skills, frailties, gear | 5 / 6 / 5 / 6, this repo's | 36 each (AP) or 6 to 36 (written) | SRD + setting |
 | 24XX | skills | 17 | none (`()` by shape) | rules-level, SRD always |
-| 24XX | specialties, origins | 6 / 3 | 1 to n (written; `min_length=1`) | extend: a written setting with one specialty is a poor create page alone |
+| 24XX | specialties, origins | 6 / 3 | 1 to n (written; `min_length=1`) | SRD + setting |
 | 24XX | starting_kit | 1 | none | rules-level |
-| Tunnel Goons | items (hint text) | 18 | 0 to n | extend |
+| Tunnel Goons | items (hint text) | 18 | 0 to n | SRD + setting |
 | Loner | twists | 6 + 6 | `None` | rules-level |
 
 `spends_luck`, `rules`: the setting's alone.
@@ -186,12 +186,13 @@ def admit(self, setting: Slug, character: AnyCharacter) -> None:
 
 ### Engines
 
-- Loner: `pack = self.packs.require(setting)`; tables per the table above; `spends_luck =
-  pack.spends_luck`; `master_sections` glossary reads the SRD and the setting. Twists stay
-  `srd()`.
-- 24XX: `_offered(setting)` = SRD + setting (extend); `write_sheet` and `SheetDraft.check`
-  take that pair; `skills` and `starting_kit` stay `srd()`.
+- Loner: `pack = self.packs.require(setting)`; `skills = (*srd.skills, *pack.skills)` and the
+  same for concepts, frailties, gear; `spends_luck = pack.spends_luck`; `master_sections`
+  glossary reads the SRD and the setting. Twists stay `srd()`.
+- 24XX: `_offered(setting)` = SRD + setting; `write_sheet` and `SheetDraft.check` take that
+  pair; `skills` and `starting_kit` stay `srd()`.
 - Tunnel Goons: `items` hint = SRD + setting.
+- Choosing `srd` as the setting reads the SRD once, not twice.
 - `SceneEngine`, `RoomEngine`: `rules_sections` → `rules_section`; `guidance(draft.setting, ...)`.
 - Test engines `tests/support/fifth.py`, `sixth.py` (their `packs=` fixtures at lines 54 to 59
   and 91 to 96): same contract.
@@ -214,9 +215,8 @@ def admit(self, setting: Slug, character: AnyCharacter) -> None:
 - Saves: stale, skipped with a warning (accepted rule).
 - Shipped pack JSON and `scripts/srd_packs.py`: unchanged.
 - Goldens (three `worldsmith.txt`): unchanged text expected; regenerate and diff.
-- `qa/s_create.py`: the `loner-supplements` block picks AP01 on a single "Setting" select and
-  then AP01's own skills and gear (the SRD's "Quiet Hands", "Pry Bar" no longer exist there
-  under replace); the `loner-supplements` shot is retaken.
+- `qa/s_create.py`: the `loner-supplements` block picks AP01 on a single "Setting" select;
+  its SRD picks ("Quiet Hands", "Pry Bar") still exist under extend; the shot is retaken.
 - README: the pack paragraph and "Pick it on a character and on a scenario"; `docs/24XX.md`
   lines 36 to 38 ("selected on the character and on the scenario").
 
@@ -228,7 +228,7 @@ def admit(self, setting: Slug, character: AnyCharacter) -> None:
   missing and uninstalled cases become one uninstalled-setting case.
 - `tests/engines/test_seam.py`, `test_rooms.py`: `admit` with `srd`, same, and other setting.
 - `tests/loner3e/test_create.py`, `tests/twentyfourxx/test_create.py`, `tests/tunnelgoons/
-  test_engine.py`: replace or extend per the table.
+  test_engine.py`: one setting; the options are the SRD's then the setting's.
 - `tests/loner3e/test_tools.py` (163, 174): `draft.setting = "ap01-fantasy"` for `spend_luck`.
 - `tests/loner3e/test_prompt_budget.py`: worst case is the single largest AP file; the
   `MAX_SUPPLEMENTS` import goes.
@@ -243,7 +243,6 @@ def admit(self, setting: Slug, character: AnyCharacter) -> None:
 Gains:
 
 - One select on both create pages. No cap, no overlap refusal, no subset refusal to explain.
-- A fantasy Loner character picks from the fantasy tables (replace), as the printed game.
 - The worldsmith prompt carries one `PACK:` block. Smaller, on point.
 - `PackSet` loses half its methods; `create.py` loses five helpers.
 
@@ -253,44 +252,34 @@ Losses:
   is the way to "dark fantasy".
 - The allowed-sources list as a concept. A written 24XX setting and a second written 24XX
   setting can no longer both feed one character.
-- Under replace, Loner's SRD starter tables vanish once a setting is chosen (5/6/5/6 entries).
-  Under extend for 24XX and Tunnel Goons nothing vanishes.
 
 Unchanged problems:
 
 - Editing a written setting still changes scenarios and characters that name it. Deleting one
-  still breaks their saves. See the drift pin below, or option 3.
-
-### Add-on 1b: a drift pin
-
-Store a content hash of the pack on `Scenario`, `Character` and `Game` beside `setting`
-(`setting_hash: str`), computed from the pack's JSON dump. `restore` and `begin` compare it to
-the installed pack's hash and refuse with "the setting changed since this was written". Same
-mechanism as `ScenarioMeta.check_drift`. Half a day. Buys option 3's headline gain without a
-campaign layer. *decide*: refuse, or warn and play on. Recommendation: refuse; the launcher
-already skips a drifted save with a warning.
+  still breaks their saves. As today. A drift pin (a hash of the pack on scenario, character
+  and save, refused on mismatch, half a day) or option 3 would fix it; neither is chosen.
 
 ### Contract for a future engine
 
 1. Ship `packs/srd.json`: rules-level tables and, where the game has one, a starter creation
    set. No setting prose. A hack is a new engine, not a pack.
 2. Rules-level fields come from `self.packs.srd()`. Setting prose, names, rules, locations,
-   seeds and cast come from `self.packs.require(setting)`. Each creation table is read as
-   replace or extend, decided in the engine's code. A written pack leaves rules-level fields
+   seeds and cast come from `self.packs.require(setting)`. A creation table is the SRD's
+   entries followed by the setting's. A written pack leaves rules-level fields
    empty or `None` (today: Loner twists `None`, 24XX `skills` `()`).
 3. Never pool two chosen packs.
 
-Shapes checked against this contract: a D&D-like (classes in the SRD, subclasses extend; a
-setting adds races and backgrounds: replace or extend as the engine decides), PbtA (playbooks
+Shapes checked against this contract: a D&D-like (classes in the SRD, a setting adds
+subclasses, races and backgrounds), PbtA (playbooks
 in the SRD, a setting extends them), a game with no creation tables (SRD ships tables `()`,
 `creation_steps` ignores the setting), a game whose setting is its rules (Mothership: the SRD
 pack carries the setting prose too, and the engine offers no other setting).
 
 ### Estimate
 
-One day, plus half a day for 1b. 20 source files, 25 test files, one qa script, two docs.
+One day. 20 source files, 25 test files, one qa script, two docs.
 
-## Option 3: a campaign embeds its setting
+## Option 3: a campaign embeds its setting (not chosen; kept as the later shape)
 
 The real-life shape: a table starts a campaign in one setting with one party, then plays
 adventures inside it. The campaign holds a *copy* of the setting, so a sourcebook edit or
@@ -463,20 +452,21 @@ create pages, route, content move, `qa/`.
 
 ## Sequencing
 
-- Option 1 alone is one step and a full stop. 1 + 1b covers drift for half a day more.
-- Option 3 contains option 1. Doing 1 first costs one round of stale saves and, if 1b was
-  done, a hash field that option 3 removes again. Doing 3 straight costs one bigger phase.
-- Recommendation: 1 + 1b first, ship, play a few games, then 3 if the campaign shape (a party,
-  an order of adventures) is actually wanted; drift alone no longer justifies it.
+- Option 1 is the work: one phase, one round of stale saves.
+- Option 3 stays on file for when a party of several characters or an ordered series of
+  adventures is wanted. It contains option 1, so nothing done now is undone.
+
+## Decided
+
+- Option 1 alone. No drift pin, no campaign layer now.
+- Every creation table is the SRD's entries followed by the setting's, in every engine.
+- Admission: a character made for `srd` plays any scenario; one made for a setting plays that
+  setting only.
 
 ## Decisions to take before a PLAN.md
 
-1. Option 1, 1 + 1b, or 1 then 3.
-2. Replace or extend per creation table (the table under option 1).
-3. Admission `in (srd, setting)` for every engine, or plain equality.
-4. Rename `pack` in code, or only in player-facing words.
-5. Under 1b: refuse on drift, or warn.
-6. Under 3: scenarios top-level (portable) or under the campaign.
-7. Under 3: how the engine reaches the copy (recommendation: an in-memory map on the engine).
-8. Under 3: a campaign written from a premise on the campaign page, or only from a template.
-9. Under 3: the character select stays on the scenario page.
+1. Rename `pack` in code, or only in player-facing words.
+2. Under 3: scenarios top-level (portable) or under the campaign.
+3. Under 3: how the engine reaches the copy (recommendation: an in-memory map on the engine).
+4. Under 3: a campaign written from a premise on the campaign page, or only from a template.
+5. Under 3: the character select stays on the scenario page.
