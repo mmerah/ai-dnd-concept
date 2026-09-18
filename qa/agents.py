@@ -27,7 +27,7 @@ from aidm.app.runtime import Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
-from aidm.turn.run import Tools
+from aidm.turn import Tools
 
 LOGGER = logging.getLogger("qa.agents")
 

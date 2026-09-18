@@ -208,6 +208,13 @@ def test_a_proposal_is_stripped_so_accept_plays_what_the_composer_would() -> Non
     assert Interjection(lines=(), proposal="  ").proposal == ""
 
 
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_the_player_view_carries_the_scenarios_premise(engine_id: EngineId) -> None:
+    engine, state = game(engine_id)
+
+    assert engine.player_view(state).premise == state.scenario.premise
+
+
 def test_the_player_view_panels_carry_icon_ids_for_who_else_is_here() -> None:
     engine, state = initialized()
 

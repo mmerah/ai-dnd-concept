@@ -1,13 +1,14 @@
 import logging
 from asyncio import CancelledError, Task, create_task, gather, to_thread
-from collections.abc import AsyncGenerator, Mapping
+from collections.abc import AsyncGenerator, Coroutine, Iterable, Mapping
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
+from typing import Any
 
-from aidm.app.launch import LaunchTarget, check_resumes
-from aidm.app.media import ICON_DIR, Illustrator
+from aidm.app.launch import LauncherCatalog, LaunchTarget, check_resumes
+from aidm.app.present import ICON_DIR, Presenter
 from aidm.app.providers import close_client
 from aidm.app.roles import (
     OPENING_NARRATION,
@@ -17,7 +18,6 @@ from aidm.app.roles import (
     worldsmith_answer,
 )
 from aidm.app.spawn import RoleRunner, Spawner
-from aidm.app.speech import Reader
 from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact
@@ -29,7 +29,7 @@ from aidm.core.views import Chattiness, PlayerView
 from aidm.engines.engine import AnyEngine
 from aidm.engines.packs import SRD_PACK
 from aidm.engines.registry import build_engines
-from aidm.turn.run import NO_TURN, RESTART, Turn
+from aidm.turn import NO_TURN, RESTART, Turn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -77,13 +77,12 @@ class GameService:
     store: FileStore
     state: AnyGame
     gate: "Gate" = field(repr=False, compare=False)
-    media: Illustrator
-    reader: Reader
+    presenter: Presenter
     interjections: bool = True
     meanwhile: bool = True
     rng: Random = field(default_factory=Random)
     chatter: Random = field(default_factory=Random)
-    phase: Role | None = None
+    working_role: Role | None = None
     # The player's words for a write that opens no turn; the page shows them as their bubble.
     intent: str = ""
     turn: Turn | None = None
@@ -96,36 +95,32 @@ class GameService:
         return self.target.slug
 
     @property
-    def busy(self) -> bool:
-        return self.phase is not None
-
-    @property
-    def presents(self) -> bool:
-        return self.media.config.enabled or self.reader.config.enabled
-
-    @property
     def speaking(self) -> bool:
         return self._speaking is not None and not self._speaking.done()
 
     @property
     def unopened(self) -> bool:
-        return not self.busy and not self.state.exchanges()
+        return self.working_role is None and not self.state.exchanges()
+
+    @asynccontextmanager
+    async def working(self, role: Role) -> AsyncGenerator[None]:
+        self.working_role = role
+        try:
+            yield
+        finally:
+            self.working_role = None
 
     async def open(self) -> None:
         """A failed narrator saves nothing: the premise is what the player reads."""
         # A second tab's timer must not run the page reset over an opening already in flight.
         if not self.unopened:
             return
-        async with self.gate.admit(self):
-            self.phase = "narrator"
-            try:
-                draft = self.state.draft()
-                lines = await self._narrated(draft, (), OPENING_NARRATION)
-                if lines:
-                    self.save(self.engine.close(draft, lines, (), mark="opening"))
-                self._present()
-            finally:
-                self.phase = None
+        async with self.gate.admit(self), self.working("narrator"):
+            draft = self.state.draft()
+            lines = await self._narrated(draft, (), OPENING_NARRATION)
+            if lines:
+                self.save(self.engine.close(draft, lines, (), mark="opening"))
+            self.present()
 
     async def play(self, answer: Answer) -> None:
         async with self.gate.admit(self):
@@ -155,23 +150,24 @@ class GameService:
     async def _turn(self, answer: Answer, state: AnyGame) -> None:
         self.hush()
         turn = Turn.begin(self.engine, state, answer, self.rng)
-        self.turn, self.phase = turn, "master"
+        self.turn = turn
         try:
-            if turn.played:
-                await run_master(self.spawner, turn)
+            async with self.working("master"):
+                if turn.played:
+                    await run_master(self.spawner, turn)
             lines: tuple[SpokenLine, ...] = ()
             if turn.narrates:
-                self.phase = "narrator"
-                lines = await self._narrated(
-                    turn.draft, tuple(turn.facts), turn.words, landed=turn.landed
-                )
+                async with self.working("narrator"):
+                    lines = await self._narrated(
+                        turn.draft, tuple(turn.facts), turn.words, landed=turn.landed
+                    )
             state = turn.finish(lines, enabled=self.meanwhile)
         finally:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
-            self.turn, self.phase = None, None
+            self.turn = None
         self.save(state)
         self.rng.setstate(turn.rng.getstate())
-        self._present()
+        self.present()
         await self._write_commission(words="", mark="story")
         if (
             self.interjections
@@ -205,7 +201,7 @@ class GameService:
         except Refusal as failed:
             LOGGER.warning("the party did not speak: %s", failed)
             return
-        if self.turn is not None or self.phase is not None or self.state is not before:
+        if self.turn is not None or self.working_role is not None or self.state is not before:
             LOGGER.info("%s's interjection came after the turn moved on; dropped", member.name)
             return
         if not lines:
@@ -213,7 +209,7 @@ class GameService:
         self.save(
             self.engine.close(self.state.draft(), lines, (), mark="interjection", proposal=proposal)
         )
-        self.speak(self._newest())
+        self._launch(self.presenter.speak(self._newest()))
 
     async def _write_commission(self, *, words: str, mark: Mark) -> bool:
         commission = self.state.commission
@@ -224,14 +220,17 @@ class GameService:
         if self.engine.ending(self.state) is not None:
             self.save(self.engine.accept(draft))
             return False
-        self.phase, grown = "worldsmith", True
+        grown = True
         try:
-            written = await self.engine.advance(draft, commission, worldsmith_answer(self.spawner))
+            async with self.working("worldsmith"):
+                written = await self.engine.advance(
+                    draft, commission, worldsmith_answer(self.spawner)
+                )
             if written.narrator_prompt is None:
                 landed = self.engine.accept(draft)
             else:
-                self.phase = "narrator"
-                lines = await self._narrated(draft, written.facts, written.narrator_prompt)
+                async with self.working("narrator"):
+                    lines = await self._narrated(draft, written.facts, written.narrator_prompt)
                 landed = self.engine.close(draft, lines, written.facts, words=words, mark=mark)
         except Refusal as failed:
             LOGGER.warning("the world did not grow: %s", failed)
@@ -240,10 +239,8 @@ class GameService:
             failure_fact = self.engine.operations()[commission.operation].failure_fact
             landed = self.engine.close(draft, (), (failure_fact,), words=words, mark=mark)
             grown = False
-        finally:
-            self.phase = None
         self.save(landed)
-        self._present()
+        self.present()
         return grown
 
     async def _narrated(
@@ -258,38 +255,26 @@ class GameService:
             LOGGER.warning("the turn went unnarrated: %s", failed)
             return ()
 
-    def _present(self) -> None:
-        newest = self._newest()
-        self.illustrate("" if newest is None else newest.narration())
-        self.speak(newest)
+    def present(self, *, spoken: bool = True) -> None:
+        """`spoken=False` is the page build: a cached clip never autoplays on a load."""
+        if not self.presenter.enabled:
+            return
+        view = self.engine.narrator_view(self.state)
+        newest = self._newest() if spoken else None
+        self._launch(self.presenter.present(view, self.player_view().player, newest))
 
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
 
     def scene_art(self) -> Path | None:
-        return self.media.scene_art(self.engine.narrator_view(self.state))
+        return self.presenter.illustrator.scene_art(self.engine.narrator_view(self.state))
 
     def icon(self, entity_id: Slug) -> Path | None:
-        return self.media.icon(entity_id)
+        return self.presenter.illustrator.icon(entity_id)
 
     def newest_clip(self) -> Path | None:
         newest = self._newest()
-        return None if newest is None else self.reader.clip(newest)
-
-    def illustrate(self, narration: str = "") -> None:
-        if not self.media.config.enabled:
-            return
-        view = self.engine.narrator_view(self.state)
-        task = create_task(self.media.illustrate(view, self.player_view().player, narration))
-        self.tasks.retain(task)
-
-    def speak(self, newest: Exchange | None) -> None:
-        if newest is not None:
-            self.tasks.retain(create_task(self.reader.read(newest)))
-
-    def _newest(self) -> Exchange | None:
-        history = self.state.exchanges()
-        return history[-1] if history else None
+        return None if newest is None else self.presenter.reader.clip(newest)
 
     async def close(self) -> None:
         self.hush()
@@ -305,6 +290,14 @@ class GameService:
     def save(self, state: AnyGame) -> None:
         self.store.write(self.slug, state)
         self.state = state
+
+    def _newest(self) -> Exchange | None:
+        history = self.state.exchanges()
+        return history[-1] if history else None
+
+    def _launch(self, coroutines: Iterable[Coroutine[Any, Any, None]]) -> None:
+        for coroutine in coroutines:
+            self.tasks.retain(create_task(coroutine))
 
 
 class Busy(Refusal):
@@ -364,6 +357,24 @@ class Runtime:
             await session.close()
         await close_client()
 
+    def catalog(self) -> LauncherCatalog:
+        return LauncherCatalog.read(self.library, self.store, self.engines)
+
+    def engine(self, engine_id: EngineId) -> AnyEngine:
+        found = self.engines.get(engine_id)
+        if found is None:
+            raise Refusal(f"no rules {engine_id!r}")
+        return found
+
+    def engine_options(self) -> dict[EngineId, str]:
+        return {engine.id: engine.title for engine in self.engines.values()}
+
+    def pack_boxes(self, engine_id: EngineId, pack_id: Slug) -> tuple[str, bool, dict[str, str]]:
+        """The pack's name, whether the player may write it, and every field as text."""
+        packs = self.engine(engine_id).packs
+        pack = packs.require(pack_id)
+        return pack.name, pack_id in packs.written, pack.boxes()
+
     async def new_scenario(
         self,
         engine_id: EngineId,
@@ -414,12 +425,10 @@ class Runtime:
 
     def rewrite_pack(self, engine_id: EngineId, pack_id: Slug, values: Mapping[str, str]) -> None:
         """The page's edits, parsed and rebuilt, on disk and in the running engine at once."""
-        engine = self.engines[engine_id]
-        if pack_id in engine.packs.shipped:
+        engine = self.engine(engine_id)
+        pack = engine.packs.require(pack_id)
+        if pack_id not in engine.packs.written:
             raise Refusal("shipped packs are read-only")
-        pack = engine.packs.written.get(pack_id)
-        if pack is None:
-            raise Refusal(f"no written pack {pack_id!r} for {engine_id!r}")
         rebuilt = engine.pack_author.edited(pack, values)
         self.packs.write(engine.id, pack_id, rebuilt)
         engine.install_pack(pack_id, rebuilt)
@@ -466,7 +475,7 @@ class Runtime:
             gate=self.gate,
             interjections=settings.interjections,
             meanwhile=settings.meanwhile,
-            media=Illustrator.open(
+            presenter=Presenter.open(
                 settings,
                 self.store,
                 target.slug,
@@ -475,11 +484,6 @@ class Runtime:
                     self.library.scenario_folder(target.scenario_id) / ICON_DIR,
                     self.library.character_folder(target.character_id) / ICON_DIR,
                 ),
-            ),
-            reader=Reader.open(
-                settings,
-                self.store,
-                target.slug,
                 voice=scenario.meta.voice or settings.speech.voice,
             ),
         )

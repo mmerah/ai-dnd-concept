@@ -292,6 +292,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             ),
         )
         return PlayerView(
+            premise=state.scenario.premise,
             player=player.subject(),
             scene_title=world.scene.title,
             situation=world.scene.situation,

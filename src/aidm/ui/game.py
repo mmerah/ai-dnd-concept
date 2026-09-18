@@ -1,24 +1,20 @@
 import logging
-import string
 from asyncio import get_running_loop
-from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Awaitable, Callable
 from functools import partial
 from pathlib import Path
 from time import monotonic
-from typing import Self
 
 from nicegui import app, ui
 from nicegui.events import GenericEventArguments, ScrollEventArguments
 
 from aidm.app.runtime import Busy, GameService
-from aidm.config import Role
 from aidm.core.entities import Refusal
-from aidm.core.play import Answer, DecisionOption, Exchange
+from aidm.core.play import Answer, Exchange
 from aidm.core.views import PlayerView
 from aidm.ui import transcript
-from aidm.ui.dice import DiceSound, rolled_since
 from aidm.ui.widgets import (
+    DiceSound,
     alert,
     decision_widget,
     entity_row,
@@ -26,16 +22,13 @@ from aidm.ui.widgets import (
     media_url,
     page_header,
     section,
+    typed,
     warn,
 )
 
 LOGGER = logging.getLogger(__name__)
 
 TURN_FAILED = "Something went wrong. The turn did not land — check the server log."
-BLANK = string.whitespace + (
-    "\xa0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"
-    "\u200b\u200c\u200d\u2060\ufeff"
-)
 
 SCENE_TAB = "scene"
 JOURNAL_TAB = "journal"
@@ -44,25 +37,6 @@ RAIL: tuple[tuple[str, str, str], ...] = (
     (SCENE_TAB, "map", "Scene"),
     (JOURNAL_TAB, "history_edu", "Journal"),
 )
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Observed:
-    phase: Role | None
-    facts: int
-    exchanges: int
-    action: DecisionOption | None
-    ending: str | None
-
-    @classmethod
-    def of(cls, session: GameService, view: PlayerView, history: Sequence[Exchange]) -> Self:
-        return cls(
-            phase=session.phase,
-            facts=0 if session.turn is None else len(session.turn.facts),
-            exchanges=len(history),
-            action=view.action,
-            ending=view.ending,
-        )
 
 
 class GamePage:
@@ -85,7 +59,9 @@ class GamePage:
         self.restart_dialog: ui.dialog
         self.restart_label: ui.label
         self.restart_item: ui.menu_item
-        self.seen: Observed = Observed(phase=None, facts=0, exchanges=0, action=None, ending=None)
+        self.seen: transcript.Observed = transcript.Observed(
+            working_role=None, facts=0, exchanges=0, action=None, ending=None
+        )
         self.view: PlayerView
         self.history: tuple[Exchange, ...]
         self.step_started: float | None = None
@@ -103,7 +79,7 @@ class GamePage:
         if session.unopened:
             opener = ui.timer(0.1, lambda: self._opened(opener))
         else:
-            session.illustrate()
+            session.present(spoken=False)
         with page_header(
             session.state.scenario.title, session.engine.title, look=session.engine.look
         ):
@@ -163,12 +139,12 @@ class GamePage:
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
         self.shown_art = session.scene_art()
-        self.seen = Observed.of(session, self.view, self.history)
+        self.seen = transcript.Observed.of(session, self.view, self.history)
         self._set_composer()
         self._clear_spent_draft()
 
         ui.timer(1.0, self.poll_turn)
-        if session.presents:
+        if session.presenter.enabled:
             ui.timer(3.0, self.poll_media)
 
     def refresh(self, *, whole: bool) -> None:
@@ -283,7 +259,7 @@ class GamePage:
                 pending.prompt,
                 pending.options,
                 self.answered,
-                enabled=not self.session.busy,
+                enabled=self.session.working_role is None,
             )
             if pending.allows_text:
                 pointer = "Or answer" if pending.options else "Answer"
@@ -348,15 +324,15 @@ class GamePage:
     def poll_turn(self) -> None:
         session = self.session
         self.view, self.history = session.player_view(), session.state.exchanges()
-        now = Observed.of(session, self.view, self.history)
-        if now.phase != self.seen.phase:
-            self.step_started = None if now.phase is None else monotonic()
+        now = transcript.Observed.of(session, self.view, self.history)
+        if now.working_role != self.seen.working_role:
+            self.step_started = None if now.working_role is None else monotonic()
         if now != self.seen:
             if self._dice_landed(now):
                 self.dice.play()
             closed = now.exchanges > self.seen.exchanges
             # Both reads are of the old `seen`, so neither may move below this line.
-            whole = whole_page(now, self.seen)
+            whole = transcript.whole_page(now, self.seen)
             self.seen = now
             self._set_composer()
             if closed:
@@ -370,7 +346,7 @@ class GamePage:
     def _clear_spent_draft(self) -> None:
         history = self.history
         newest_prompt = history[-1].words if history else ""
-        if draft_spent((self.box.value or "").strip(BLANK), newest_prompt):
+        if transcript.draft_spent(typed(self.box), newest_prompt):
             self._clear_box()
 
     def _clear_box(self) -> None:
@@ -402,12 +378,16 @@ class GamePage:
         await self.play(Answer(text=proposal))
 
     async def submit(self) -> None:
-        typed = (self.box.value or "").strip(BLANK)
-        LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
-        if not typed:
+        words = typed(self.box)
+        LOGGER.info(
+            "player submitted prompt: non_empty=%s working=%s",
+            bool(words),
+            self.session.working_role,
+        )
+        if not words:
             return
         self.own_move = True
-        if await self._run(lambda: self.session.play(Answer(text=typed))):
+        if await self._run(lambda: self.session.play(Answer(text=words))):
             self._clear_box()
 
     async def act(self) -> None:
@@ -415,11 +395,11 @@ class GamePage:
         if action is None:
             warn("The way on has changed.")
             return
-        typed = (self.box.value or "").strip(BLANK)
-        if not typed:
+        words = typed(self.box)
+        if not words:
             return
         self.own_move = True
-        if await self._run(lambda: self.session.act(action.id, typed)):
+        if await self._run(lambda: self.session.act(action.id, words)):
             self._clear_box()
 
     async def restart(self) -> None:
@@ -452,7 +432,7 @@ class GamePage:
         self.sound.set_icon("volume_up" if event.args else "volume_off")
 
     def scrolled(self, event: ScrollEventArguments) -> None:
-        self.at_end = near_end(
+        self.at_end = transcript.near_end(
             event.vertical_position, event.vertical_size, event.vertical_container_size
         )
         if self.at_end:
@@ -465,7 +445,7 @@ class GamePage:
     def _set_composer(self) -> None:
         session = self.session
         player = self.view
-        typing = transcript.can_type(player, session.phase)
+        typing = transcript.can_type(player, session.working_role)
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
         action = player.action
@@ -473,18 +453,18 @@ class GamePage:
         self.action_button.set_visibility(action is not None)
         self.action_button.set_text("" if action is None else action.name)
         self.over_label.set_text(player.ending or "")
-        self.box.props(f'placeholder="{placeholder(player, session.phase)}"')
-        self.restart_item.set_enabled(not session.busy)
+        self.box.props(f'placeholder="{transcript.placeholder(player, session.working_role)}"')
+        self.restart_item.set_enabled(session.working_role is None)
 
-    def _dice_landed(self, now: Observed) -> bool:
+    def _dice_landed(self, now: transcript.Observed) -> bool:
         """Whether the closed turn's tail or the live turn rolled dice since the last poll."""
         since = self.seen.facts
         closed = False
         if now.exchanges > self.seen.exchanges:
-            closed = rolled_since(self.history[-1].facts, since)
+            closed = transcript.rolled_since(self.history[-1].facts, since)
             since = 0
         turn = self.session.turn
-        return closed or (turn is not None and rolled_since(turn.facts, since))
+        return closed or (turn is not None and transcript.rolled_since(turn.facts, since))
 
     def _scroll(self, *, follow: bool) -> None:
         if not follow:
@@ -542,28 +522,3 @@ def game_page(session: GameService) -> None:
     if ui.context.client.is_deleted:
         return
     GamePage(session).build()
-
-
-def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
-    return size - position - container <= slack
-
-
-def draft_spent(draft: str, newest_prompt: str) -> bool:
-    return bool(draft) and draft == newest_prompt
-
-
-def whole_page(now: Observed, seen: Observed) -> bool:
-    """False when only the fact count moved: the live turn is then the one part that can differ."""
-    return replace(now, facts=0) != replace(seen, facts=0)
-
-
-def placeholder(player: PlayerView, phase: Role | None) -> str:
-    if player.ending is not None:
-        return "The game is over. Restart it from the menu."
-    if phase is not None:
-        return f"{transcript.STEP_COPY[phase][0]} is working..."
-    if player.decision is None:
-        return "What do you do?"
-    if player.decision.allows_text:
-        return "The game is waiting on your answer."
-    return "Choose an option above."

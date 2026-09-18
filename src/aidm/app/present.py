@@ -1,20 +1,22 @@
 import binascii
 import logging
+import wave
 from asyncio import to_thread
 from base64 import b64decode, b64encode
-from collections.abc import Sequence
+from collections.abc import Coroutine, Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from httpx import HTTPError
 from pydantic import JsonValue
 
 from aidm.app.providers import Claims, post_bearer
-from aidm.config import MediaConfig, ProviderConfig, Settings
+from aidm.config import MediaConfig, ProviderConfig, Settings, SpeechConfig
 from aidm.core.entities import Loose, Refusal, Slug, parse_json
 from aidm.core.io import FileStore, publish
+from aidm.core.play import Exchange
 from aidm.core.views import NarratorView, Subject
 
 LOGGER = logging.getLogger(__name__)
@@ -24,6 +26,8 @@ SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 SCENE_RATIO = "16:9"
 ICON_RATIO = "1:1"
 MAX_REFERENCES = 4
+SPEECH_DIR = "speech"
+SAMPLE_WIDTH = 2  # 16-bit PCM
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,8 +79,6 @@ class Illustrator:
         return None
 
     async def illustrate(self, scene: NarratorView, player: Subject, narration: str) -> None:
-        if not self.config.enabled:
-            return
         key = scene_key(scene)
         try:
             with self.claims.hold(key) as drawing:
@@ -141,6 +143,111 @@ class Illustrator:
         return _decode(url)
 
 
+@dataclass(frozen=True, slots=True)
+class Reader:
+    """Spoken exchanges, cached on disk and never regenerated once written."""
+
+    config: SpeechConfig
+    provider: ProviderConfig
+    saves: Path
+    voice: str
+    claims: Claims = field(default_factory=Claims)
+
+    @classmethod
+    def open(cls, settings: Settings, store: FileStore, slug: str, *, voice: str) -> Self:
+        return cls(
+            config=settings.speech,
+            provider=settings.providers.for_name(settings.speech.provider),
+            saves=store.media_dir(slug) / SPEECH_DIR,
+            voice=voice,
+        )
+
+    def clip(self, exchange: Exchange) -> Path | None:
+        if not self.config.enabled:
+            return None
+        _, _, path = self._planned(exchange)
+        return path if path.is_file() else None
+
+    async def read(self, exchange: Exchange) -> None:
+        """A failed generation costs a log line and nothing else: speech is outside the game."""
+        requests, key, path = self._planned(exchange)
+        if not requests or path.is_file():
+            return
+        try:
+            with self.claims.hold(key) as reading:
+                if not reading:
+                    return
+                chunks = [
+                    await post_bearer(
+                        self.provider,
+                        "/audio/speech",
+                        speech_body(self.config.model, voice, text),
+                        self.config.timeout,
+                    )
+                    for voice, text in requests
+                ]
+
+                def write(staged: Path) -> None:
+                    with wave.open(str(staged), "wb") as clip_file:
+                        clip_file.setnchannels(1)
+                        clip_file.setsampwidth(SAMPLE_WIDTH)
+                        clip_file.setframerate(self.config.sample_rate)
+                        clip_file.writeframes(b"".join(chunks))
+
+                publish(path, write)
+        except (HTTPError, OSError, Refusal, wave.Error) as failed:
+            LOGGER.warning("speech generation failed: %s", failed)
+
+    def _planned(self, exchange: Exchange) -> tuple[tuple[tuple[str, str], ...], str, Path]:
+        requests = requests_of(exchange, self.voice, self.config.voices)
+        key = clip_key(self.config.model, requests)
+        return requests, key, self.saves / f"{key}.wav"
+
+
+@dataclass(frozen=True, slots=True)
+class Presenter:
+    """The one gate on generated media: nothing is drawn or read unless it says so."""
+
+    illustrator: Illustrator
+    reader: Reader
+
+    @classmethod
+    def open(
+        cls,
+        settings: Settings,
+        store: FileStore,
+        slug: str,
+        *,
+        style: str,
+        icon_dirs: tuple[Path, ...],
+        voice: str,
+    ) -> Self:
+        return cls(
+            illustrator=Illustrator.open(settings, store, slug, style=style, icon_dirs=icon_dirs),
+            reader=Reader.open(settings, store, slug, voice=voice),
+        )
+
+    @property
+    def enabled(self) -> bool:
+        """Either feature on: the page then polls for media."""
+        return self.illustrator.config.enabled or self.reader.config.enabled
+
+    def present(
+        self, view: NarratorView, player: Subject, newest: Exchange | None
+    ) -> tuple[Coroutine[Any, Any, None], ...]:
+        # `newest=None` means art only: the page build, or a game with nothing read yet.
+        art = ()
+        if self.illustrator.config.enabled:
+            narration = "" if newest is None else newest.narration()
+            art = (self.illustrator.illustrate(view, player, narration),)
+        return (*art, *self.speak(newest))
+
+    def speak(self, newest: Exchange | None) -> tuple[Coroutine[Any, Any, None], ...]:
+        if newest is None or not self.reader.config.enabled:
+            return ()
+        return (self.reader.read(newest),)
+
+
 class _ImageUrl(Loose):
     url: str
 
@@ -188,6 +295,29 @@ def illustration_request(
         )
     lines.append(style)
     return "\n".join(lines)
+
+
+def voice_of(speaker_id: Slug | None, narrator: str, pool: Sequence[str]) -> str:
+    """The narrator's voice for narration; a speaker keeps one voice from the pool across turns."""
+    if speaker_id is None:
+        return narrator
+    return pool[int(sha1(speaker_id.encode(), usedforsecurity=False).hexdigest(), 16) % len(pool)]
+
+
+def requests_of(
+    exchange: Exchange, narrator: str, pool: Sequence[str]
+) -> tuple[tuple[str, str], ...]:
+    return tuple((voice_of(line.speaker_id, narrator, pool), line.text) for line in exchange.lines)
+
+
+def clip_key(model: str, lines: Sequence[tuple[str, str]]) -> str:
+    """The clip names a file, so the model and every (voice, text) hash to twelve hex chars."""
+    joined = "\n".join(f"{voice}|{text}" for voice, text in lines)
+    return sha1(f"{model}\n{joined}".encode(), usedforsecurity=False).hexdigest()[:12]
+
+
+def speech_body(model: str, voice: str, text: str) -> dict[str, str]:
+    return {"model": model, "input": text, "voice": voice, "response_format": "pcm"}
 
 
 def _icon_request(subject: Subject, style: str) -> str:

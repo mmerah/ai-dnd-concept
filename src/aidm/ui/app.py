@@ -12,11 +12,12 @@ from aidm.config import SERVER_HOST, read_settings
 from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.ui import theme
 from aidm.ui.create import character_page, new_pack_page, scenario_page
-from aidm.ui.dice import DICE_SOUND, DICE_SOUND_ROUTE
 from aidm.ui.game import game_page
 from aidm.ui.packs import PACK_ROUTE, pack_page, pack_path
 from aidm.ui.settings import settings_page
 from aidm.ui.widgets import (
+    DICE_SOUND,
+    DICE_SOUND_ROUTE,
     GAME_ROUTE,
     game_path,
     heading,
@@ -87,7 +88,7 @@ class LaunchForm:
 
 
 def home_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
+    catalog = runtime.catalog()
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat"

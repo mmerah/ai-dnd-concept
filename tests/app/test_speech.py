@@ -9,7 +9,7 @@ from support.game import TARGET
 from support.game import session as loner_session
 from support.table import drain, offline_settings
 
-from aidm.app.speech import Reader, clip_key, requests_of, speech_body, voice_of
+from aidm.app.present import Presenter, Reader, clip_key, requests_of, speech_body, voice_of
 from aidm.config import ProviderConfig, SpeechConfig
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, SpokenLine
@@ -71,7 +71,7 @@ async def test_read_writes_a_wav_and_caches_it(
         bodies.append(body)
         return chunks["first"] if len(bodies) == 1 else chunks["second"]
 
-    monkeypatch.setattr("aidm.app.speech.post_bearer", _fake_post_bearer)
+    monkeypatch.setattr("aidm.app.present.post_bearer", _fake_post_bearer)
     reader = _reader(tmp_path)
     await reader.read(exchange)
 
@@ -106,31 +106,31 @@ async def test_read_leaves_no_file_when_generation_raises(
     ) -> bytes:
         raise HTTPError("boom")
 
-    monkeypatch.setattr("aidm.app.speech.post_bearer", _raising)
+    monkeypatch.setattr("aidm.app.present.post_bearer", _raising)
     reader = _reader(tmp_path)
     await reader.read(exchange)
 
     assert reader.clip(exchange) is None
 
 
-async def test_speech_off_asks_for_no_clip_and_hides_what_an_earlier_run_cached(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    async def _refuse(
-        _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
-    ) -> bytes:
-        raise AssertionError("speech was requested while it is off")
-
-    monkeypatch.setattr("aidm.app.speech.post_bearer", _refuse)
+def test_speech_off_asks_for_no_clip_and_hides_what_an_earlier_run_cached(tmp_path: Path) -> None:
     exchange = _exchange()
-    off = replace(_reader(tmp_path), config=SpeechConfig())
+    off = Presenter.open(
+        offline_settings(tmp_path),
+        FileStore(tmp_path),
+        TARGET.slug,
+        style="",
+        icon_dirs=(),
+        voice=NARRATOR,
+    )
 
-    # Nothing is cached yet, so an ungated `read` would post for the audio.
-    await off.read(exchange)
-    off.saves.mkdir(parents=True)
-    (off.saves / f"{clip_key(off.config.model, requests_of(exchange, NARRATOR, POOL))}.wav").touch()
+    # nothing is cached yet: a gate that let this through would hand back a coroutine
+    assert off.speak(exchange) == ()
+    off.reader.saves.mkdir(parents=True)
+    key = clip_key(off.reader.config.model, requests_of(exchange, NARRATOR, POOL))
+    (off.reader.saves / f"{key}.wav").touch()
 
-    assert off.clip(exchange) is None
+    assert off.reader.clip(exchange) is None
 
 
 def test_reader_open_takes_the_scenarios_voice_and_is_disabled_when_off(tmp_path: Path) -> None:
@@ -160,12 +160,35 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
     ) -> bytes:
         return b"\x01\x02\x03\x04"
 
-    monkeypatch.setattr("aidm.app.speech.post_bearer", _fake_post_bearer)
-    session.reader = _reader(tmp_path)
+    monkeypatch.setattr("aidm.app.present.post_bearer", _fake_post_bearer)
+    session.presenter = replace(session.presenter, reader=_reader(tmp_path))
 
     exchange = session.state.exchanges()[-1]
-    session.speak(exchange)
+    session.present()
     await drain(session)
 
-    assert session.newest_clip() == session.reader.clip(exchange)
+    assert session.newest_clip() == session.presenter.reader.clip(exchange)
     assert session.newest_clip() is not None
+
+
+async def test_present_unspoken_reads_nothing_for_a_page_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = loner_session(tmp_path)
+    draft = session.state.draft()
+    session.save(
+        session.engine.close(draft, (SpokenLine(text="The door groans open."),), (), words="wait")
+    )
+
+    async def _fake_post_bearer(
+        _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
+    ) -> bytes:
+        return b"\x01\x02\x03\x04"
+
+    monkeypatch.setattr("aidm.app.present.post_bearer", _fake_post_bearer)
+    session.presenter = replace(session.presenter, reader=_reader(tmp_path))
+
+    session.present(spoken=False)
+    await drain(session)
+
+    assert session.newest_clip() is None

@@ -106,3 +106,53 @@ Known and accepted:
   has no sheet, so `World` cannot hold it.
 - A Tunnel Goons save written before this phase is invalid (its `Goon` player lacks `hp` and
   `place`), which is the documented rule.
+
+## Phase 3: app and pages
+
+Counts: `src` 10,439 → 10,481 (target about 10,469), `tests` 11,918 → 11,971 (target about
+11,928: the phase adds six tests where the plan counted three, and the two "media off" tests now
+build a whole `Presenter` from offline settings), 760 → 766 tests. Four commands green; `uv run
+aidm` boots. No golden under `tests/core/fixtures/` moved; the `master.txt` goldens are
+byte-identical after the move of `render_master`.
+
+Reviews: two independent Opus reviewers (no `codex` on the machine). Both said the phase was
+complete; thirteen findings and cuts between them (four shared), all fixed, none refuted.
+
+Decisions taken off-plan:
+
+- `Reader.read` also drops its own `enabled` guard, like `Illustrator.illustrate`: `Presenter`
+  is the one gate for both features. `GameService.present` returns before building a view when
+  the presenter is off, so the default (media off) path builds nothing per turn.
+- `Presenter` holds only `open`, `enabled`, `present` and `speak`: the reads (`scene_art`,
+  `icon`, `clip`) stay on `Illustrator` and `Reader`, which gate them, and `GameService` reads
+  `presenter.illustrator` and `presenter.reader` directly rather than forwarding twice.
+- `GameService.present(*, spoken: bool = True)`: the page build passes `spoken=False` so a load
+  never generates, and then autoplays, the newest clip; both reviews caught that the plan's
+  `session.present()` on build would. One `_launch(coroutines)` starts what the presenter hands
+  back, from `present` and from the interjection.
+- `Runtime` gains `catalog`, `engine`, `engine_options` and `pack_boxes` only. The plan's
+  `look`, `pack_options`, `seeds` and `art_style` were one-line pass-throughs over
+  `engine(engine_id).<attr>`, and the pages already chain `creation_steps` and
+  `create_character` off `engine()`; they call `runtime.engine(engine_id).look` and the like.
+  The plan's shared private lookup dissolved into `packs.require(pack_id)` plus
+  `pack_id in packs.written`, so an uninstalled pack is refused with `PackSet.require`'s one
+  text on every path.
+- `Observed.phase` is `working_role`, and so are the parameters of `can_type`,
+  `standing_proposal` and `placeholder`: the plan kept the field's name, but the phase's goal is
+  one word for which role is working.
+- `GameService.working()` is the one context manager that sets and clears `working_role`; the
+  master, narrator and worldsmith run under it one after the other, and `_turn`'s `finally`
+  keeps only `self.turn = None`.
+- `qa/server.py` patches `Illustrator` on `aidm.app.present`, where `Presenter.open` builds it.
+- `game.py` names the moved view logic as `transcript.Observed`, `transcript.placeholder` and
+  so on, through the module import it already had.
+
+Refuted: none.
+
+Known and accepted:
+
+- `tests` landed 43 lines past its target: every new behaviour has a test (the premise on three
+  engines, `working()` clearing after a raise, `pack_boxes` refusals, an unspoken page build),
+  and the "media off" tests build the presenter the app does.
+- A cached clip still never autoplays on a page load; a clip that lands during play autoplays
+  once, as before.

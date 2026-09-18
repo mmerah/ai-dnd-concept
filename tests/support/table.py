@@ -21,7 +21,7 @@ from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.engine import AnyEngine
 from aidm.engines.registry import build_engines
-from aidm.turn.run import Tools
+from aidm.turn import Tools
 
 # One tool call as a scripted game master makes it.
 type Call = tuple[str, dict[str, JsonValue]]

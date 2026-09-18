@@ -19,23 +19,18 @@ class PackEditor:
         self.boxes: dict[str, ui.textarea] = {}
 
     def build(self) -> None:
-        """The engine and the pack are read once here: `ui` may name no engine type to be handed."""
-        engine = self.runtime.engines.get(self.engine_id)
-        if engine is None:
-            raise Refusal(f"no rules {self.engine_id!r}")
-        pack = engine.packs.installed.get(self.pack_id)
-        if pack is None:
-            raise Refusal(f"no pack {self.pack_id!r} for {self.engine_id!r}")
-        written = self.pack_id in engine.packs.written
-        page_header(pack.name, look=engine.look)
+        """The pack arrives as plain text: `ui` may name no engine type to be handed."""
+        engine = self.runtime.engine(self.engine_id)
+        name, written, boxes = self.runtime.pack_boxes(self.engine_id, self.pack_id)
+        page_header(name, look=engine.look)
         with page_body():
             page_intro(
                 "Pack",
-                pack.name,
+                name,
                 f"{engine.title} · " + ("written in this app" if written else "shipped, read-only"),
             )
             with ui.card().classes("w-full"):
-                for field_id, text in pack.boxes().items():
+                for field_id, text in boxes.items():
                     box = (
                         ui.textarea(label=_label(field_id), value=text)
                         .props(f"rows={BOX_ROWS} outlined")

@@ -6,7 +6,7 @@ from support.table import ENGINE_IDS, ENGINES_BUILT
 import aidm.ui.theme
 from aidm.core.entities import EngineId
 from aidm.core.facts import DiceEvent, Fact
-from aidm.ui.dice import rolled_since
+from aidm.ui.transcript import rolled_since
 
 TWO_D6 = DiceEvent(label="2d6", faces=(6, 6), rolled=(2, 5))
 DIE_KEYS = ("game-die-body", "game-die-ink", "game-die-glow")
