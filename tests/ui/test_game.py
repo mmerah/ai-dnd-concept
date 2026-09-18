@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from nicegui import Client, ui
-from support.game import open_game
+from support.game import open_game, session
 from support.table import (
     Table,
     play_turn,
@@ -117,3 +117,18 @@ async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(
     game_page(table.service)
 
     assert built == []
+
+
+async def test_the_composer_greys_while_another_game_holds_the_gate(
+    tmp_path: Path, page: Callable[[], Client]
+) -> None:
+    table = open_game(tmp_path)
+    page()
+    screen = _screen(table)
+
+    screen._set_composer()  # pyright: ignore[reportPrivateUsage]
+    assert screen.box.enabled
+
+    table.service.gate.admitted = session(tmp_path / "other")
+    screen._set_composer()  # pyright: ignore[reportPrivateUsage]
+    assert not screen.box.enabled
