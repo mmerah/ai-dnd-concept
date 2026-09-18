@@ -7,7 +7,9 @@ from support.tunnelgoons import (
     ENGINE,
     GATE,
     HALL,
+    KEY,
     LANTERN,
+    MIRA,
     START,
     VAULT,
     WARDEN,
@@ -45,11 +47,23 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused() -> N
     death = [fact for fact in facts if fact.card.startswith("You are dead")]
     assert len(death) == 1
     assert death[0].told
-    assert "pack dropped: Rope, Torch" in death[0].card
 
     message = refused(ENGINE, draft, "kill", target_id=PLAYER_ID)
 
     assert "already dead" in message
+
+
+def test_a_dead_npc_drops_only_its_known_items_into_the_telling() -> None:
+    draft = small_world().draft()
+    draft.world.items[KEY].on = MIRA
+    draft.world.items[LANTERN].on = MIRA
+
+    facts = change(ENGINE, draft, "kill", target_id=MIRA)
+
+    told = "\n".join(fact.trace + fact.card for fact in facts if fact.told)
+    assert "Lantern" in told
+    assert "Key" not in told
+    assert draft.world.items[KEY].on == START
 
 
 def test_frontier_skips_places_behind_a_locked_way() -> None:

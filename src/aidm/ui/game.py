@@ -500,7 +500,7 @@ class GamePage:
             alert(TURN_FAILED)
             raise
         finally:
-            if not ui.context.client.is_deleted:
+            if not self.box.is_deleted:
                 self.poll_turn()
             # A move that changed nothing must not pull a reader down on the next change.
             self.own_move = False
