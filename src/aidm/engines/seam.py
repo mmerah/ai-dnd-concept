@@ -1,11 +1,11 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, JsonValue
 
@@ -38,15 +38,10 @@ from aidm.engines.packs import (
     read_packs,
 )
 from aidm.engines.tools import (
-    HIRE,
-    HIRE_TOOL,
-    HIRE_UNWRITTEN,
     JOIN_PARTY,
     KILL,
     LEAVE_PARTY,
     REVEAL,
-    SIGNED_ON,
-    Hire,
     JoinParty,
     Kill,
     LeaveParty,
@@ -56,6 +51,7 @@ from aidm.engines.tools import (
 SOURCELESS = "(none — write from what is below)"
 SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
 PACK_SO_FAR = "THE PACK SO FAR"
+WRITES_NO = "the {engine!r} engine writes no {operation!r}"
 
 type AnyEngine = Engine[Any, Any, Any, Any]
 
@@ -66,19 +62,14 @@ class Written:
     telling: str | None
 
 
-@dataclass(frozen=True, slots=True)
-class Request[G: Game[Any]]:
-    unwritten: Fact
-    write: Callable[[G, Generation, WorldsmithAnswer], Awaitable[Written]]
-
-
 class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
+    # The fact filed when a worldsmith request fails, by operation.
+    unwritten: ClassVar[dict[Slug, Fact]]
     # Declared, not `ClassVar`: `type[W]` cannot be one, and a test sets them on its own instance.
     id: EngineId
     title: str
     authoring: str
     art_style: str
-    hires: bool = False
     directory: Path  # rules.md, look.json and a shipped packs/
     family_dir: Path
     world: type[W]
@@ -94,7 +85,6 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
     instructions: str
     look: Look
     tools: dict[str, MasterTool[Game[W]]]
-    requests: dict[Slug, Request[Game[W]]]
 
     def __init__(self, written: Path) -> None:
         self.packs = read_packs(self.id, self.directory / "packs", written, self.pack)
@@ -111,7 +101,6 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         if self.world.tempo < 2:
             raise ValueError(f"the {self.id!r} engine ticks every {self.world.tempo} turns")
         self.tools = {tool.name: tool for tool in tools}
-        self.requests = self.worldsmith_requests()
 
     def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
         """Each layer adds its own after `super()`'s: the seam, then the family, then the engine."""
@@ -122,13 +111,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
             master_tool("kill", KILL, Kill, self.kill),
             master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
             master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
-            *((master_tool("hire", HIRE_TOOL, Hire, self.hire),) if self.hires else ()),
         )
-
-    def worldsmith_requests(self) -> dict[Slug, Request[Game[W]]]:
-        if not self.hires:
-            return {}
-        return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
 
     def kill(self, draft: Game[W], args: Kill, _rng: Random) -> list[Fact]:
         return draft.world.kill(args.target_id)
@@ -138,38 +121,6 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
 
     def leave_party(self, draft: Game[W], args: LeaveParty, _rng: Random) -> list[Fact]:
         return draft.world.leave_party(args.target_id)
-
-    async def write_sheet(
-        self, _draft: Game[W], _member: M, _terms: str, _worldsmith: WorldsmithAnswer, /
-    ) -> str:
-        raise ValueError(f"the {self.id!r} engine hires nobody")
-
-    def hire(self, draft: Game[W], args: Hire, _rng: Random) -> list[Fact]:
-        member = draft.world.require_hireable(args.target_id)
-        draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
-        trace = (
-            f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
-            "Nothing more lands this turn; stop and exit"
-        )
-        return [Fact(trace=trace)]
-
-    async def write_hire(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
-    ) -> Written:
-        if request.target is None:
-            raise Refusal("a hire request names no target")
-        member = draft.world.require_hireable(request.target)
-        summary = await self.write_sheet(draft, member, request.detail, worldsmith)
-        world = draft.world
-        facts = world.join(member) if member.id not in world.party else []
-        trace = f"{member.mention} signs on — {summary}"
-        facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
-        return Written(tuple(facts), SIGNED_ON.format(name=member.name))
-
-    async def advance(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
-    ) -> Written:
-        return await self.requests[request.operation].write(draft, request, worldsmith)
 
     def install_pack(self, pack_id: Slug, pack: K) -> None:
         self.packs = self.packs.installing(pack_id, pack)
@@ -405,8 +356,8 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         if not state.log:
             raise Refusal(f"a {self.id!r} game has no chapter open")
         request = state.generation
-        if request is not None and request.operation not in self.requests:
-            raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
+        if request is not None and request.operation not in self.unwritten:
+            raise Refusal(WRITES_NO.format(engine=self.id, operation=request.operation))
 
     @abstractmethod
     def creation_steps(self, pack_id: Slug, picks: Picks, /) -> tuple[CreationStep, ...]: ...
@@ -436,3 +387,8 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
     @abstractmethod
     def act(self, draft: Game[W], action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
+
+    @abstractmethod
+    async def advance(
+        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written: ...

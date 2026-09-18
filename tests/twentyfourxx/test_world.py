@@ -43,7 +43,7 @@ def test_sheet_die_returns_skill_or_default(world: TwentyfourxxWorld) -> None:
     assert sheet.die("Piloting") == DEFAULT_DIE
 
 
-def test_carried_spells_item_notes() -> None:
+def test_a_members_line_spells_item_notes() -> None:
     crewmate = Crewmate(
         id=KESTREL,
         name="Kestrel",
@@ -51,7 +51,7 @@ def test_carried_spells_item_notes() -> None:
         known=True,
         sheet=CrewSheet(specialty="Muscle", items={"vest": Gear(name="Vest", bulky=True)}),
     )
-    assert crewmate.carried() == "Vest[vest] (bulky)"
+    assert crewmate.line().endswith("  Vest[vest] (bulky)")
 
 
 def test_rows_drops_empties_and_shows_credits() -> None:

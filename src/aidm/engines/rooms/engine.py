@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from random import Random
-from typing import Any
+from typing import Any, ClassVar
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
@@ -42,7 +42,7 @@ from aidm.engines.rooms.tools import (
 )
 from aidm.engines.rooms.world import Dweller, MapProposal, Prop, RegionProposal, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map
-from aidm.engines.seam import Engine, Request, Written
+from aidm.engines.seam import WRITES_NO, Engine, Written
 
 EXTEND: Slug = "extend"
 MORE_MAP = DecisionOption(
@@ -57,6 +57,7 @@ MAP_UNWRITTEN = Fact(
 
 class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[P, N, W, K]):
     family_dir = Path(__file__).parent
+    unwritten: ClassVar[dict[Slug, Fact]] = {EXTEND: MAP_UNWRITTEN}
     opening_sections = (
         ("MAP SO FAR", "(no map yet)"),
         ("SCENES SO FAR", "(no scenes yet — write the opening)"),
@@ -188,8 +189,12 @@ class RoomEngine[P: Person, N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[
         self.install(draft, await self.write_next(draft, request.detail, worldsmith))
         return Written((), None)
 
-    def worldsmith_requests(self) -> dict[Slug, Request[Game[W]]]:
-        return {**super().worldsmith_requests(), EXTEND: Request(MAP_UNWRITTEN, self.extend)}
+    async def advance(
+        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
+        if request.operation == EXTEND:
+            return await self.extend(draft, request, worldsmith)
+        raise ValueError(WRITES_NO.format(engine=self.id, operation=request.operation))
 
     def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
         return (

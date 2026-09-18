@@ -81,9 +81,41 @@ def test_a_goons_rows_put_health_before_the_sheets_rows(world: TunnelGoonsWorld)
     assert labels == ["Health", "Brute", "Skulker", "Erudite", "Inventory", "Level"]
 
 
+def test_an_npcs_rows_are_its_difficulty_score_until_it_carries_a_sheet(
+    world: TunnelGoonsWorld,
+) -> None:
+    mira = world.npcs[MIRA]
+    assert mira.rows() == (("Health", "8/8 (its Difficulty Score)"),)
+
+    mira.sheet = GoonSheet(abilities={"brute": 0, "skulker": 0, "erudite": 0})
+
+    assert [label for label, _ in mira.rows()] == [
+        "Health",
+        "Brute",
+        "Skulker",
+        "Erudite",
+        "Inventory",
+        "Level",
+    ]
+
+
+def test_an_npc_is_required_unsheeted_alive_and_above_zero_health(
+    world: TunnelGoonsWorld,
+) -> None:
+    mira = world.npcs[MIRA]
+    assert mira.required() == ""
+
+    mira.sheet = GoonSheet(abilities={"brute": 0, "skulker": 0, "erudite": 0})
+    assert mira.required() == "no sheet"
+
+    mira.sheet = None
+    mira.hp.current = 0
+    assert mira.required() == "health above zero"
+
+
 def test_the_inventory_row_counts_what_the_player_carries(world: TunnelGoonsWorld) -> None:
     held = len(list(world.carried(PLAYER_ID)))
-    total = world.player.require_sheet().inventory
+    total = world.player.sheet.inventory
 
     assert dict(world.sheet_rows())["Inventory"] == f"{held}/{total}"
     assert dict(world.player.rows())["Inventory"] == str(total)
@@ -92,7 +124,7 @@ def test_the_inventory_row_counts_what_the_player_carries(world: TunnelGoonsWorl
 def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:
     world = small_world().world
     player = world.player
-    sheet = player.require_sheet()
+    sheet = player.sheet
     before_ability = sheet.abilities["brute"]
     before_hp = player.hp.maximum
 

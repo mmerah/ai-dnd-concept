@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import NamedTuple
+from typing import ClassVar, NamedTuple
 
 from aidm.core.creation import (
     CreationStep,
@@ -13,14 +13,25 @@ from aidm.core.creation import (
 )
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.tools import Kill
+from aidm.engines.seam import Written
+from aidm.engines.tools import (
+    HIRE,
+    HIRE_PENDING,
+    HIRE_TOOL,
+    HIRE_UNWRITTEN,
+    NO_HIRE_TARGET,
+    SIGNED_ON,
+    SIGNS_ON,
+    Hire,
+    Kill,
+)
 from aidm.engines.twentyfourxx.tools import (
     ASK_WORLD,
     CHANGE_HINDRANCES,
@@ -107,7 +118,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     body = TwentyfourxxBody
     world = TwentyfourxxWorld
     member = Crewmate
-    hires = True
+    unwritten: ClassVar[dict[Slug, Fact]] = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def __init__(self, written: Path) -> None:
         super().__init__(written)
@@ -119,29 +130,52 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         if not srd.starting_kit:
             raise ValueError(f"the {self.id!r} srd pack has no starting kit")
 
-    async def write_sheet(
-        self, draft: TwentyfourxxGame, member: Crewmate, terms: str, worldsmith: WorldsmithAnswer, /
-    ) -> str:
+    def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
+        member = draft.world.require_hireable(args.target_id)
+        draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
+        trace = HIRE_PENDING.format(name=member.name, terms=args.terms)
+        return [Fact(trace=trace)]
+
+    async def write_hire(
+        self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
+        if request.target is None:
+            raise Refusal(NO_HIRE_TARGET)
+        member = draft.world.require_hireable(request.target)
         packs = self.packs.played(draft.pack_id)
         lines = [pack.specialty_lines() for pack in packs]
         lines.append(f"Skills: {', '.join(option.label for option in self.packs.srd().skills)}")
         prompt = self.render_request(
             draft,
             guidance="\n".join(lines),
-            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=request.detail),
             answer=SheetProposal,
         )
         answer = await worldsmith(prompt, SheetProposal, lambda sheet: sheet.check(packs))
-        return member.sign_on(
+        summary = member.sign_on(
             answer.specialty,
             answer.skills,
             items_from_kits(tuple(Kit(name=name) for name in answer.items)),
             answer.hindrances,
         )
+        world = draft.world
+        facts = world.join(member) if member.id not in world.party else []
+        trace = SIGNS_ON.format(who=member.mention, summary=summary)
+        card = SIGNS_ON.format(who=member.name, summary=summary)
+        facts.append(member.fact(trace, card=card))
+        return Written(tuple(facts), SIGNED_ON.format(name=member.name))
+
+    async def advance(
+        self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
+        if request.operation == HIRE:
+            return await self.write_hire(draft, request, worldsmith)
+        return await super().advance(draft, request, worldsmith)
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
             *super().master_tools(),
+            master_tool("hire", HIRE_TOOL, Hire, self.hire),
             master_tool(
                 "change_hindrances", CHANGE_HINDRANCES, ChangeHindrances, self.change_hindrances
             ),

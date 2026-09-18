@@ -22,6 +22,12 @@ HIRE_TOOL = (
     "more lands this turn. A sheet is for someone hired to work, never for one who only comes "
     "along."
 )
+HIRE_PENDING = (
+    "the worldsmith writes {name}'s sheet once this turn ends: {terms}. Nothing more lands this "
+    "turn; stop and exit"
+)
+NO_HIRE_TARGET = "a hire request names no target"
+SIGNS_ON = "{who} signs on — {summary}"
 HIRE_UNWRITTEN = Fact(
     told=True,
     trace="the hire could not be written",

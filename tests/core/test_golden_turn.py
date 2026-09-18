@@ -64,7 +64,7 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
         raise Refusal("recorded")
 
     # The family's own write, not the seam's `hire`: the detail is a place to go.
-    operation = next(operation for operation in engine.requests if operation != HIRE)
+    operation = next(operation for operation in engine.unwritten if operation != HIRE)
     request = Generation(operation=operation, detail="Deeper in, toward the sound.")
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), request, recording)

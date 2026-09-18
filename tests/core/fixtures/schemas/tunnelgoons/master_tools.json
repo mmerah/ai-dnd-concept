@@ -68,28 +68,6 @@
     }
   },
   {
-    "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "target_id": {
-          "description": "Exact id of who here signs on.",
-          "type": "string"
-        },
-        "terms": {
-          "description": "What they are hired for, and on what terms, as agreed.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "target_id",
-        "terms"
-      ],
-      "type": "object"
-    }
-  },
-  {
     "name": "move_item",
     "description": "An item moves to a new holder.",
     "parameters": {
@@ -208,6 +186,28 @@
           "description": "Exact id of the other end of the way that shuts."
         }
       },
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "target_id": {
+          "description": "Exact id of who here signs on.",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for, and on what terms, as agreed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_id",
+        "terms"
+      ],
       "type": "object"
     }
   },
