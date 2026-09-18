@@ -161,7 +161,7 @@ async def test_a_master_still_calling_tools_past_the_cap_is_cut_off(
                 request=Request("POST", "https://example.invalid/v1/chat/completions"),
                 response=Response(404, text="No endpoints found for m"),
             ),
-            "404: No endpoints found for m",
+            "404 No endpoints found for m",
         ),
         ({"error": {"message": "insufficient credits"}}, "insufficient credits"),
         ({"choices": []}, "no choices"),

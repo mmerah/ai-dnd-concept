@@ -127,6 +127,6 @@ def _detail(failed: HTTPError) -> str:
     if isinstance(failed, HTTPStatusError):
         status, body = failed.response.status_code, failed.response.text.strip()
         LOGGER.warning("the provider answered %s: %s", status, body)
-        first = body.splitlines()[0][:120] if body else ""
-        return f"{status}: {first}" if first else str(status)
+        first = next(iter(body.splitlines()), "")[:120]
+        return f"{status} {first}".strip()
     return str(failed)

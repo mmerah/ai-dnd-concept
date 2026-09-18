@@ -252,7 +252,8 @@ async def _spawn(
     except OSError as failed:
         raise Refusal(f"the {role} could not be started: {failed}") from failed
     try:
-        output = "" if process.stdout is None else await _capped(role, process.stdout)
+        assert process.stdout is not None
+        output = await _capped(role, process.stdout)
         _ = await process.wait()
     finally:
         # Does nothing once it exited; an abandoned or timed-out spawn dies with its children.
