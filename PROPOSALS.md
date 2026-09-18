@@ -21,7 +21,7 @@ child, and copy-paste between the two hiring engines.
 
 ### 1. Fold the `rooms/` family into `tunnelgoons/`
 
-**Status:** trial, option (b). The fold is refused: the rooms family stays. Only `Dweller` and the one-instantiation generics go. **Raised by:** A, C, D, lead (4 of 6).
+**Status:** dropped. The fold is refused (the rooms family stays). The trial of option (b) showed the generics are not accidental: `Dungeon[N]`, `MapProposal[N]`, `RegionProposal[N]` and `Dweller` are what let `rooms/` type-check `Npc`-shaped data without importing `tunnelgoons/` (a circular import otherwise). Deleting them gave 30 type errors. Only `RoomEngine`'s own `N` was avoidable, at net +11 lines. Outcome: leave as is; a one-line comment at the top of `rooms/engine.py` says why the family stays generic. **Raised by:** A, C, D, lead (4 of 6).
 
 **Plain English.** There are two "families" between the abstract `Engine` and the three real
 engines. `scenes/` has two children (Loner, 24XX) and earns its place. `rooms/` has exactly one
@@ -57,7 +57,7 @@ has two `model_validator` hooks and an `entity()` `super()` call whose MRO order
 
 ### 2. One character class for Tunnel Goons, and `World[M]` instead of `World[P, M]`
 
-**Status:** trial, option (a). **Raised by:** D (and implied by 1).
+**Status:** accepted after trial. Trial result: src -20 lines, tests +17, 759 tests green. One class `Goon(Dweller)`, `sheet_of()` gone, `World[M]` everywhere. `hp` stays required on the merged class so the worldsmith's npc schema keeps demanding a Difficulty Score. The Tunnel Goons `worldsmith_answer.json` golden regenerated (the npc schema now also lists `kit`, unused for an npc) and the shipped `characters/kael/tunnelgoons.json` gained `place` and `hp`. **Raised by:** D (and implied by 1).
 
 **Plain English.** Tunnel Goons is the only engine with two person classes: `Goon` for the
 player and `Npc` for everyone else. They duplicate `rows()`, `level()`, `hp`, `required()` and
@@ -85,7 +85,7 @@ annotation simplifies.
 
 ### 3. One hire flow instead of two copies
 
-**Status:** trial, option (a). **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** marginal after trial; rework proposed. Trial result: src -8 lines only, 759 green, no golden moved. `require_actor`/`require_hireable` on `World` is clean. But `file_hire`/`signed_on` needed `Written`, which had to move from `engine.py` into `engines/tools.py` to avoid a circular import, and the duplicated model-facing `hire` docstring survives. Rework: a new `engines/hiring.py` module holding the hire constants, the `Hire` args model, `file_hire` and `signed_on` (it may import `engine.py`; nothing imports it back), so `Written` stays put. Or drop to only the `World` methods. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** Tunnel Goons and 24XX both let the player hire someone. The `hire` tool
 (docstring included), the `advance` override, the head and tail of `write_hire`, and the world
@@ -120,7 +120,7 @@ as a field).
 
 ### 4. One table for worldsmith operations; delete the unreachable branch
 
-**Status:** trial, option (a). The maintainer also asks that `unwritten` be renamed: it becomes `failure_fact` on `Operation`. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** accepted after trial. Trial result: 8 files, +52/-100 (src -8, tests -40), 756 tests green (the drift test is gone; the table's `write` field is required, so a missing writer is now a type error). No golden moved. `unwritten` is gone; the record is `Operation(write, failure_fact)`. `RoomEngine.advance`'s inline body became a named `extend` writer. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** Each engine says twice which world-writing operations it supports: once as
 `unwritten`, a dict of failure facts, and once as an `if request.operation == ...` chain in
@@ -155,7 +155,7 @@ test go.
 
 ### 5. One vocabulary for the worldsmith request, and four names that say what they do
 
-**Status:** trial. The noun is `commission`. **Raised by:** A, B, C, E, lead (5 of 6).
+**Status:** accepted after trial. Trial result: 25 files, src +27 lines (keyword-only `render_worldsmith` calls), tests net 0, 759 green, no golden moved, no shipped data carries any renamed key. **Raised by:** A, B, C, E, lead (5 of 6).
 
 **Plain English.** The one flow that grows the world is called a commission, a request, an
 operation, a growth and a "telling" depending on the file. Four other names say the wrong
