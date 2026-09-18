@@ -6,7 +6,7 @@ parameter only on a container that holds the engine's own kind of thing. No fami
 before it can be read top to bottom.
 
 This plan adds lines. Every step was prototyped on `3ebf53f` with the four checks green; the sum
-is about **+250 `src`, +250 `tests`**. Prompts, goldens and saves change only where a step says so.
+is about **+250 `src`, +250 `tests`**. Prompts, goldens and saves do not change.
 
 Symbol names are as of `PLAN.md` phase 3 done. One phase, seven steps, in this order, each one
 green on the full check before the next (`uv run pytest`, `uv run ruff check`, `uv run ruff
@@ -89,13 +89,12 @@ format --check`, `uv run basedpyright`, `UV_CACHE_DIR` unset). Two rules beyond 
    `Person` (`alive`, `chattiness`, `changed_tags`, `required` returning `"alive"` or `""`, which
    `required_unmet` reads for every engine). `Sheet`, `Sheeted`, `Person.hired`, `hireable`,
    `carried`, the `_player_carries_a_sheet` validator go. Tunnel Goons: `Goon(Person)` with
-   `hp`, `abilities`, `inventory`, `level`, `kit`; `Npc(Person)` with `place`, `hp`,
-   `abilities: AbilityScores | None` (description "Leave empty."), `inventory`, `level`;
-   `hired` is `self.abilities is not None` on `Npc`; `Npc.required` adds "no abilities" over
-   `super().required()`, so the worldsmith writes no hired npc; `level_decision`, `rows`,
-   `sign_on` are their own methods, a copy each where both need one. This flattens the saved
-   `sheet`: `characters/kael/tunnelgoons.json` and `tests/core/fixtures/schemas/tunnelgoons/
-   worldsmith_answer.json` are rewritten. 24XX: `Crewmate(Person)` with `sheet: CrewSheet | None`
+   `hp`, `sheet: GoonSheet`, `kit`; `Npc(Person)` with `place`, `hp`, `sheet: GoonSheet | None`
+   (description "Leave empty."); `GoonSheet` (`abilities`, `inventory`, `level`) stays as it is;
+   `hired` is `self.sheet is not None` on `Npc`; `Npc.required` adds "no sheet" over
+   `super().required()`, so the worldsmith writes no hired npc; `require_sheet`,
+   `level_decision`, `rows`, `sign_on` are their own methods, a copy each where both need one.
+   The saved shape does not change: no character file or golden moves. 24XX: `Crewmate(Person)` with `sheet: CrewSheet | None`
    written out (`CrewSheet` is a real thing: gear, skills, credits, hindrances), `require_sheet`,
    `hired`, `carried`, `required` its own; its file and golden do not move. Loner:
    `Loner3eCast(Person)` keeps `required` over `super()`. Inherited fields are not redeclared.
@@ -143,4 +142,4 @@ Accepted and left as is: `TunnelGoonsWorld`'s two validators and its `entity()`/
 unions over `Person | Prop | Place`; the `rows(carried=...)` keyword; the pack `head`/`body`
 authoring split and `opening_sections`.
 
-Done when: the full check is green; `grep -rn "master_tool\|-> list\[Fact\]\|-> tuple\[Fact\|Sheeted\|family_dir\|SceneEngine\|RoomEngine\|hireable\|Written\|Request\b" src tests qa` finds nothing; `src/aidm/engines/rooms/` and `scenes/engine.py` are gone; the counts and the two rewritten files are in `PROGRESS.md`.
+Done when: the full check is green; `grep -rn "master_tool\|-> list\[Fact\]\|-> tuple\[Fact\|Sheeted\|family_dir\|SceneEngine\|RoomEngine\|hireable\|Written\|Request\b" src tests qa` finds nothing; `src/aidm/engines/rooms/` and `scenes/engine.py` are gone; the counts are in `PROGRESS.md`.
