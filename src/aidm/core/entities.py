@@ -26,12 +26,6 @@ class Loose(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
 
-class Echoed(BaseModel):
-    """Kept whole: a reply goes back in the next request, reasoning and all."""
-
-    model_config = ConfigDict(extra="allow", frozen=True, strict=True)
-
-
 class Refusal(ValueError):
     """A message a role or the player is meant to read; any other exception is a bug."""
 
@@ -48,6 +42,14 @@ def slug(text: str, taken: Iterable[str]) -> Slug:
     if not words:
         raise Refusal(f"{text!r} makes no id; give it a latin letter or a digit to be named by")
     return _unused(_capped(words, SLUG_MAX), taken)
+
+
+def tag_of(name: str, entity_id: Slug) -> str:
+    return f"{name}[{entity_id}]"
+
+
+def headline_of(name: str, entity_id: Slug, brief: str) -> str:
+    return tag_of(name, entity_id) + (f" — {brief}" if brief else "")
 
 
 def check_unique(what: str, ids: Iterable[str]) -> None:

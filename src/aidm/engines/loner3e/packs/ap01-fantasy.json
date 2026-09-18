@@ -161,33 +161,33 @@
   "rules": "A character may channel their **Luck** to cast spells or activate magical abilities. Each spell has a specific **Luck cost**, which varies based on its power or complexity. To cast a spell, the protagonist spends the required amount of Luck and rolls the Oracle to determine the outcome:\n\n- **No and**: The spell fails catastrophically — and something else goes wrong.\n- **No**: The spell fails, and the Luck spent is lost.\n- **No but**: The spell fails, but the Luck is not expended.\n- **Yes but**: The spell succeeds, but with a complication, side effect, or unintended cost.\n- **Yes**: The spell succeeds as intended.\n- **Yes and**: The spell succeeds with an extra benefit — such as a bonus effect, lasting impact, or unexpected insight.\n\n**Luck used for spellcasting refreshes** after the character takes a proper rest in a safe place. During a Conflict, the current Luck total applies for the duration and resets when the Conflict ends, as per the core rules.\n\nSpells:\n\n- **Heal** (1 Luck) – Restore a small amount of health to a creature you touch.\n- **Light** (1 Luck) – Create a floating glow that illuminates a small area for one hour.\n- **Identify** (1 Luck) – Reveal the nature and properties of a magical item or enchantment.\n- **Bolt** (1 Luck) – Hurl a streak of elemental energy at a single target.\n- **Detect Magic** (1 Luck) – Sense magical auras and effects nearby.\n- **Mage Armor** (2 Luck) – Summon a shimmering shield of force to absorb physical harm.\n- **Levitate** (2 Luck) – Defy gravity for a short time, hovering above the ground.\n- **Fear** (2 Luck) – Instill dread in a creature, forcing it to flee or falter.\n- **Illusion** (2 Luck) – Create a minor sound or image to mislead the senses.\n- **Charm** (2 Luck) – Momentarily soften a creature’s disposition toward you.\n- **Invisibility** (3 Luck) – Fade from sight for a brief time or until you take action.\n- **Teleport** (4 Luck) – Instantly move yourself to a visible location within range.\n- **Fireball** (3 Luck) – Unleash a fiery explosion that engulfs a small area.\n- **Summon** (3 Luck) – Call forth a small creature bound to aid you in one task.\n- **Enchantment** (2 Luck) – Imbue an item with a temporary magical quality.\n- **Divination** (2 Luck) – Gain insight into a person, place, or mystery.\n- **Abjuration** (3 Luck) – Ward a creature or place from harmful magic.\n- **Conjuration** (4 Luck) – Summon an object or simple tool into your hand.\n- **Necromancy** (4 Luck) – Influence the dead, or command lesser undead.\n- **Transmutation** (4 Luck) – Alter the shape or nature of a creature or object.\n- **Evocation** (4 Luck) – Conjure a sudden burst of elemental power.\n- **Greater Illusion** (4 Luck) – Create a convincing illusion affecting multiple senses.\n- **Alteration** (4 Luck) – Change your own appearance, voice, or minor traits.\n- **Restoration** (4 Luck) – Repair or purify a creature, object, or environment.\n- **Leap** (2 Luck) – Propel yourself or a target to any visible point in range.\n- **Circle of Protection** (3 Luck) – Create a barrier that repels spirits or divine forces.\n- **Darksight** (1 Luck) – Grant a creature the ability to see in complete darkness.\n- **Deafening Wave** (2 Luck) – Deafen all creatures within a short radius.\n- **Latch** (1 Luck) – Open or close a non-magical, unlocked object at will.\n- **Disguise** (3 Luck) – Take on the appearance of a creature you've seen before.\n- **Mirage** (3 Luck) – Project a simple silent illusion to distract or deceive.\n- **Purge Text** (2 Luck) – Erase mundane or arcane writing from any surface.\n- **Shelter** (4 Luck) – Conjure a protective structure that lasts up to 24 hours.\n- **Gravity Domain** (4 Luck) – Manipulate a target's position in space — lift or sink them.\n- **Ice Storm** (2 Luck) – Conjure a hail of frozen shards to strike your enemies.\n- **Make** (4 Luck) – Transform raw materials into a crafted item of your choice.",
   "locations": [
     {
-      "label": "Eldrida (The Thorn-Crowned Capital)",
-      "detail": "The jewel of Aldorath, where spires and domes rise behind fortified walls. Home to the **Crown of Thorns**, the **Severed Circle**, and the last remaining Temple of the Hollow Flame. Its streets are crowded with masked envoys, relic smugglers, and whispering spies. Beneath its surface lie catacombs older than the kingdom, sealed and forgotten by decree.",
+      "name": "Eldrida (The Thorn-Crowned Capital)",
+      "brief": "The jewel of Aldorath, where spires and domes rise behind fortified walls. Home to the **Crown of Thorns**, the **Severed Circle**, and the last remaining Temple of the Hollow Flame. Its streets are crowded with masked envoys, relic smugglers, and whispering spies. Beneath its surface lie catacombs older than the kingdom, sealed and forgotten by decree.",
       "encounters": "**King Vaelor**, **Keeper Ysryn**, **Magister Syrenth in disguise**, agents of the **Vault of Echoes**"
     },
     {
-      "label": "The Dragon’s Spire",
-      "detail": "A scorched peak wreathed in stormclouds. The lair of an **Elder Wyrm**, its hoard buried in molten stone and bone. Fabled as one of the Seven Watchers who once ruled the skies in the First Age. Few reach the peak — fewer return.",
+      "name": "The Dragon’s Spire",
+      "brief": "A scorched peak wreathed in stormclouds. The lair of an **Elder Wyrm**, its hoard buried in molten stone and bone. Fabled as one of the Seven Watchers who once ruled the skies in the First Age. Few reach the peak — fewer return.",
       "encounters": "The **Elder Wyrm**, relic-thirsty knights of the **Wyrmglaive Compact**, cursed echoes of past challengers"
     },
     {
-      "label": "The Forest of Shadowroot",
-      "detail": "Twisted trees, half-alive, grow over ruined altars and moss-cloaked idols. Here, the **Briar Assembly** whispers to beasts and root-spirits. The deeper paths shift, and time itself feels wrong beneath the canopy. Many believe the forest watches intruders. Some say it remembers.",
+      "name": "The Forest of Shadowroot",
+      "brief": "Twisted trees, half-alive, grow over ruined altars and moss-cloaked idols. Here, the **Briar Assembly** whispers to beasts and root-spirits. The deeper paths shift, and time itself feels wrong beneath the canopy. Many believe the forest watches intruders. Some say it remembers.",
       "encounters": "**Mother Talia**, **Medusa**, **Pale Wraith**, roaming goblins, lost pilgrims"
     },
     {
-      "label": "Blackwood Hollow",
-      "detail": "Not a castle, but a **cracked and brooding manor** perched over a sinkhole. Lord Blackwood is long dead, but **his bloodline was never ended** — and his spirit may yet speak. The Hollow is both a haunted estate and a political ruin.",
+      "name": "Blackwood Hollow",
+      "brief": "Not a castle, but a **cracked and brooding manor** perched over a sinkhole. Lord Blackwood is long dead, but **his bloodline was never ended** — and his spirit may yet speak. The Hollow is both a haunted estate and a political ruin.",
       "encounters": "**Descendants of the Blackwood Pact**, **Wraiths**, secret cults of the **Thornless Pact**"
     },
     {
-      "label": "The Severed Circle (College of Wizards)",
-      "detail": "Once the great tower of the unified College, now fractured into rival arcane halls. Forbidden sections are chained shut, while magical constructs patrol the old vaults. The **Umbral Synod** was exiled from here — but some say their agents remain.",
+      "name": "The Severed Circle (College of Wizards)",
+      "brief": "Once the great tower of the unified College, now fractured into rival arcane halls. Forbidden sections are chained shut, while magical constructs patrol the old vaults. The **Umbral Synod** was exiled from here — but some say their agents remain.",
       "encounters": "**Archmage Alaric’s successor**, ambitious students, secretive keepers of the **Vault of Echoes**"
     },
     {
-      "label": "The Vaulted Ruins of Rhygir",
-      "detail": "Deep in the earth, overgrown and collapsed, lie the remnants of the **pre-collapse civilization** that once ruled Aldorath. Wards still flicker, though the architects are long dead. It’s said even the **Vault of Echoes** fears what lies at its core.",
+      "name": "The Vaulted Ruins of Rhygir",
+      "brief": "Deep in the earth, overgrown and collapsed, lie the remnants of the **pre-collapse civilization** that once ruled Aldorath. Wards still flicker, though the architects are long dead. It’s said even the **Vault of Echoes** fears what lies at its core.",
       "encounters": "**Orc warbands**, **Blight-Risen**, relic guardians, **Vel Harrowglass’s agents**, traps that whisper"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "silent-assassin",
-      "label": "Silent assassin",
-      "detail": ""
+      "name": "Silent assassin",
+      "brief": ""
     },
     {
       "id": "battle-scarred-warrior",
-      "label": "Battle-scarred warrior",
-      "detail": ""
+      "name": "Battle-scarred warrior",
+      "brief": ""
     },
     {
       "id": "wandering-spellbinder",
-      "label": "Wandering spellbinder",
-      "detail": ""
+      "name": "Wandering spellbinder",
+      "brief": ""
     },
     {
       "id": "nimble-cutpurse",
-      "label": "Nimble cutpurse",
-      "detail": ""
+      "name": "Nimble cutpurse",
+      "brief": ""
     },
     {
       "id": "valiant-swordmaiden",
-      "label": "Valiant swordmaiden",
-      "detail": ""
+      "name": "Valiant swordmaiden",
+      "brief": ""
     },
     {
       "id": "brooding-hexblade",
-      "label": "Brooding hexblade",
-      "detail": ""
+      "name": "Brooding hexblade",
+      "brief": ""
     },
     {
       "id": "weathered-veteran",
-      "label": "Weathered veteran",
-      "detail": ""
+      "name": "Weathered veteran",
+      "brief": ""
     },
     {
       "id": "oath-bound-paladin",
-      "label": "Oath-bound paladin",
-      "detail": ""
+      "name": "Oath-bound paladin",
+      "brief": ""
     },
     {
       "id": "graceful-duelist",
-      "label": "Graceful duelist",
-      "detail": ""
+      "name": "Graceful duelist",
+      "brief": ""
     },
     {
       "id": "frenzied-berserker",
-      "label": "Frenzied berserker",
-      "detail": ""
+      "name": "Frenzied berserker",
+      "brief": ""
     },
     {
       "id": "reclusive-wildspeaker",
-      "label": "Reclusive wildspeaker",
-      "detail": ""
+      "name": "Reclusive wildspeaker",
+      "brief": ""
     },
     {
       "id": "zealous-miracle-worker",
-      "label": "Zealous miracle-worker",
-      "detail": ""
+      "name": "Zealous miracle-worker",
+      "brief": ""
     },
     {
       "id": "forbidden-arcanist",
-      "label": "Forbidden arcanist",
-      "detail": ""
+      "name": "Forbidden arcanist",
+      "brief": ""
     },
     {
       "id": "scheming-courtier",
-      "label": "Scheming courtier",
-      "detail": ""
+      "name": "Scheming courtier",
+      "brief": ""
     },
     {
       "id": "bold-frontline-captain",
-      "label": "Bold frontline captain",
-      "detail": ""
+      "name": "Bold frontline captain",
+      "brief": ""
     },
     {
       "id": "fanatical-inquisitor",
-      "label": "Fanatical inquisitor",
-      "detail": ""
+      "name": "Fanatical inquisitor",
+      "brief": ""
     },
     {
       "id": "haunted-seer",
-      "label": "Haunted seer",
-      "detail": ""
+      "name": "Haunted seer",
+      "brief": ""
     },
     {
       "id": "silver-tongued-envoy",
-      "label": "Silver-tongued envoy",
-      "detail": ""
+      "name": "Silver-tongued envoy",
+      "brief": ""
     },
     {
       "id": "inspiring-skald",
-      "label": "Inspiring skald",
-      "detail": ""
+      "name": "Inspiring skald",
+      "brief": ""
     },
     {
       "id": "quick-handed-burglar",
-      "label": "Quick-handed burglar",
-      "detail": ""
+      "name": "Quick-handed burglar",
+      "brief": ""
     },
     {
       "id": "cold-blooded-sellblade",
-      "label": "Cold-blooded sellblade",
-      "detail": ""
+      "name": "Cold-blooded sellblade",
+      "brief": ""
     },
     {
       "id": "inquisitive-loremaster",
-      "label": "Inquisitive loremaster",
-      "detail": ""
+      "name": "Inquisitive loremaster",
+      "brief": ""
     },
     {
       "id": "towering-gladiator",
-      "label": "Towering gladiator",
-      "detail": ""
+      "name": "Towering gladiator",
+      "brief": ""
     },
     {
       "id": "loyal-zealot",
-      "label": "Loyal zealot",
-      "detail": ""
+      "name": "Loyal zealot",
+      "brief": ""
     },
     {
       "id": "spirit-touched-wanderer",
-      "label": "Spirit-touched wanderer",
-      "detail": ""
+      "name": "Spirit-touched wanderer",
+      "brief": ""
     },
     {
       "id": "disciplined-ascetic",
-      "label": "Disciplined ascetic",
-      "detail": ""
+      "name": "Disciplined ascetic",
+      "brief": ""
     },
     {
       "id": "beast-wrangling-scout",
-      "label": "Beast-wrangling scout",
-      "detail": ""
+      "name": "Beast-wrangling scout",
+      "brief": ""
     },
     {
       "id": "masked-infiltrator",
-      "label": "Masked infiltrator",
-      "detail": ""
+      "name": "Masked infiltrator",
+      "brief": ""
     },
     {
       "id": "elven-blade-dancer",
-      "label": "Elven blade-dancer",
-      "detail": ""
+      "name": "Elven blade-dancer",
+      "brief": ""
     },
     {
       "id": "brilliant-tinkerer",
-      "label": "Brilliant tinkerer",
-      "detail": ""
+      "name": "Brilliant tinkerer",
+      "brief": ""
     },
     {
       "id": "sea-worn-corsair",
-      "label": "Sea-worn corsair",
-      "detail": ""
+      "name": "Sea-worn corsair",
+      "brief": ""
     },
     {
       "id": "regal-matriarch",
-      "label": "Regal matriarch",
-      "detail": ""
+      "name": "Regal matriarch",
+      "brief": ""
     },
     {
       "id": "masked-fool-with-secrets",
-      "label": "Masked fool with secrets",
-      "detail": ""
+      "name": "Masked fool with secrets",
+      "brief": ""
     },
     {
       "id": "master-tactician",
-      "label": "Master tactician",
-      "detail": ""
+      "name": "Master tactician",
+      "brief": ""
     },
     {
       "id": "hard-bitten-navigator",
-      "label": "Hard-bitten navigator",
-      "detail": ""
+      "name": "Hard-bitten navigator",
+      "brief": ""
     },
     {
       "id": "renowned-artisan",
-      "label": "Renowned artisan",
-      "detail": ""
+      "name": "Renowned artisan",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "swordsmanship",
-      "label": "Swordsmanship",
-      "detail": ""
+      "name": "Swordsmanship",
+      "brief": ""
     },
     {
       "id": "herbalism",
-      "label": "Herbalism",
-      "detail": ""
+      "name": "Herbalism",
+      "brief": ""
     },
     {
       "id": "beast-mastery",
-      "label": "Beast mastery",
-      "detail": ""
+      "name": "Beast mastery",
+      "brief": ""
     },
     {
       "id": "menace",
-      "label": "Menace",
-      "detail": ""
+      "name": "Menace",
+      "brief": ""
     },
     {
       "id": "leathercraft",
-      "label": "Leathercraft",
-      "detail": ""
+      "name": "Leathercraft",
+      "brief": ""
     },
     {
       "id": "star-reading",
-      "label": "Star-reading",
-      "detail": ""
+      "name": "Star-reading",
+      "brief": ""
     },
     {
       "id": "bowmanship",
-      "label": "Bowmanship",
-      "detail": ""
+      "name": "Bowmanship",
+      "brief": ""
     },
     {
       "id": "foraging",
-      "label": "Foraging",
-      "detail": ""
+      "name": "Foraging",
+      "brief": ""
     },
     {
       "id": "mount-handling",
-      "label": "Mount handling",
-      "detail": ""
+      "name": "Mount handling",
+      "brief": ""
     },
     {
       "id": "command",
-      "label": "Command",
-      "detail": ""
+      "name": "Command",
+      "brief": ""
     },
     {
       "id": "needlework",
-      "label": "Needlework",
-      "detail": ""
+      "name": "Needlework",
+      "brief": ""
     },
     {
       "id": "field-medicine",
-      "label": "Field medicine",
-      "detail": ""
+      "name": "Field medicine",
+      "brief": ""
     },
     {
       "id": "brawling",
-      "label": "Brawling",
-      "detail": ""
+      "name": "Brawling",
+      "brief": ""
     },
     {
       "id": "trailcraft",
-      "label": "Trailcraft",
-      "detail": ""
+      "name": "Trailcraft",
+      "brief": ""
     },
     {
       "id": "mapmaking",
-      "label": "Mapmaking",
-      "detail": ""
+      "name": "Mapmaking",
+      "brief": ""
     },
     {
       "id": "battlefield-sense",
-      "label": "Battlefield sense",
-      "detail": ""
+      "name": "Battlefield sense",
+      "brief": ""
     },
     {
       "id": "gemcutting",
-      "label": "Gemcutting",
-      "detail": ""
+      "name": "Gemcutting",
+      "brief": ""
     },
     {
       "id": "element-shaping",
-      "label": "Element-shaping",
-      "detail": ""
+      "name": "Element-shaping",
+      "brief": ""
     },
     {
       "id": "lockpicking",
-      "label": "Lockpicking",
-      "detail": ""
+      "name": "Lockpicking",
+      "brief": ""
     },
     {
       "id": "trap-setting",
-      "label": "Trap-setting",
-      "detail": ""
+      "name": "Trap-setting",
+      "brief": ""
     },
     {
       "id": "wayfinding",
-      "label": "Wayfinding",
-      "detail": ""
+      "name": "Wayfinding",
+      "brief": ""
     },
     {
       "id": "construction",
-      "label": "Construction",
-      "detail": ""
+      "name": "Construction",
+      "brief": ""
     },
     {
       "id": "rune-carving",
-      "label": "Rune-carving",
-      "detail": ""
+      "name": "Rune-carving",
+      "brief": ""
     },
     {
       "id": "shapechanging",
-      "label": "Shapechanging",
-      "detail": ""
+      "name": "Shapechanging",
+      "brief": ""
     },
     {
       "id": "spellweaving",
-      "label": "Spellweaving",
-      "detail": ""
+      "name": "Spellweaving",
+      "brief": ""
     },
     {
       "id": "net-casting",
-      "label": "Net-casting",
-      "detail": ""
+      "name": "Net-casting",
+      "brief": ""
     },
     {
       "id": "terrain-lore",
-      "label": "Terrain lore",
-      "detail": ""
+      "name": "Terrain lore",
+      "brief": ""
     },
     {
       "id": "metalworking",
-      "label": "Metalworking",
-      "detail": ""
+      "name": "Metalworking",
+      "brief": ""
     },
     {
       "id": "illusions",
-      "label": "Illusions",
-      "detail": ""
+      "name": "Illusions",
+      "brief": ""
     },
     {
       "id": "spirit-binding",
-      "label": "Spirit-binding",
-      "detail": ""
+      "name": "Spirit-binding",
+      "brief": ""
     },
     {
       "id": "potion-making",
-      "label": "Potion-making",
-      "detail": ""
+      "name": "Potion-making",
+      "brief": ""
     },
     {
       "id": "camp-cooking",
-      "label": "Camp cooking",
-      "detail": ""
+      "name": "Camp cooking",
+      "brief": ""
     },
     {
       "id": "persuasion",
-      "label": "Persuasion",
-      "detail": ""
+      "name": "Persuasion",
+      "brief": ""
     },
     {
       "id": "woodcraft",
-      "label": "Woodcraft",
-      "detail": ""
+      "name": "Woodcraft",
+      "brief": ""
     },
     {
       "id": "necromancy",
-      "label": "Necromancy",
-      "detail": ""
+      "name": "Necromancy",
+      "brief": ""
     },
     {
       "id": "anatomical-lore",
-      "label": "Anatomical lore",
-      "detail": ""
+      "name": "Anatomical lore",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "proud",
-      "label": "Proud",
-      "detail": ""
+      "name": "Proud",
+      "brief": ""
     },
     {
       "id": "unreliable",
-      "label": "Unreliable",
-      "detail": ""
+      "name": "Unreliable",
+      "brief": ""
     },
     {
       "id": "indecisive",
-      "label": "Indecisive",
-      "detail": ""
+      "name": "Indecisive",
+      "brief": ""
     },
     {
       "id": "perfectionist",
-      "label": "Perfectionist",
-      "detail": ""
+      "name": "Perfectionist",
+      "brief": ""
     },
     {
       "id": "notorious",
-      "label": "Notorious",
-      "detail": ""
+      "name": "Notorious",
+      "brief": ""
     },
     {
       "id": "hot-headed",
-      "label": "Hot-headed",
-      "detail": ""
+      "name": "Hot-headed",
+      "brief": ""
     },
     {
       "id": "faint-hearted",
-      "label": "Faint-hearted",
-      "detail": ""
+      "name": "Faint-hearted",
+      "brief": ""
     },
     {
       "id": "slothful",
-      "label": "Slothful",
-      "detail": ""
+      "name": "Slothful",
+      "brief": ""
     },
     {
       "id": "gullible",
-      "label": "Gullible",
-      "detail": ""
+      "name": "Gullible",
+      "brief": ""
     },
     {
       "id": "distrustful",
-      "label": "Distrustful",
-      "detail": ""
+      "name": "Distrustful",
+      "brief": ""
     },
     {
       "id": "vengeful",
-      "label": "Vengeful",
-      "detail": ""
+      "name": "Vengeful",
+      "brief": ""
     },
     {
       "id": "secretive",
-      "label": "Secretive",
-      "detail": ""
+      "name": "Secretive",
+      "brief": ""
     },
     {
       "id": "covetous",
-      "label": "Covetous",
-      "detail": ""
+      "name": "Covetous",
+      "brief": ""
     },
     {
       "id": "self-serving",
-      "label": "Self-serving",
-      "detail": ""
+      "name": "Self-serving",
+      "brief": ""
     },
     {
       "id": "apathetic",
-      "label": "Apathetic",
-      "detail": ""
+      "name": "Apathetic",
+      "brief": ""
     },
     {
       "id": "spiteful",
-      "label": "Spiteful",
-      "detail": ""
+      "name": "Spiteful",
+      "brief": ""
     },
     {
       "id": "overindulgent",
-      "label": "Overindulgent",
-      "detail": ""
+      "name": "Overindulgent",
+      "brief": ""
     },
     {
       "id": "nervous",
-      "label": "Nervous",
-      "detail": ""
+      "name": "Nervous",
+      "brief": ""
     },
     {
       "id": "envious",
-      "label": "Envious",
-      "detail": ""
+      "name": "Envious",
+      "brief": ""
     },
     {
       "id": "obstinate",
-      "label": "Obstinate",
-      "detail": ""
+      "name": "Obstinate",
+      "brief": ""
     },
     {
       "id": "blunt",
-      "label": "Blunt",
-      "detail": ""
+      "name": "Blunt",
+      "brief": ""
     },
     {
       "id": "overbearing",
-      "label": "Overbearing",
-      "detail": ""
+      "name": "Overbearing",
+      "brief": ""
     },
     {
       "id": "lustful",
-      "label": "Lustful",
-      "detail": ""
+      "name": "Lustful",
+      "brief": ""
     },
     {
       "id": "reckless",
-      "label": "Reckless",
-      "detail": ""
+      "name": "Reckless",
+      "brief": ""
     },
     {
       "id": "possessive",
-      "label": "Possessive",
-      "detail": ""
+      "name": "Possessive",
+      "brief": ""
     },
     {
       "id": "rash",
-      "label": "Rash",
-      "detail": ""
+      "name": "Rash",
+      "brief": ""
     },
     {
       "id": "boastful",
-      "label": "Boastful",
-      "detail": ""
+      "name": "Boastful",
+      "brief": ""
     },
     {
       "id": "rigid-minded",
-      "label": "Rigid-minded",
-      "detail": ""
+      "name": "Rigid-minded",
+      "brief": ""
     },
     {
       "id": "lazy",
-      "label": "Lazy",
-      "detail": ""
+      "name": "Lazy",
+      "brief": ""
     },
     {
       "id": "narrow-minded",
-      "label": "Narrow-minded",
-      "detail": ""
+      "name": "Narrow-minded",
+      "brief": ""
     },
     {
       "id": "deceptive",
-      "label": "Deceptive",
-      "detail": ""
+      "name": "Deceptive",
+      "brief": ""
     },
     {
       "id": "naive",
-      "label": "Naïve",
-      "detail": ""
+      "name": "Naïve",
+      "brief": ""
     },
     {
       "id": "cynical",
-      "label": "Cynical",
-      "detail": ""
+      "name": "Cynical",
+      "brief": ""
     },
     {
       "id": "insecure",
-      "label": "Insecure",
-      "detail": ""
+      "name": "Insecure",
+      "brief": ""
     },
     {
       "id": "arrogant",
-      "label": "Arrogant",
-      "detail": ""
+      "name": "Arrogant",
+      "brief": ""
     },
     {
       "id": "bigoted",
-      "label": "Bigoted",
-      "detail": ""
+      "name": "Bigoted",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "longsword",
-      "label": "Longsword",
-      "detail": ""
+      "name": "Longsword",
+      "brief": ""
     },
     {
       "id": "hunting-bow",
-      "label": "Hunting bow",
-      "detail": ""
+      "name": "Hunting bow",
+      "brief": ""
     },
     {
       "id": "compact-crossbow",
-      "label": "Compact crossbow",
-      "detail": ""
+      "name": "Compact crossbow",
+      "brief": ""
     },
     {
       "id": "curved-dagger",
-      "label": "Curved dagger",
-      "detail": ""
+      "name": "Curved dagger",
+      "brief": ""
     },
     {
       "id": "boar-spear",
-      "label": "Boar spear",
-      "detail": ""
+      "name": "Boar spear",
+      "brief": ""
     },
     {
       "id": "bearded-axe",
-      "label": "Bearded axe",
-      "detail": ""
+      "name": "Bearded axe",
+      "brief": ""
     },
     {
       "id": "morning-star",
-      "label": "Morning star",
-      "detail": ""
+      "name": "Morning star",
+      "brief": ""
     },
     {
       "id": "spiked-flail",
-      "label": "Spiked flail",
-      "detail": ""
+      "name": "Spiked flail",
+      "brief": ""
     },
     {
       "id": "round-shield",
-      "label": "Round shield",
-      "detail": ""
+      "name": "Round shield",
+      "brief": ""
     },
     {
       "id": "iron-helm",
-      "label": "Iron helm",
-      "detail": ""
+      "name": "Iron helm",
+      "brief": ""
     },
     {
       "id": "chainmail",
-      "label": "Chainmail",
-      "detail": ""
+      "name": "Chainmail",
+      "brief": ""
     },
     {
       "id": "reinforced-bracers",
-      "label": "Reinforced bracers",
-      "detail": ""
+      "name": "Reinforced bracers",
+      "brief": ""
     },
     {
       "id": "legplates",
-      "label": "Legplates",
-      "detail": ""
+      "name": "Legplates",
+      "brief": ""
     },
     {
       "id": "silent-boots",
-      "label": "Silent boots",
-      "detail": ""
+      "name": "Silent boots",
+      "brief": ""
     },
     {
       "id": "hooded-cloak",
-      "label": "Hooded cloak",
-      "detail": ""
+      "name": "Hooded cloak",
+      "brief": ""
     },
     {
       "id": "travel-pack",
-      "label": "Travel pack",
-      "detail": ""
+      "name": "Travel pack",
+      "brief": ""
     },
     {
       "id": "arrow-case",
-      "label": "Arrow case",
-      "detail": ""
+      "name": "Arrow case",
+      "brief": ""
     },
     {
       "id": "broadhead-arrows",
-      "label": "Broadhead arrows",
-      "detail": ""
+      "name": "Broadhead arrows",
+      "brief": ""
     },
     {
       "id": "quarrels",
-      "label": "Quarrels",
-      "detail": ""
+      "name": "Quarrels",
+      "brief": ""
     },
     {
       "id": "climbing-rope",
-      "label": "Climbing rope",
-      "detail": ""
+      "name": "Climbing rope",
+      "brief": ""
     },
     {
       "id": "hooked-launcher",
-      "label": "Hooked launcher",
-      "detail": ""
+      "name": "Hooked launcher",
+      "brief": ""
     },
     {
       "id": "oil-lantern",
-      "label": "Oil lantern",
-      "detail": ""
+      "name": "Oil lantern",
+      "brief": ""
     },
     {
       "id": "wax-torch",
-      "label": "Wax torch",
-      "detail": ""
+      "name": "Wax torch",
+      "brief": ""
     },
     {
       "id": "flint-and-tinder",
-      "label": "Flint and tinder",
-      "detail": ""
+      "name": "Flint and tinder",
+      "brief": ""
     },
     {
       "id": "water-flask",
-      "label": "Water flask",
-      "detail": ""
+      "name": "Water flask",
+      "brief": ""
     },
     {
       "id": "dried-meats",
-      "label": "Dried meats",
-      "detail": ""
+      "name": "Dried meats",
+      "brief": ""
     },
     {
       "id": "woolen-bedroll",
-      "label": "Woolen bedroll",
-      "detail": ""
+      "name": "Woolen bedroll",
+      "brief": ""
     },
     {
       "id": "canvas-tent",
-      "label": "Canvas tent",
-      "detail": ""
+      "name": "Canvas tent",
+      "brief": ""
     },
     {
       "id": "rune-compass",
-      "label": "Rune compass",
-      "detail": ""
+      "name": "Rune compass",
+      "brief": ""
     },
     {
       "id": "hand-sketched-map",
-      "label": "Hand-sketched map",
-      "detail": ""
+      "name": "Hand-sketched map",
+      "brief": ""
     },
     {
       "id": "seer-s-lens",
-      "label": "Seer’s lens",
-      "detail": ""
+      "name": "Seer’s lens",
+      "brief": ""
     },
     {
       "id": "star-scope",
-      "label": "Star scope",
-      "detail": ""
+      "name": "Star scope",
+      "brief": ""
     },
     {
       "id": "elixir-pouch",
-      "label": "Elixir pouch",
-      "detail": ""
+      "name": "Elixir pouch",
+      "brief": ""
     },
     {
       "id": "medic-s-satchel",
-      "label": "Medic’s satchel",
-      "detail": ""
+      "name": "Medic’s satchel",
+      "brief": ""
     },
     {
       "id": "thieves-tools",
-      "label": "Thieves’ tools",
-      "detail": ""
+      "name": "Thieves’ tools",
+      "brief": ""
     },
     {
       "id": "ornate-lute",
-      "label": "Ornate lute",
-      "detail": ""
+      "name": "Ornate lute",
+      "brief": ""
     }
   ],
   "spends_luck": true,

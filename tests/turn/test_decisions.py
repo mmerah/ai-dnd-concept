@@ -56,9 +56,9 @@ def _decision(resolver_name: str) -> PendingDecision:
         options=(
             PendingOption(
                 id="lantern",
-                label="Break the lantern",
-                detail="Its glass shatters.",
-                name=resolver_name,
+                name="Break the lantern",
+                brief="Its glass shatters.",
+                tool_name=resolver_name,
                 args={"item": "lantern"},
             ),
         ),
@@ -178,7 +178,7 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
 
 def _option(**changes: object) -> PendingOption:
     return PendingOption.model_validate(
-        {"id": "lantern", "label": "Break the lantern", "name": "turn_the_hit"} | changes
+        {"id": "lantern", "name": "Break the lantern", "tool_name": "turn_the_hit"} | changes
     )
 
 
@@ -191,9 +191,9 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
     assert engine.restore(suspended.model_dump_json()).pending == DECISION
 
     with pytest.raises(Refusal, match="'spend_momentum' is not a tool of the"):
-        _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
+        _ = engine.play_option(draft, _option(tool_name="spend_momentum"), Random(0))
     with pytest.raises(Refusal, match="Extra inputs are not permitted"):
-        _ = engine.answer(draft, _option(args={"nothing": "of theirs"}), Random(0))
+        _ = engine.play_option(draft, _option(args={"nothing": "of theirs"}), Random(0))
 
 
 def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(

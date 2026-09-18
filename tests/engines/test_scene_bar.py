@@ -579,9 +579,9 @@ async def test_depart_tells_the_narrator_the_players_words_not_the_pursuit(
         Commission(operation=DEPARTURE, detail=f"go find {hidden_name}"),
         stub_worldsmith(answer),
     )
-    assert written.telling is not None
-    assert "They slip out through the back." in written.telling
-    assert hidden_name not in written.telling
+    assert written.narrator_prompt is not None
+    assert "They slip out through the back." in written.narrator_prompt
+    assert hidden_name not in written.narrator_prompt
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

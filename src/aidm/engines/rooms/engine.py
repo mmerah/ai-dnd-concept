@@ -12,7 +12,7 @@ from aidm.core.tools import tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import character_panel, here_panel, party_panel, party_section, trail_panel
 from aidm.engines.engine import WRITES_NO, Engine, Written
-from aidm.engines.packs import Pack
+from aidm.engines.packs import Pack, render_worldsmith
 from aidm.engines.rooms.tools import (
     ELSEWHERE,
     MOVED_CARD,
@@ -28,7 +28,7 @@ from aidm.engines.rooms.worldsmith import MAP_ASK, OPENING_SECTIONS, check_exten
 
 EXTEND: Slug = "extend"
 MORE_MAP = DecisionOption(
-    id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
+    id=EXTEND, name="More map", brief="The map runs out here: say where you push on."
 )
 MAP_UNWRITTEN = Fact(
     told=True,
@@ -89,9 +89,8 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
         world = state.world
         player = world.player
         ways = world.ways.get(world.current.id, ())
-        me = player.subject()
         return PlayerView(
-            player=me,
+            player=player.subject(),
             scene_title=world.current.name,
             situation=world.current.description,
             panels=(
@@ -106,8 +105,8 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
                     title="Ways out",
                     rows=tuple(
                         PanelRow(
-                            label=world.require_place(way.to).name,
-                            detail="locked" if way.locked else "",
+                            name=world.require_place(way.to).name,
+                            brief="locked" if way.locked else "",
                         )
                         for way in ways
                         if way.known
@@ -117,7 +116,7 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
             ),
             decision=state.pending,
             action=MORE_MAP if world.frontier() == 0 else None,
-            over=self.over(state),
+            ending=self.ending(state),
         )
 
     @tool
@@ -156,8 +155,8 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
         world.disarm()
         return facts
 
-    def act(self, draft: Game[W], action: Slug, words: str) -> None:
-        if action != EXTEND or draft.world.frontier():
+    def act(self, draft: Game[W], action_id: Slug, words: str) -> None:
+        if action_id != EXTEND or draft.world.frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
@@ -168,8 +167,11 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
     ) -> RegionProposal[N]:
         world = draft.world
         model = RegionProposal[self.member]
-        prompt = self.render_request(
-            draft, intent=intent, guidance=self.guidance(draft.pack_id, opening=False), answer=model
+        prompt = self.render_commission(
+            draft,
+            intent=intent,
+            guidance=self.guidance(draft.pack_id, opening=False),
+            answer_model=model,
         )
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
@@ -193,20 +195,21 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
             return self.build_scenario(meta, pack_id, draft, source, premise)
 
         model = MapProposal[self.member]
-        prompt = self.render_worldsmith(
-            source,
-            meta.scope,
-            OPENING_SECTIONS,
-            MAP_ASK,
-            self.guidance(pack_id, opening=True),
-            model,
+        prompt = render_worldsmith(
+            self.worldsmith_role,
+            source=source,
+            scope=meta.scope,
+            world_sections=OPENING_SECTIONS,
+            intent=MAP_ASK,
+            guidance=self.guidance(pack_id, opening=True),
+            answer_model=model,
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     async def advance(
-        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if request.operation == EXTEND:
-            self.install(draft, await self.write_next(draft, request.detail, worldsmith))
+        if commission.operation == EXTEND:
+            self.install(draft, await self.write_next(draft, commission.detail, worldsmith))
             return Written((), None)
-        raise ValueError(WRITES_NO.format(engine=self.id, operation=request.operation))
+        raise ValueError(WRITES_NO.format(engine=self.id, operation=commission.operation))

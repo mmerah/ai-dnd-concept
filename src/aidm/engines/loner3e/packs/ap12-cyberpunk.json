@@ -161,33 +161,33 @@
   "rules": "Hacking:\n\nThe grid is a battlefield. If you jack in, you’d better be ready to bleed—digitally or otherwise.\n\n* **Access**: You need a terminal. Physical or wireless, public or ghosted, legit or jerry-rigged. Get in first.\n* **Actions**: Upload malware. Steal intel. Rewrite access. Shut down security. Hijack drones. Every command is a test of skill—or software.\n* **Failure**: Alerts. ICE. Blacklists. Traces. Physical feedback. Sometimes, just a full brainburn and your name on a bounty board.\n* **Detection**: If they notice you, the system fights back. Alarms trigger, contracts update, enemies deploy.\n* **Success**: Information. Control. Leverage. You might turn the tide of a job—or blow open a hidden truth. Just don’t get cocky.\n\nHigh-risk hacks should feel like tense heists. Add pressure. Add noise. Let the grid feel alive and hostile.\n\nCybernetic Enhancements:\n\nCyberware is freedom—but it bites. Every implant is a deal: more power, more risk, less of the original you.\n\n* **Installation**: Found in street clinics, off-grid labs, or stolen from corpses. The best gear is black-market.\n* **Benefits**: Strength boosts. Reflex spikes. Sensor suites. Direct hacking access. You become faster, sharper, deadlier.\n* **Maintenance**: Cyberware needs tune-ups. Glitches, lag, pain loops—these happen. Clinics fix it, if you pay.\n* **Risks**: Side effects are real. Emotional desync, addiction to overclockers, or getting tagged by trackers in your own blood.\n* **Limits**: You can’t run too hot for too long. Stack too many mods, and systems clash. EMPs fry you. Hackers hijack you.\n\nUse cyberware as leverage—not a crutch. Let it change who the character is, not just what they can do.\n\nImplants:\n\nTreat these as gear entries, lootable or installable between jobs.\n\n* **Neural Interface** — Direct mind-machine link; remote control, instant sync, total immersion.\n* **Cybernetic Eyes** — IR, zoom, night-vision, threat highlights. Seeing is exploiting.\n* **Cybernetic Limbs** — Lift more. Run faster. Crush bones. Looks? Optional.\n* **Neural Implant** — Boosted memory, logic circuits, skill caching.\n* **Voice Modulator** — Speak in any voice, any accent. Even ones that shouldn’t exist.\n* **Retinal Display** — Augmented-reality HUD burned right into your vision.\n* **Subdermal Armor** — Not visible. Very real. Stops knives and low-caliber rounds.\n* **Cybernetic Organs** — Internal hardware upgrades: cleaner blood, stronger lungs, rewired guts.\n* **Pain Suppressor** — Numb it all. Until the body gives out anyway.\n* **Adrenal Boost** — Triggered surge. Superhuman for ten seconds. Then you crash.\n* **Synthetic Blood** — Enhanced oxygenation. More stamina, faster healing, less downtime.\n* **Bio-Monitor** — Health alerts, drug tracking, full vitals suite.\n* **Reflex Booster** — Shaves milliseconds off reactions. Time enough to live.\n* **Sensory Enhancement** — Hearing ultrasounds. Smelling lies. Tasting poison.\n* **Cybernetic Spine** — Reinforced backbone. Literally.\n* **Subdermal Weapon** — Hidden blade, gun, or dart—where scanners won’t see it.\n* **Datajack** — Skull port. Plug in. Hack faster. Burn harder.\n* **Cybernetic Heart** — Tougher, faster, longer-lasting. It beats when you shouldn’t.\n\nCharacters with implants may occasionally trigger suspicion, scanners, or corporate interest—especially if running rare or military-grade mods.\n\nReputation:\n\nIn this world, reputation is currency. It's also a tracking variable.\n\n* **Gain It**: Pull off high-profile runs. Leak corporate secrets. Wipe out a rival crew on livefeed.\n* **Lose It**: Screw up. Get caught. Sell out to the wrong bidder. Ghost a job you were paid for.\n* **Spend It**: Reputation gets you in the door—exclusive locations, favors, elite contacts.\n* **Suffer It**: The higher you rise, the more you’re watched. Fame paints a target.\n\nReputation Levels:\n\n* **Unknown** — Nobody cares. You’re safe. You’re replaceable.\n* **Local** — Known in a neighborhood or among a gang.\n* **Regional** — Your name echoes through factions and feeds.\n* **National** — Major players recognize your work.\n* **International** — You’ve gone global. Corps whisper your handle.\n* **Legendary** — You’re a myth in a world that doesn’t believe in them.\n\n> **TIP**: Let reputation shift dynamically. Make it a double-edged sword—useful, dangerous, always evolving.",
   "locations": [
     {
-      "label": "The Spire of Vantrell",
-      "detail": "Corporate megatower with private weather control and memory-locked elevators. Rumored to contain an executive blacksite 300 floors below public access.",
+      "name": "The Spire of Vantrell",
+      "brief": "Corporate megatower with private weather control and memory-locked elevators. Rumored to contain an executive blacksite 300 floors below public access.",
       "encounters": "NPC “Viper Rodriguez,” enemy “Elysium Asset Reclaimer,” faction “Executive Choir.”"
     },
     {
-      "label": "The Gridwound",
-      "detail": "Fractured zone of the datanet where abandoned code mutates into sentient architecture. Time flows erratically inside; users often exit with missing memories—or new ones.",
+      "name": "The Gridwound",
+      "brief": "Fractured zone of the datanet where abandoned code mutates into sentient architecture. Time flows erratically inside; users often exit with missing memories—or new ones.",
       "encounters": "NPC “Blackout Garcia,” enemy “The Staticmind,” implant “Datajack.”"
     },
     {
-      "label": "The Violet Verge",
-      "detail": "Neon-lit market suspended across old monorail lines, open dusk to dawn, always moving. Vendors whisper passwords, sell pulse-mods, and vanish before sunrise.",
+      "name": "The Violet Verge",
+      "brief": "Neon-lit market suspended across old monorail lines, open dusk to dawn, always moving. Vendors whisper passwords, sell pulse-mods, and vanish before sunrise.",
       "encounters": "faction “Black Veil Syndicate,” NPC “The Fence,” enemy “Flayrat Raiders.”"
     },
     {
-      "label": "The Dead Circuit Foundry",
-      "detail": "Decommissioned tech plant reactivated by rogue engineers and outlaw coders. Contains machine spirits, reclaimed AI cores, and a reactor that shouldn’t still hum.",
+      "name": "The Dead Circuit Foundry",
+      "brief": "Decommissioned tech plant reactivated by rogue engineers and outlaw coders. Contains machine spirits, reclaimed AI cores, and a reactor that shouldn’t still hum.",
       "encounters": "faction “The Glass Fade,” enemy “Nullframe Agent,” implant “Reflex Booster.”"
     },
     {
-      "label": "Pier Zero Skyhub",
-      "detail": "Cracked landing platforms above the stormline; fuel black market under every hangar. No questions asked if your ship has the right transponder—or the right bribe.",
+      "name": "Pier Zero Skyhub",
+      "brief": "Cracked landing platforms above the stormline; fuel black market under every hangar. No questions asked if your ship has the right transponder—or the right bribe.",
       "encounters": "NPC “Ironclad Jackson,” enemy “Skyborne Corsairs,” gear “Pulsecycle.”"
     },
     {
-      "label": "Ashmantle Exclusion Zone",
-      "detail": "Toxic crater of scrapped servers and synthetic waste, swarming with scavenger cults. Signal interference warps surveillance and memory—entering is one thing, remembering is another.",
+      "name": "Ashmantle Exclusion Zone",
+      "brief": "Toxic crater of scrapped servers and synthetic waste, swarming with scavenger cults. Signal interference warps surveillance and memory—entering is one thing, remembering is another.",
       "encounters": "enemy “Synapse Breaker,” faction “Order of the Iron Root,” gear “Ghost-Hardened Armor.”"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "burned-out-hacker",
-      "label": "Burned-Out Hacker",
-      "detail": ""
+      "name": "Burned-Out Hacker",
+      "brief": ""
     },
     {
       "id": "synth-addicted-courier",
-      "label": "Synth-Addicted Courier",
-      "detail": ""
+      "name": "Synth-Addicted Courier",
+      "brief": ""
     },
     {
       "id": "chrome-laced-brawler",
-      "label": "Chrome-Laced Brawler",
-      "detail": ""
+      "name": "Chrome-Laced Brawler",
+      "brief": ""
     },
     {
       "id": "disavowed-corp-analyst",
-      "label": "Disavowed Corp Analyst",
-      "detail": ""
+      "name": "Disavowed Corp Analyst",
+      "brief": ""
     },
     {
       "id": "augmented-detective",
-      "label": "Augmented Detective",
-      "detail": ""
+      "name": "Augmented Detective",
+      "brief": ""
     },
     {
       "id": "streetwise-netrunner",
-      "label": "Streetwise Netrunner",
-      "detail": ""
+      "name": "Streetwise Netrunner",
+      "brief": ""
     },
     {
       "id": "freelance-enforcer",
-      "label": "Freelance Enforcer",
-      "detail": ""
+      "name": "Freelance Enforcer",
+      "brief": ""
     },
     {
       "id": "memory-wiped-spy",
-      "label": "Memory-Wiped Spy",
-      "detail": ""
+      "name": "Memory-Wiped Spy",
+      "brief": ""
     },
     {
       "id": "rogue-ai-emulator",
-      "label": "Rogue AI Emulator",
-      "detail": ""
+      "name": "Rogue AI Emulator",
+      "brief": ""
     },
     {
       "id": "street-surgeon",
-      "label": "Street Surgeon",
-      "detail": ""
+      "name": "Street Surgeon",
+      "brief": ""
     },
     {
       "id": "grid-addicted-informant",
-      "label": "Grid-Addicted Informant",
-      "detail": ""
+      "name": "Grid-Addicted Informant",
+      "brief": ""
     },
     {
       "id": "cybernetic-exorcist",
-      "label": "Cybernetic Exorcist",
-      "detail": ""
+      "name": "Cybernetic Exorcist",
+      "brief": ""
     },
     {
       "id": "reality-editor",
-      "label": "Reality Editor",
-      "detail": ""
+      "name": "Reality Editor",
+      "brief": ""
     },
     {
       "id": "neon-priest",
-      "label": "Neon Priest",
-      "detail": ""
+      "name": "Neon Priest",
+      "brief": ""
     },
     {
       "id": "disillusioned-idealist",
-      "label": "Disillusioned Idealist",
-      "detail": ""
+      "name": "Disillusioned Idealist",
+      "brief": ""
     },
     {
       "id": "black-market-dealer",
-      "label": "Black-Market Dealer",
-      "detail": ""
+      "name": "Black-Market Dealer",
+      "brief": ""
     },
     {
       "id": "techno-shaman",
-      "label": "Techno-Shaman",
-      "detail": ""
+      "name": "Techno-Shaman",
+      "brief": ""
     },
     {
       "id": "edge-rider-smuggler",
-      "label": "Edge-Rider Smuggler",
-      "detail": ""
+      "name": "Edge-Rider Smuggler",
+      "brief": ""
     },
     {
       "id": "deep-net-diver",
-      "label": "Deep Net Diver",
-      "detail": ""
+      "name": "Deep Net Diver",
+      "brief": ""
     },
     {
       "id": "corporate-defector",
-      "label": "Corporate Defector",
-      "detail": ""
+      "name": "Corporate Defector",
+      "brief": ""
     },
     {
       "id": "glitched-clone",
-      "label": "Glitched Clone",
-      "detail": ""
+      "name": "Glitched Clone",
+      "brief": ""
     },
     {
       "id": "trauma-coded-healer",
-      "label": "Trauma-Coded Healer",
-      "detail": ""
+      "name": "Trauma-Coded Healer",
+      "brief": ""
     },
     {
       "id": "drone-whisperer",
-      "label": "Drone Whisperer",
-      "detail": ""
+      "name": "Drone Whisperer",
+      "brief": ""
     },
     {
       "id": "neuromancer-in-exile",
-      "label": "Neuromancer-In-Exile",
-      "detail": ""
+      "name": "Neuromancer-In-Exile",
+      "brief": ""
     },
     {
       "id": "loyalty-free-agent",
-      "label": "Loyalty-Free Agent",
-      "detail": ""
+      "name": "Loyalty-Free Agent",
+      "brief": ""
     },
     {
       "id": "rewritten-revolutionary",
-      "label": "Rewritten Revolutionary",
-      "detail": ""
+      "name": "Rewritten Revolutionary",
+      "brief": ""
     },
     {
       "id": "frame-up-victim",
-      "label": "Frame-Up Victim",
-      "detail": ""
+      "name": "Frame-Up Victim",
+      "brief": ""
     },
     {
       "id": "synthesist-philosopher",
-      "label": "Synthesist Philosopher",
-      "detail": ""
+      "name": "Synthesist Philosopher",
+      "brief": ""
     },
     {
       "id": "blackout-operative",
-      "label": "Blackout Operative",
-      "detail": ""
+      "name": "Blackout Operative",
+      "brief": ""
     },
     {
       "id": "mind-fragmented-prophet",
-      "label": "Mind-Fragmented Prophet",
-      "detail": ""
+      "name": "Mind-Fragmented Prophet",
+      "brief": ""
     },
     {
       "id": "firewall-runner",
-      "label": "Firewall Runner",
-      "detail": ""
+      "name": "Firewall Runner",
+      "brief": ""
     },
     {
       "id": "quantum-fugitive",
-      "label": "Quantum Fugitive",
-      "detail": ""
+      "name": "Quantum Fugitive",
+      "brief": ""
     },
     {
       "id": "street-born-tactician",
-      "label": "Street-Born Tactician",
-      "detail": ""
+      "name": "Street-Born Tactician",
+      "brief": ""
     },
     {
       "id": "dreamscape-manipulator",
-      "label": "Dreamscape Manipulator",
-      "detail": ""
+      "name": "Dreamscape Manipulator",
+      "brief": ""
     },
     {
       "id": "shadowback-sniper",
-      "label": "Shadowback Sniper",
-      "detail": ""
+      "name": "Shadowback Sniper",
+      "brief": ""
     },
     {
       "id": "subroutine-assassin",
-      "label": "Subroutine Assassin",
-      "detail": ""
+      "name": "Subroutine Assassin",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "system-override",
-      "label": "System Override",
-      "detail": ""
+      "name": "System Override",
+      "brief": ""
     },
     {
       "id": "close-quarters-combat",
-      "label": "Close Quarters Combat",
-      "detail": ""
+      "name": "Close Quarters Combat",
+      "brief": ""
     },
     {
       "id": "stealth-hacking",
-      "label": "Stealth Hacking",
-      "detail": ""
+      "name": "Stealth Hacking",
+      "brief": ""
     },
     {
       "id": "black-market-negotiation",
-      "label": "Black Market Negotiation",
-      "detail": ""
+      "name": "Black Market Negotiation",
+      "brief": ""
     },
     {
       "id": "rapid-decryption",
-      "label": "Rapid Decryption",
-      "detail": ""
+      "name": "Rapid Decryption",
+      "brief": ""
     },
     {
       "id": "reflex-boosted-aim",
-      "label": "Reflex-Boosted Aim",
-      "detail": ""
+      "name": "Reflex-Boosted Aim",
+      "brief": ""
     },
     {
       "id": "neural-mapping",
-      "label": "Neural Mapping",
-      "detail": ""
+      "name": "Neural Mapping",
+      "brief": ""
     },
     {
       "id": "improvised-surgery",
-      "label": "Improvised Surgery",
-      "detail": ""
+      "name": "Improvised Surgery",
+      "brief": ""
     },
     {
       "id": "viral-code-deployment",
-      "label": "Viral Code Deployment",
-      "detail": ""
+      "name": "Viral Code Deployment",
+      "brief": ""
     },
     {
       "id": "surveillance-scrambling",
-      "label": "Surveillance Scrambling",
-      "detail": ""
+      "name": "Surveillance Scrambling",
+      "brief": ""
     },
     {
       "id": "urban-parkour",
-      "label": "Urban Parkour",
-      "detail": ""
+      "name": "Urban Parkour",
+      "brief": ""
     },
     {
       "id": "zero-g-maneuvering",
-      "label": "Zero-G Maneuvering",
-      "detail": ""
+      "name": "Zero-G Maneuvering",
+      "brief": ""
     },
     {
       "id": "drone-command",
-      "label": "Drone Command",
-      "detail": ""
+      "name": "Drone Command",
+      "brief": ""
     },
     {
       "id": "social-engineering",
-      "label": "Social Engineering",
-      "detail": ""
+      "name": "Social Engineering",
+      "brief": ""
     },
     {
       "id": "firewall-breach",
-      "label": "Firewall Breach",
-      "detail": ""
+      "name": "Firewall Breach",
+      "brief": ""
     },
     {
       "id": "bio-signal-detection",
-      "label": "Bio-Signal Detection",
-      "detail": ""
+      "name": "Bio-Signal Detection",
+      "brief": ""
     },
     {
       "id": "lie-recognition",
-      "label": "Lie Recognition",
-      "detail": ""
+      "name": "Lie Recognition",
+      "brief": ""
     },
     {
       "id": "adaptive-camouflage-use",
-      "label": "Adaptive Camouflage Use",
-      "detail": ""
+      "name": "Adaptive Camouflage Use",
+      "brief": ""
     },
     {
       "id": "cybernetic-tinkering",
-      "label": "Cybernetic Tinkering",
-      "detail": ""
+      "name": "Cybernetic Tinkering",
+      "brief": ""
     },
     {
       "id": "network-backdoor-design",
-      "label": "Network Backdoor Design",
-      "detail": ""
+      "name": "Network Backdoor Design",
+      "brief": ""
     },
     {
       "id": "subdermal-weapon-use",
-      "label": "Subdermal Weapon Use",
-      "detail": ""
+      "name": "Subdermal Weapon Use",
+      "brief": ""
     },
     {
       "id": "combat-protocol-execution",
-      "label": "Combat Protocol Execution",
-      "detail": ""
+      "name": "Combat Protocol Execution",
+      "brief": ""
     },
     {
       "id": "memory-extraction",
-      "label": "Memory Extraction",
-      "detail": ""
+      "name": "Memory Extraction",
+      "brief": ""
     },
     {
       "id": "parallel-process-thinking",
-      "label": "Parallel Process Thinking",
-      "detail": ""
+      "name": "Parallel Process Thinking",
+      "brief": ""
     },
     {
       "id": "emp-deployment",
-      "label": "EMP Deployment",
-      "detail": ""
+      "name": "EMP Deployment",
+      "brief": ""
     },
     {
       "id": "synthetic-emotion-reading",
-      "label": "Synthetic Emotion Reading",
-      "detail": ""
+      "name": "Synthetic Emotion Reading",
+      "brief": ""
     },
     {
       "id": "live-feed-hijacking",
-      "label": "Live Feed Hijacking",
-      "detail": ""
+      "name": "Live Feed Hijacking",
+      "brief": ""
     },
     {
       "id": "stealth-infiltration",
-      "label": "Stealth Infiltration",
-      "detail": ""
+      "name": "Stealth Infiltration",
+      "brief": ""
     },
     {
       "id": "nano-reactor-tuning",
-      "label": "Nano-Reactor Tuning",
-      "detail": ""
+      "name": "Nano-Reactor Tuning",
+      "brief": ""
     },
     {
       "id": "reality-loop-prediction",
-      "label": "Reality Loop Prediction",
-      "detail": ""
+      "name": "Reality Loop Prediction",
+      "brief": ""
     },
     {
       "id": "personality-spoofing",
-      "label": "Personality Spoofing",
-      "detail": ""
+      "name": "Personality Spoofing",
+      "brief": ""
     },
     {
       "id": "quantum-calculus",
-      "label": "Quantum Calculus",
-      "detail": ""
+      "name": "Quantum Calculus",
+      "brief": ""
     },
     {
       "id": "sensory-override",
-      "label": "Sensory Override",
-      "detail": ""
+      "name": "Sensory Override",
+      "brief": ""
     },
     {
       "id": "panic-suppression",
-      "label": "Panic Suppression",
-      "detail": ""
+      "name": "Panic Suppression",
+      "brief": ""
     },
     {
       "id": "crisis-negotiation",
-      "label": "Crisis Negotiation",
-      "detail": ""
+      "name": "Crisis Negotiation",
+      "brief": ""
     },
     {
       "id": "multi-system-sync",
-      "label": "Multi-System Sync",
-      "detail": ""
+      "name": "Multi-System Sync",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "fried-neural-pathways",
-      "label": "Fried Neural Pathways",
-      "detail": ""
+      "name": "Fried Neural Pathways",
+      "brief": ""
     },
     {
       "id": "memory-fragmentation",
-      "label": "Memory Fragmentation",
-      "detail": ""
+      "name": "Memory Fragmentation",
+      "brief": ""
     },
     {
       "id": "ghosts-in-the-wetware",
-      "label": "Ghosts in the Wetware",
-      "detail": ""
+      "name": "Ghosts in the Wetware",
+      "brief": ""
     },
     {
       "id": "addicted-to-data-surges",
-      "label": "Addicted to Data Surges",
-      "detail": ""
+      "name": "Addicted to Data Surges",
+      "brief": ""
     },
     {
       "id": "prone-to-system-blackouts",
-      "label": "Prone to System Blackouts",
-      "detail": ""
+      "name": "Prone to System Blackouts",
+      "brief": ""
     },
     {
       "id": "marked-by-a-kill-protocol",
-      "label": "Marked by a Kill Protocol",
-      "detail": ""
+      "name": "Marked by a Kill Protocol",
+      "brief": ""
     },
     {
       "id": "burnout-syndrome",
-      "label": "Burnout Syndrome",
-      "detail": ""
+      "name": "Burnout Syndrome",
+      "brief": ""
     },
     {
       "id": "obsolete-hardware",
-      "label": "Obsolete Hardware",
-      "detail": ""
+      "name": "Obsolete Hardware",
+      "brief": ""
     },
     {
       "id": "overclocked-heart",
-      "label": "Overclocked Heart",
-      "detail": ""
+      "name": "Overclocked Heart",
+      "brief": ""
     },
     {
       "id": "shadow-trauma",
-      "label": "Shadow Trauma",
-      "detail": ""
+      "name": "Shadow Trauma",
+      "brief": ""
     },
     {
       "id": "identity-loop-instability",
-      "label": "Identity Loop Instability",
-      "detail": ""
+      "name": "Identity Loop Instability",
+      "brief": ""
     },
     {
       "id": "desync-with-physical-body",
-      "label": "Desync with Physical Body",
-      "detail": ""
+      "name": "Desync with Physical Body",
+      "brief": ""
     },
     {
       "id": "echoes-of-deleted-lives",
-      "label": "Echoes of Deleted Lives",
-      "detail": ""
+      "name": "Echoes of Deleted Lives",
+      "brief": ""
     },
     {
       "id": "crippling-synth-dependency",
-      "label": "Crippling Synth Dependency",
-      "detail": ""
+      "name": "Crippling Synth Dependency",
+      "brief": ""
     },
     {
       "id": "empathy-nullification-chip",
-      "label": "Empathy Nullification Chip",
-      "detail": ""
+      "name": "Empathy Nullification Chip",
+      "brief": ""
     },
     {
       "id": "target-of-a-tracking-algorithm",
-      "label": "Target of a Tracking Algorithm",
-      "detail": ""
+      "name": "Target of a Tracking Algorithm",
+      "brief": ""
     },
     {
       "id": "prone-to-overwrites",
-      "label": "Prone to Overwrites",
-      "detail": ""
+      "name": "Prone to Overwrites",
+      "brief": ""
     },
     {
       "id": "fragmented-sleep-patterns",
-      "label": "Fragmented Sleep Patterns",
-      "detail": ""
+      "name": "Fragmented Sleep Patterns",
+      "brief": ""
     },
     {
       "id": "emotion-emulator-failure",
-      "label": "Emotion Emulator Failure",
-      "detail": ""
+      "name": "Emotion Emulator Failure",
+      "brief": ""
     },
     {
       "id": "hallucinogenic-recall-loops",
-      "label": "Hallucinogenic Recall Loops",
-      "detail": ""
+      "name": "Hallucinogenic Recall Loops",
+      "brief": ""
     },
     {
       "id": "claustrophobic-in-vr",
-      "label": "Claustrophobic in VR",
-      "detail": ""
+      "name": "Claustrophobic in VR",
+      "brief": ""
     },
     {
       "id": "noise-sensitivity",
-      "label": "Noise Sensitivity",
-      "detail": ""
+      "name": "Noise Sensitivity",
+      "brief": ""
     },
     {
       "id": "visions-from-the-code",
-      "label": "Visions from the Code",
-      "detail": ""
+      "name": "Visions from the Code",
+      "brief": ""
     },
     {
       "id": "can-t-unplug-voluntarily",
-      "label": "Can’t Unplug Voluntarily",
-      "detail": ""
+      "name": "Can’t Unplug Voluntarily",
+      "brief": ""
     },
     {
       "id": "internal-system-drift",
-      "label": "Internal System Drift",
-      "detail": ""
+      "name": "Internal System Drift",
+      "brief": ""
     },
     {
       "id": "experimental-implant-rejection",
-      "label": "Experimental Implant Rejection",
-      "detail": ""
+      "name": "Experimental Implant Rejection",
+      "brief": ""
     },
     {
       "id": "prone-to-data-bleed",
-      "label": "Prone to Data Bleed",
-      "detail": ""
+      "name": "Prone to Data Bleed",
+      "brief": ""
     },
     {
       "id": "untraceable-legal-status",
-      "label": "Untraceable Legal Status",
-      "detail": ""
+      "name": "Untraceable Legal Status",
+      "brief": ""
     },
     {
       "id": "triggered-by-flash-memories",
-      "label": "Triggered by Flash Memories",
-      "detail": ""
+      "name": "Triggered by Flash Memories",
+      "brief": ""
     },
     {
       "id": "incompatibility-with-grid-ai",
-      "label": "Incompatibility with Grid AI",
-      "detail": ""
+      "name": "Incompatibility with Grid AI",
+      "brief": ""
     },
     {
       "id": "host-to-legacy-malware",
-      "label": "Host to Legacy Malware",
-      "detail": ""
+      "name": "Host to Legacy Malware",
+      "brief": ""
     },
     {
       "id": "conflicted-programming",
-      "label": "Conflicted Programming",
-      "detail": ""
+      "name": "Conflicted Programming",
+      "brief": ""
     },
     {
       "id": "fear-of-reboots",
-      "label": "Fear of Reboots",
-      "detail": ""
+      "name": "Fear of Reboots",
+      "brief": ""
     },
     {
       "id": "blacklisted-by-megacorp",
-      "label": "Blacklisted by Megacorp",
-      "detail": ""
+      "name": "Blacklisted by Megacorp",
+      "brief": ""
     },
     {
       "id": "bio-rejection-syndrome",
-      "label": "Bio-Rejection Syndrome",
-      "detail": ""
+      "name": "Bio-Rejection Syndrome",
+      "brief": ""
     },
     {
       "id": "failsafe-override-vulnerable",
-      "label": "Failsafe Override Vulnerable",
-      "detail": ""
+      "name": "Failsafe Override Vulnerable",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "cortical-jack-enhancer",
-      "label": "Cortical Jack Enhancer",
-      "detail": ""
+      "name": "Cortical Jack Enhancer",
+      "brief": ""
     },
     {
       "id": "cloak-of-obfuscation-nanoweave",
-      "label": "Cloak of Obfuscation (Nanoweave)",
-      "detail": ""
+      "name": "Cloak of Obfuscation (Nanoweave)",
+      "brief": ""
     },
     {
       "id": "black-ice-injector-rig",
-      "label": "Black-Ice Injector Rig",
-      "detail": ""
+      "name": "Black-Ice Injector Rig",
+      "brief": ""
     },
     {
       "id": "hollow-id-key",
-      "label": "Hollow ID Key",
-      "detail": ""
+      "name": "Hollow ID Key",
+      "brief": ""
     },
     {
       "id": "pain-dampening-combat-suit",
-      "label": "Pain-Dampening Combat Suit",
-      "detail": ""
+      "name": "Pain-Dampening Combat Suit",
+      "brief": ""
     },
     {
       "id": "illegal-sense-recorder",
-      "label": "Illegal Sense Recorder",
-      "detail": ""
+      "name": "Illegal Sense Recorder",
+      "brief": ""
     },
     {
       "id": "retinal-ar-overlay",
-      "label": "Retinal AR Overlay",
-      "detail": ""
+      "name": "Retinal AR Overlay",
+      "brief": ""
     },
     {
       "id": "disposable-drone-swarm",
-      "label": "Disposable Drone Swarm",
-      "detail": ""
+      "name": "Disposable Drone Swarm",
+      "brief": ""
     },
     {
       "id": "pulse-knife-with-reverb-edge",
-      "label": "Pulse-Knife with Reverb Edge",
-      "detail": ""
+      "name": "Pulse-Knife with Reverb Edge",
+      "brief": ""
     },
     {
       "id": "locust-data-spike",
-      "label": "Locust Data Spike",
-      "detail": ""
+      "name": "Locust Data Spike",
+      "brief": ""
     },
     {
       "id": "emergency-firewall-beacon",
-      "label": "Emergency Firewall Beacon",
-      "detail": ""
+      "name": "Emergency Firewall Beacon",
+      "brief": ""
     },
     {
       "id": "signal-ghost-transmitter",
-      "label": "Signal-Ghost Transmitter",
-      "detail": ""
+      "name": "Signal-Ghost Transmitter",
+      "brief": ""
     },
     {
       "id": "neural-feedback-loop-circuit",
-      "label": "Neural Feedback Loop Circuit",
-      "detail": ""
+      "name": "Neural Feedback Loop Circuit",
+      "brief": ""
     },
     {
       "id": "prototype-chrono-stabilizer",
-      "label": "Prototype Chrono-Stabilizer",
-      "detail": ""
+      "name": "Prototype Chrono-Stabilizer",
+      "brief": ""
     },
     {
       "id": "voiceprint-scrambler",
-      "label": "Voiceprint Scrambler",
-      "detail": ""
+      "name": "Voiceprint Scrambler",
+      "brief": ""
     },
     {
       "id": "voxel-disguise-mesh",
-      "label": "Voxel Disguise Mesh",
-      "detail": ""
+      "name": "Voxel Disguise Mesh",
+      "brief": ""
     },
     {
       "id": "self-writing-notepad",
-      "label": "Self-Writing Notepad",
-      "detail": ""
+      "name": "Self-Writing Notepad",
+      "brief": ""
     },
     {
       "id": "locked-black-case-unknown-origin",
-      "label": "Locked Black Case (Unknown Origin)",
-      "detail": ""
+      "name": "Locked Black Case (Unknown Origin)",
+      "brief": ""
     },
     {
       "id": "emp-pulse-emitter",
-      "label": "EMP Pulse Emitter",
-      "detail": ""
+      "name": "EMP Pulse Emitter",
+      "brief": ""
     },
     {
       "id": "portable-cryptovault",
-      "label": "Portable Cryptovault",
-      "detail": ""
+      "name": "Portable Cryptovault",
+      "brief": ""
     },
     {
       "id": "reinforced-prosthetic-arm",
-      "label": "Reinforced Prosthetic Arm",
-      "detail": ""
+      "name": "Reinforced Prosthetic Arm",
+      "brief": ""
     },
     {
       "id": "molecular-code-sniffer",
-      "label": "Molecular Code Sniffer",
-      "detail": ""
+      "name": "Molecular Code Sniffer",
+      "brief": ""
     },
     {
       "id": "personal-server-capsule",
-      "label": "Personal Server Capsule",
-      "detail": ""
+      "name": "Personal Server Capsule",
+      "brief": ""
     },
     {
       "id": "patchwork-cyberdeck",
-      "label": "Patchwork Cyberdeck",
-      "detail": ""
+      "name": "Patchwork Cyberdeck",
+      "brief": ""
     },
     {
       "id": "glitch-tuned-monocle",
-      "label": "Glitch-Tuned Monocle",
-      "detail": ""
+      "name": "Glitch-Tuned Monocle",
+      "brief": ""
     },
     {
       "id": "jammer-grid-bracelet",
-      "label": "Jammer Grid Bracelet",
-      "detail": ""
+      "name": "Jammer Grid Bracelet",
+      "brief": ""
     },
     {
       "id": "ghost-backup-drive",
-      "label": "Ghost-Backup Drive",
-      "detail": ""
+      "name": "Ghost-Backup Drive",
+      "brief": ""
     },
     {
       "id": "nanite-field-injector",
-      "label": "Nanite Field Injector",
-      "detail": ""
+      "name": "Nanite Field Injector",
+      "brief": ""
     },
     {
       "id": "synthetic-adrenaline-pack",
-      "label": "Synthetic Adrenaline Pack",
-      "detail": ""
+      "name": "Synthetic Adrenaline Pack",
+      "brief": ""
     },
     {
       "id": "mind-map-visualizer",
-      "label": "Mind-Map Visualizer",
-      "detail": ""
+      "name": "Mind-Map Visualizer",
+      "brief": ""
     },
     {
       "id": "cloaked-energy-pistol",
-      "label": "Cloaked Energy Pistol",
-      "detail": ""
+      "name": "Cloaked Energy Pistol",
+      "brief": ""
     },
     {
       "id": "modular-tactical-limb",
-      "label": "Modular Tactical Limb",
-      "detail": ""
+      "name": "Modular Tactical Limb",
+      "brief": ""
     },
     {
       "id": "smart-ink-tattoo-interface",
-      "label": "Smart Ink Tattoo Interface",
-      "detail": ""
+      "name": "Smart Ink Tattoo Interface",
+      "brief": ""
     },
     {
       "id": "phase-shift-boots",
-      "label": "Phase-Shift Boots",
-      "detail": ""
+      "name": "Phase-Shift Boots",
+      "brief": ""
     },
     {
       "id": "rewritable-identity-chip",
-      "label": "Rewritable Identity Chip",
-      "detail": ""
+      "name": "Rewritable Identity Chip",
+      "brief": ""
     },
     {
       "id": "ai-companion-beta-version",
-      "label": "AI Companion (Beta Version)",
-      "detail": ""
+      "name": "AI Companion (Beta Version)",
+      "brief": ""
     }
   ],
   "spends_luck": false,

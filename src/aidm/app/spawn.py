@@ -22,14 +22,14 @@ LOGGER = logging.getLogger(__name__)
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
 PROMPT_MAX_BYTES = 131_072  # Linux MAX_ARG_STRLEN: the prompt is one argv element
-# A resumed session id is fed back as an argv element; a leading `-` must not parse as a flag.
-SessionId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")]
+# A resumed conversation id is fed back as an argv element; a leading `-` must not parse as a flag.
+ConversationId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")]
 
 
 @dataclass(frozen=True, slots=True)
 class RunResult:
     text: str
-    session: str | None
+    conversation: str | None
 
 
 class Driver(Protocol):
@@ -39,14 +39,14 @@ class Driver(Protocol):
     def secrets(self) -> tuple[str, ...]: ...
 
     def command(
-        self, role: Role, config: RoleConfig, session: str | None, url: str
+        self, role: Role, config: RoleConfig, conversation: str | None, url: str
     ) -> Sequence[str]: ...
     def read_result(self, output: str) -> RunResult: ...
 
 
 class Spawner(Protocol):
     async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
     ) -> RunResult: ...
 
 
@@ -54,7 +54,7 @@ class _ClaudeResult(Loose):
     """What `--output-format json` prints."""
 
     result: str
-    session_id: SessionId
+    session_id: ConversationId
     # A failed run can still exit 0 and put its error where the answer goes.
     is_error: bool = False
 
@@ -68,7 +68,7 @@ class _CodexEvent(Loose):
     """`type` is required: a bare answer object must not parse as an event."""
 
     type: str
-    thread_id: SessionId | None = None
+    thread_id: ConversationId | None = None
     item: _CodexItem | None = None
 
 
@@ -77,7 +77,7 @@ class ClaudeDriver:
     secrets: tuple[str, ...] = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
 
     def command(
-        self, role: Role, config: RoleConfig, session: str | None, url: str
+        self, role: Role, config: RoleConfig, conversation: str | None, url: str
     ) -> Sequence[str]:
         """The prompt follows the last flag, so that flag takes no list."""
         argv = [
@@ -89,7 +89,7 @@ class ClaudeDriver:
             config.model,
             "--effort",
             config.effort,
-            *(() if session is None else ("--resume", session)),
+            *(() if conversation is None else ("--resume", conversation)),
             # Measured: `--tools ""` disables nothing, naming one tool does.
             "--restricted",
             "--tools",
@@ -119,9 +119,9 @@ class CodexDriver:
     secrets: tuple[str, ...] = ("OPENAI_API_KEY",)
 
     def command(
-        self, role: Role, config: RoleConfig, session: str | None, url: str
+        self, role: Role, config: RoleConfig, conversation: str | None, url: str
     ) -> Sequence[str]:
-        argv = ["codex", "exec", *(() if session is None else ("resume", session))]
+        argv = ["codex", "exec", *(() if conversation is None else ("resume", conversation))]
         argv += [
             "--json",
             "--model",
@@ -157,7 +157,7 @@ class RoleRunner:
     settings: Settings
 
     async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
     ) -> RunResult:
         config = self.settings.roles.for_name(role)
         started = monotonic()
@@ -167,8 +167,8 @@ class RoleRunner:
                     case "claude" | "codex":
                         driver = DRIVERS[config.provider]
                         port = self.settings.server_port
-                        result = await run_cli(role, config, driver, port, prompt, session)
-                        detail = "resumed" if session is not None else "cold"
+                        result = await run_cli(role, config, driver, port, prompt, conversation)
+                        detail = "resumed" if conversation is not None else "cold"
                     case "openrouter" | "local":
                         provider = self.settings.providers.for_name(config.provider)
                         text, rounds = await run_builtin(role, config, provider, prompt, tools)
@@ -189,7 +189,7 @@ class RoleRunner:
 
 
 async def run_cli(
-    role: Role, config: RoleConfig, driver: Driver, port: int, prompt: str, session: str | None
+    role: Role, config: RoleConfig, driver: Driver, port: int, prompt: str, conversation: str | None
 ) -> RunResult:
     """The only thing in the codebase that starts a process."""
     if (size := len(prompt.encode())) >= PROMPT_MAX_BYTES:
@@ -198,7 +198,7 @@ async def run_cli(
             f"the command line takes fewer than {PROMPT_MAX_BYTES}"
         )
     url = f"http://localhost:{port}/mcp/"
-    argv = driver.command(role, config, session, url)
+    argv = driver.command(role, config, conversation, url)
     # An empty working directory, so a role cannot read this repository even if it tries.
     with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
         output = await _spawn(role, argv, prompt, driver.secrets, empty)

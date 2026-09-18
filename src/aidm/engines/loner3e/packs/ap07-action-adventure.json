@@ -161,33 +161,33 @@
   "rules": "Action Points:\n\nEach character begins an adventure with **3 Action Points (AP)**. These do **not refresh** and cannot normally be regained. AP represent the character’s inner reserve of **focus, resolve, and tactical brilliance** — the kind of instinct that flips the scene from disaster to legend.\n\nSpending AP:\n\nAt any moment, you may spend **1 Action Point** to:\n\n* **Gain Advantage**: You roll with edge, no matter what tags or odds say.\n* **Cancel a Failure**: Turn a failed roll into a *success with a cost*.\n* **Avoid a Consequence**: Dodge harm, exposure, or narrative fallout.\n* **Do the Impossible**: Pull off something daring, cinematic, and untagged — sliding under a trapdoor, mid-air grappling hook, bluffing your way past a kill team. You succeed *with style*.\n\n> \\[TIP]\n> Action Points are best spent when the scene demands momentum, not logic. Ask yourself: *Would this make a great moment?* If yes, spend.\n\nPush Yourself (Regain 1 AP):\n\nOnce per adventure, you may **Push Yourself** to regain 1 Action Point — but it comes at a cost. Choose one:\n\n* **Take a Serious Consequence** — injury, exposure, lost trust, or something broken.\n* **Burn a Tag** — a piece of gear or a trait is marked unusable for the rest of the adventure.\n* **Escalate the Situation** — make the scene worse: reinforcements arrive, the room floods, the item is a decoy, etc.\n\n> \\[CAUTION]\n> This isn’t a reset button — it’s a red flag to the fiction. Push when the moment feels *big*, and be ready for the fallout.",
   "locations": [
     {
-      "label": "Starlight Transit Hub",
-      "detail": "A decaying sky-train station straddling three closed borders, used by exiles, smugglers, and broken spies. Surveillance is rumored to be operated by a defunct agency — or something stranger.",
+      "name": "Starlight Transit Hub",
+      "brief": "A decaying sky-train station straddling three closed borders, used by exiles, smugglers, and broken spies. Surveillance is rumored to be operated by a defunct agency — or something stranger.",
       "encounters": "Border agents, Disguised fugitives, Data couriers, Black market maps, Hidden rooms."
     },
     {
-      "label": "The Drowned Embassy",
-      "detail": "An underwater ruin off the coast, once a sealed Cold War diplomatic site, now claimed by silt and whispers. Pressure-locked vaults and flooded archives hide truths no nation ever admitted.",
+      "name": "The Drowned Embassy",
+      "brief": "An underwater ruin off the coast, once a sealed Cold War diplomatic site, now claimed by silt and whispers. Pressure-locked vaults and flooded archives hide truths no nation ever admitted.",
       "encounters": "Vault drones, Salvage teams, Leaking documents, Pressure-traps, Bone-silent corridors."
     },
     {
-      "label": "Calle Obscura",
-      "detail": "A shadowy alley network in a forgotten quarter of the city, known for vanishing those who know too much. Stories say if you walk it right, the alleys change — and sometimes offer deals.",
+      "name": "Calle Obscura",
+      "brief": "A shadowy alley network in a forgotten quarter of the city, known for vanishing those who know too much. Stories say if you walk it right, the alleys change — and sometimes offer deals.",
       "encounters": "Informants, Double agents, Memory merchants, Traps, Wrong doors."
     },
     {
-      "label": "Blacksite Theta-6",
-      "detail": "A jungle-shrouded concrete installation erased from maps in 1984 — but still warm, still guarded. Its generators run on something not found in science books.",
+      "name": "Blacksite Theta-6",
+      "brief": "A jungle-shrouded concrete installation erased from maps in 1984 — but still warm, still guarded. Its generators run on something not found in science books.",
       "encounters": "Rogue technicians, Burned files, Reality drift, Locked-down labs, False alarms."
     },
     {
-      "label": "The Mirror Monastery",
-      "detail": "A mountaintop retreat untouched by satellites, filled with fractured timelines and unreadable rituals. Its monks speak every language — including a few from the future.",
+      "name": "The Mirror Monastery",
+      "brief": "A mountaintop retreat untouched by satellites, filled with fractured timelines and unreadable rituals. Its monks speak every language — including a few from the future.",
       "encounters": "Silent novices, Repeating events, Blinking icons, Forgotten visitors, Shattered mirrors."
     },
     {
-      "label": "Volcano Platform K-9",
-      "detail": "A defunct mining rig turned helicopter outpost, built on the lip of an unstable volcano. Part radio relay, part arms depot, part trap for whoever gets curious.",
+      "name": "Volcano Platform K-9",
+      "brief": "A defunct mining rig turned helicopter outpost, built on the lip of an unstable volcano. Part radio relay, part arms depot, part trap for whoever gets curious.",
       "encounters": "Storm pilots, Smuggled crates, Seismic tremors, Countdown timers, Betrayals in progress."
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "disgraced-archaeologist",
-      "label": "Disgraced Archaeologist",
-      "detail": ""
+      "name": "Disgraced Archaeologist",
+      "brief": ""
     },
     {
       "id": "jet-age-smuggler",
-      "label": "Jet-Age Smuggler",
-      "detail": ""
+      "name": "Jet-Age Smuggler",
+      "brief": ""
     },
     {
       "id": "retired-assassin",
-      "label": "Retired Assassin",
-      "detail": ""
+      "name": "Retired Assassin",
+      "brief": ""
     },
     {
       "id": "undercover-anthropologist",
-      "label": "Undercover Anthropologist",
-      "detail": ""
+      "name": "Undercover Anthropologist",
+      "brief": ""
     },
     {
       "id": "burned-hacker",
-      "label": "Burned Hacker",
-      "detail": ""
+      "name": "Burned Hacker",
+      "brief": ""
     },
     {
       "id": "washed-up-diplomat",
-      "label": "Washed-Up Diplomat",
-      "detail": ""
+      "name": "Washed-Up Diplomat",
+      "brief": ""
     },
     {
       "id": "war-correspondent",
-      "label": "War Correspondent",
-      "detail": ""
+      "name": "War Correspondent",
+      "brief": ""
     },
     {
       "id": "master-impersonator",
-      "label": "Master Impersonator",
-      "detail": ""
+      "name": "Master Impersonator",
+      "brief": ""
     },
     {
       "id": "urban-treasure-runner",
-      "label": "Urban Treasure Runner",
-      "detail": ""
+      "name": "Urban Treasure Runner",
+      "brief": ""
     },
     {
       "id": "cold-war-sleeper",
-      "label": "Cold War Sleeper",
-      "detail": ""
+      "name": "Cold War Sleeper",
+      "brief": ""
     },
     {
       "id": "jungle-survivor",
-      "label": "Jungle Survivor",
-      "detail": ""
+      "name": "Jungle Survivor",
+      "brief": ""
     },
     {
       "id": "crypto-fixer",
-      "label": "Crypto Fixer",
-      "detail": ""
+      "name": "Crypto Fixer",
+      "brief": ""
     },
     {
       "id": "whistleblower-in-hiding",
-      "label": "Whistleblower in Hiding",
-      "detail": ""
+      "name": "Whistleblower in Hiding",
+      "brief": ""
     },
     {
       "id": "cursed-relic-hunter",
-      "label": "Cursed Relic Hunter",
-      "detail": ""
+      "name": "Cursed Relic Hunter",
+      "brief": ""
     },
     {
       "id": "rogue-interrogator",
-      "label": "Rogue Interrogator",
-      "detail": ""
+      "name": "Rogue Interrogator",
+      "brief": ""
     },
     {
       "id": "blacklisted-psychic",
-      "label": "Blacklisted Psychic",
-      "detail": ""
+      "name": "Blacklisted Psychic",
+      "brief": ""
     },
     {
       "id": "burner-pilot",
-      "label": "Burner Pilot",
-      "detail": ""
+      "name": "Burner Pilot",
+      "brief": ""
     },
     {
       "id": "compromised-statesman",
-      "label": "Compromised Statesman",
-      "detail": ""
+      "name": "Compromised Statesman",
+      "brief": ""
     },
     {
       "id": "cult-escapee",
-      "label": "Cult Escapee",
-      "detail": ""
+      "name": "Cult Escapee",
+      "brief": ""
     },
     {
       "id": "forensic-occultist",
-      "label": "Forensic Occultist",
-      "detail": ""
+      "name": "Forensic Occultist",
+      "brief": ""
     },
     {
       "id": "time-lost-mercenary",
-      "label": "Time-Lost Mercenary",
-      "detail": ""
+      "name": "Time-Lost Mercenary",
+      "brief": ""
     },
     {
       "id": "crisis-negotiator",
-      "label": "Crisis Negotiator",
-      "detail": ""
+      "name": "Crisis Negotiator",
+      "brief": ""
     },
     {
       "id": "propaganda-artist",
-      "label": "Propaganda Artist",
-      "detail": ""
+      "name": "Propaganda Artist",
+      "brief": ""
     },
     {
       "id": "unlicensed-therapist",
-      "label": "Unlicensed Therapist",
-      "detail": ""
+      "name": "Unlicensed Therapist",
+      "brief": ""
     },
     {
       "id": "clone-on-the-run",
-      "label": "Clone on the Run",
-      "detail": ""
+      "name": "Clone on the Run",
+      "brief": ""
     },
     {
       "id": "deep-sea-salvager",
-      "label": "Deep-Sea Salvager",
-      "detail": ""
+      "name": "Deep-Sea Salvager",
+      "brief": ""
     },
     {
       "id": "freelance-exorcist",
-      "label": "Freelance Exorcist",
-      "detail": ""
+      "name": "Freelance Exorcist",
+      "brief": ""
     },
     {
       "id": "deserter-from-a-secret-war",
-      "label": "Deserter from a Secret War",
-      "detail": ""
+      "name": "Deserter from a Secret War",
+      "brief": ""
     },
     {
       "id": "meme-warfare-specialist",
-      "label": "Meme Warfare Specialist",
-      "detail": ""
+      "name": "Meme Warfare Specialist",
+      "brief": ""
     },
     {
       "id": "shadow-archivist",
-      "label": "Shadow Archivist",
-      "detail": ""
+      "name": "Shadow Archivist",
+      "brief": ""
     },
     {
       "id": "erased-field-agent",
-      "label": "Erased Field Agent",
-      "detail": ""
+      "name": "Erased Field Agent",
+      "brief": ""
     },
     {
       "id": "reformed-cult-recruiter",
-      "label": "Reformed Cult Recruiter",
-      "detail": ""
+      "name": "Reformed Cult Recruiter",
+      "brief": ""
     },
     {
       "id": "unpaid-tomb-raider",
-      "label": "Unpaid Tomb Raider",
-      "detail": ""
+      "name": "Unpaid Tomb Raider",
+      "brief": ""
     },
     {
       "id": "disinformation-operative",
-      "label": "Disinformation Operative",
-      "detail": ""
+      "name": "Disinformation Operative",
+      "brief": ""
     },
     {
       "id": "artifact-courier",
-      "label": "Artifact Courier",
-      "detail": ""
+      "name": "Artifact Courier",
+      "brief": ""
     },
     {
       "id": "endangered-diplomatic-asset",
-      "label": "Endangered Diplomatic Asset",
-      "detail": ""
+      "name": "Endangered Diplomatic Asset",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "acrobatics",
-      "label": "Acrobatics",
-      "detail": ""
+      "name": "Acrobatics",
+      "brief": ""
     },
     {
       "id": "ancient-languages",
-      "label": "Ancient Languages",
-      "detail": ""
+      "name": "Ancient Languages",
+      "brief": ""
     },
     {
       "id": "brute-strength",
-      "label": "Brute Strength",
-      "detail": ""
+      "name": "Brute Strength",
+      "brief": ""
     },
     {
       "id": "bluff-bravado",
-      "label": "Bluff & Bravado",
-      "detail": ""
+      "name": "Bluff & Bravado",
+      "brief": ""
     },
     {
       "id": "climbing",
-      "label": "Climbing",
-      "detail": ""
+      "name": "Climbing",
+      "brief": ""
     },
     {
       "id": "close-combat",
-      "label": "Close Combat",
-      "detail": ""
+      "name": "Close Combat",
+      "brief": ""
     },
     {
       "id": "improvised-cooking",
-      "label": "Improvised Cooking",
-      "detail": ""
+      "name": "Improvised Cooking",
+      "brief": ""
     },
     {
       "id": "deception",
-      "label": "Deception",
-      "detail": ""
+      "name": "Deception",
+      "brief": ""
     },
     {
       "id": "device-hacking",
-      "label": "Device Hacking",
-      "detail": ""
+      "name": "Device Hacking",
+      "brief": ""
     },
     {
       "id": "horse-riding",
-      "label": "Horse Riding",
-      "detail": ""
+      "name": "Horse Riding",
+      "brief": ""
     },
     {
       "id": "field-medicine",
-      "label": "Field Medicine",
-      "detail": ""
+      "name": "Field Medicine",
+      "brief": ""
     },
     {
       "id": "firearms",
-      "label": "Firearms",
-      "detail": ""
+      "name": "Firearms",
+      "brief": ""
     },
     {
       "id": "forgery",
-      "label": "Forgery",
-      "detail": ""
+      "name": "Forgery",
+      "brief": ""
     },
     {
       "id": "high-stakes-gambling",
-      "label": "High-Stakes Gambling",
-      "detail": ""
+      "name": "High-Stakes Gambling",
+      "brief": ""
     },
     {
       "id": "navigation",
-      "label": "Navigation",
-      "detail": ""
+      "name": "Navigation",
+      "brief": ""
     },
     {
       "id": "forbidden-lore",
-      "label": "Forbidden Lore",
-      "detail": ""
+      "name": "Forbidden Lore",
+      "brief": ""
     },
     {
       "id": "tracking",
-      "label": "Tracking",
-      "detail": ""
+      "name": "Tracking",
+      "brief": ""
     },
     {
       "id": "intimidation",
-      "label": "Intimidation",
-      "detail": ""
+      "name": "Intimidation",
+      "brief": ""
     },
     {
       "id": "art-appraisal",
-      "label": "Art Appraisal",
-      "detail": ""
+      "name": "Art Appraisal",
+      "brief": ""
     },
     {
       "id": "multilingualism",
-      "label": "Multilingualism",
-      "detail": ""
+      "name": "Multilingualism",
+      "brief": ""
     },
     {
       "id": "mechanical-repair",
-      "label": "Mechanical Repair",
-      "detail": ""
+      "name": "Mechanical Repair",
+      "brief": ""
     },
     {
       "id": "command-presence",
-      "label": "Command Presence",
-      "detail": ""
+      "name": "Command Presence",
+      "brief": ""
     },
     {
       "id": "lockpicking",
-      "label": "Lockpicking",
-      "detail": ""
+      "name": "Lockpicking",
+      "brief": ""
     },
     {
       "id": "orienteering",
-      "label": "Orienteering",
-      "detail": ""
+      "name": "Orienteering",
+      "brief": ""
     },
     {
       "id": "persuasion",
-      "label": "Persuasion",
-      "detail": ""
+      "name": "Persuasion",
+      "brief": ""
     },
     {
       "id": "investigative-photography",
-      "label": "Investigative Photography",
-      "detail": ""
+      "name": "Investigative Photography",
+      "brief": ""
     },
     {
       "id": "piloting-air-sea",
-      "label": "Piloting (Air & Sea)",
-      "detail": ""
+      "name": "Piloting (Air & Sea)",
+      "brief": ""
     },
     {
       "id": "pursuit-tactics",
-      "label": "Pursuit Tactics",
-      "detail": ""
+      "name": "Pursuit Tactics",
+      "brief": ""
     },
     {
       "id": "trap-disarming",
-      "label": "Trap Disarming",
-      "detail": ""
+      "name": "Trap Disarming",
+      "brief": ""
     },
     {
       "id": "wilderness-survival",
-      "label": "Wilderness Survival",
-      "detail": ""
+      "name": "Wilderness Survival",
+      "brief": ""
     },
     {
       "id": "swimming",
-      "label": "Swimming",
-      "detail": ""
+      "name": "Swimming",
+      "brief": ""
     },
     {
       "id": "tactical-planning",
-      "label": "Tactical Planning",
-      "detail": ""
+      "name": "Tactical Planning",
+      "brief": ""
     },
     {
       "id": "surveillance-tech",
-      "label": "Surveillance Tech",
-      "detail": ""
+      "name": "Surveillance Tech",
+      "brief": ""
     },
     {
       "id": "relic-identification",
-      "label": "Relic Identification",
-      "detail": ""
+      "name": "Relic Identification",
+      "brief": ""
     },
     {
       "id": "martial-arts",
-      "label": "Martial Arts",
-      "detail": ""
+      "name": "Martial Arts",
+      "brief": ""
     },
     {
       "id": "weapon-proficiency",
-      "label": "Weapon Proficiency",
-      "detail": ""
+      "name": "Weapon Proficiency",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "fear-of-heights",
-      "label": "Fear of heights",
-      "detail": ""
+      "name": "Fear of heights",
+      "brief": ""
     },
     {
       "id": "impulsive-under-pressure",
-      "label": "Impulsive under pressure",
-      "detail": ""
+      "name": "Impulsive under pressure",
+      "brief": ""
     },
     {
       "id": "claustrophobic",
-      "label": "Claustrophobic",
-      "detail": ""
+      "name": "Claustrophobic",
+      "brief": ""
     },
     {
       "id": "paranoid-and-distrustful",
-      "label": "Paranoid and distrustful",
-      "detail": ""
+      "name": "Paranoid and distrustful",
+      "brief": ""
     },
     {
       "id": "chronic-fatigue",
-      "label": "Chronic fatigue",
-      "detail": ""
+      "name": "Chronic fatigue",
+      "brief": ""
     },
     {
       "id": "thrill-seeking",
-      "label": "Thrill-seeking",
-      "detail": ""
+      "name": "Thrill-seeking",
+      "brief": ""
     },
     {
       "id": "fear-of-deep-water",
-      "label": "Fear of deep water",
-      "detail": ""
+      "name": "Fear of deep water",
+      "brief": ""
     },
     {
       "id": "arrogance",
-      "label": "Arrogance",
-      "detail": ""
+      "name": "Arrogance",
+      "brief": ""
     },
     {
       "id": "emotionally-withdrawn",
-      "label": "Emotionally withdrawn",
-      "detail": ""
+      "name": "Emotionally withdrawn",
+      "brief": ""
     },
     {
       "id": "poor-sense-of-direction",
-      "label": "Poor sense of direction",
-      "detail": ""
+      "name": "Poor sense of direction",
+      "brief": ""
     },
     {
       "id": "addictive-personality",
-      "label": "Addictive personality",
-      "detail": ""
+      "name": "Addictive personality",
+      "brief": ""
     },
     {
       "id": "fear-of-spiders",
-      "label": "Fear of spiders",
-      "detail": ""
+      "name": "Fear of spiders",
+      "brief": ""
     },
     {
       "id": "haunted-by-the-past",
-      "label": "Haunted by the past",
-      "detail": ""
+      "name": "Haunted by the past",
+      "brief": ""
     },
     {
       "id": "lacks-combat-instincts",
-      "label": "Lacks combat instincts",
-      "detail": ""
+      "name": "Lacks combat instincts",
+      "brief": ""
     },
     {
       "id": "deteriorating-eyesight",
-      "label": "Deteriorating eyesight",
-      "detail": ""
+      "name": "Deteriorating eyesight",
+      "brief": ""
     },
     {
       "id": "dangerously-naive",
-      "label": "Dangerously naïve",
-      "detail": ""
+      "name": "Dangerously naïve",
+      "brief": ""
     },
     {
       "id": "vulnerable-to-heat",
-      "label": "Vulnerable to heat",
-      "detail": ""
+      "name": "Vulnerable to heat",
+      "brief": ""
     },
     {
       "id": "overconfident",
-      "label": "Overconfident",
-      "detail": ""
+      "name": "Overconfident",
+      "brief": ""
     },
     {
       "id": "fear-of-snakes",
-      "label": "Fear of snakes",
-      "detail": ""
+      "name": "Fear of snakes",
+      "brief": ""
     },
     {
       "id": "rash-and-impatient",
-      "label": "Rash and impatient",
-      "detail": ""
+      "name": "Rash and impatient",
+      "brief": ""
     },
     {
       "id": "socially-awkward",
-      "label": "Socially awkward",
-      "detail": ""
+      "name": "Socially awkward",
+      "brief": ""
     },
     {
       "id": "severe-allergies",
-      "label": "Severe allergies",
-      "detail": ""
+      "name": "Severe allergies",
+      "brief": ""
     },
     {
       "id": "fear-of-the-dark",
-      "label": "Fear of the dark",
-      "detail": ""
+      "name": "Fear of the dark",
+      "brief": ""
     },
     {
       "id": "low-endurance",
-      "label": "Low endurance",
-      "detail": ""
+      "name": "Low endurance",
+      "brief": ""
     },
     {
       "id": "overprotective",
-      "label": "Overprotective",
-      "detail": ""
+      "name": "Overprotective",
+      "brief": ""
     },
     {
       "id": "fear-of-insects",
-      "label": "Fear of insects",
-      "detail": ""
+      "name": "Fear of insects",
+      "brief": ""
     },
     {
       "id": "easily-distracted",
-      "label": "Easily distracted",
-      "detail": ""
+      "name": "Easily distracted",
+      "brief": ""
     },
     {
       "id": "technophobic",
-      "label": "Technophobic",
-      "detail": ""
+      "name": "Technophobic",
+      "brief": ""
     },
     {
       "id": "too-trusting",
-      "label": "Too trusting",
-      "detail": ""
+      "name": "Too trusting",
+      "brief": ""
     },
     {
       "id": "fear-of-animals",
-      "label": "Fear of animals",
-      "detail": ""
+      "name": "Fear of animals",
+      "brief": ""
     },
     {
       "id": "sensitive-to-cold",
-      "label": "Sensitive to cold",
-      "detail": ""
+      "name": "Sensitive to cold",
+      "brief": ""
     },
     {
       "id": "compulsive-risk-taker",
-      "label": "Compulsive risk-taker",
-      "detail": ""
+      "name": "Compulsive risk-taker",
+      "brief": ""
     },
     {
       "id": "hates-enclosed-spaces",
-      "label": "Hates enclosed spaces",
-      "detail": ""
+      "name": "Hates enclosed spaces",
+      "brief": ""
     },
     {
       "id": "jumpy-at-loud-noises",
-      "label": "Jumpy at loud noises",
-      "detail": ""
+      "name": "Jumpy at loud noises",
+      "brief": ""
     },
     {
       "id": "partial-hearing-loss",
-      "label": "Partial hearing loss",
-      "detail": ""
+      "name": "Partial hearing loss",
+      "brief": ""
     },
     {
       "id": "guilt-ridden",
-      "label": "Guilt-ridden",
-      "detail": ""
+      "name": "Guilt-ridden",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "folded-combat-knife",
-      "label": "Folded Combat Knife",
-      "detail": ""
+      "name": "Folded Combat Knife",
+      "brief": ""
     },
     {
       "id": "dual-pistols",
-      "label": "Dual Pistols",
-      "detail": ""
+      "name": "Dual Pistols",
+      "brief": ""
     },
     {
       "id": "grappling-rope-hook",
-      "label": "Grappling Rope & Hook",
-      "detail": ""
+      "name": "Grappling Rope & Hook",
+      "brief": ""
     },
     {
       "id": "coiled-bullwhip",
-      "label": "Coiled Bullwhip",
-      "detail": ""
+      "name": "Coiled Bullwhip",
+      "brief": ""
     },
     {
       "id": "compact-binoculars",
-      "label": "Compact Binoculars",
-      "detail": ""
+      "name": "Compact Binoculars",
+      "brief": ""
     },
     {
       "id": "modular-first-aid-kit",
-      "label": "Modular First Aid Kit",
-      "detail": ""
+      "name": "Modular First Aid Kit",
+      "brief": ""
     },
     {
       "id": "jungle-machete",
-      "label": "Jungle Machete",
-      "detail": ""
+      "name": "Jungle Machete",
+      "brief": ""
     },
     {
       "id": "sawed-off-shotgun",
-      "label": "Sawed-off Shotgun",
-      "detail": ""
+      "name": "Sawed-off Shotgun",
+      "brief": ""
     },
     {
       "id": "synthetics-rope-spool",
-      "label": "Synthetics Rope Spool",
-      "detail": ""
+      "name": "Synthetics Rope Spool",
+      "brief": ""
     },
     {
       "id": "uv-flashlight",
-      "label": "UV Flashlight",
-      "detail": ""
+      "name": "UV Flashlight",
+      "brief": ""
     },
     {
       "id": "brass-compass",
-      "label": "Brass Compass",
-      "detail": ""
+      "name": "Brass Compass",
+      "brief": ""
     },
     {
       "id": "firestarter-pouch",
-      "label": "Firestarter Pouch",
-      "detail": ""
+      "name": "Firestarter Pouch",
+      "brief": ""
     },
     {
       "id": "silenced-handgun",
-      "label": "Silenced Handgun",
-      "detail": ""
+      "name": "Silenced Handgun",
+      "brief": ""
     },
     {
       "id": "scoped-hunting-rifle",
-      "label": "Scoped Hunting Rifle",
-      "detail": ""
+      "name": "Scoped Hunting Rifle",
+      "brief": ""
     },
     {
       "id": "carbon-climbing-harness",
-      "label": "Carbon Climbing Harness",
-      "detail": ""
+      "name": "Carbon Climbing Harness",
+      "brief": ""
     },
     {
       "id": "long-range-radio",
-      "label": "Long-Range Radio",
-      "detail": ""
+      "name": "Long-Range Radio",
+      "brief": ""
     },
     {
       "id": "emergency-trauma-kit",
-      "label": "Emergency Trauma Kit",
-      "detail": ""
+      "name": "Emergency Trauma Kit",
+      "brief": ""
     },
     {
       "id": "extra-ammo-magazines",
-      "label": "Extra Ammo Magazines",
-      "detail": ""
+      "name": "Extra Ammo Magazines",
+      "brief": ""
     },
     {
       "id": "hidden-dagger",
-      "label": "Hidden Dagger",
-      "detail": ""
+      "name": "Hidden Dagger",
+      "brief": ""
     },
     {
       "id": "tactical-smg",
-      "label": "Tactical SMG",
-      "detail": ""
+      "name": "Tactical SMG",
+      "brief": ""
     },
     {
       "id": "parachute-rig",
-      "label": "Parachute Rig",
-      "detail": ""
+      "name": "Parachute Rig",
+      "brief": ""
     },
     {
       "id": "lockpick-set",
-      "label": "Lockpick Set",
-      "detail": ""
+      "name": "Lockpick Set",
+      "brief": ""
     },
     {
       "id": "weathered-field-map",
-      "label": "Weathered Field Map",
-      "detail": ""
+      "name": "Weathered Field Map",
+      "brief": ""
     },
     {
       "id": "water-purification-kit",
-      "label": "Water Purification Kit",
-      "detail": ""
+      "name": "Water Purification Kit",
+      "brief": ""
     },
     {
       "id": "throwing-hatchet",
-      "label": "Throwing Hatchet",
-      "detail": ""
+      "name": "Throwing Hatchet",
+      "brief": ""
     },
     {
       "id": "fragmentation-grenades",
-      "label": "Fragmentation Grenades",
-      "detail": ""
+      "name": "Fragmentation Grenades",
+      "brief": ""
     },
     {
       "id": "experimental-jetpack",
-      "label": "Experimental Jetpack",
-      "detail": ""
+      "name": "Experimental Jetpack",
+      "brief": ""
     },
     {
       "id": "signal-flare-gun",
-      "label": "Signal Flare Gun",
-      "detail": ""
+      "name": "Signal Flare Gun",
+      "brief": ""
     },
     {
       "id": "infrared-monocle",
-      "label": "Infrared Monocle",
-      "detail": ""
+      "name": "Infrared Monocle",
+      "brief": ""
     },
     {
       "id": "survival-rations",
-      "label": "Survival Rations",
-      "detail": ""
+      "name": "Survival Rations",
+      "brief": ""
     },
     {
       "id": "engraved-tomahawk",
-      "label": "Engraved Tomahawk",
-      "detail": ""
+      "name": "Engraved Tomahawk",
+      "brief": ""
     },
     {
       "id": "compact-flamethrower",
-      "label": "Compact Flamethrower",
-      "detail": ""
+      "name": "Compact Flamethrower",
+      "brief": ""
     },
     {
       "id": "ultralight-glider-frame",
-      "label": "Ultralight Glider Frame",
-      "detail": ""
+      "name": "Ultralight Glider Frame",
+      "brief": ""
     },
     {
       "id": "pneumatic-grapple-gun",
-      "label": "Pneumatic Grapple Gun",
-      "detail": ""
+      "name": "Pneumatic Grapple Gun",
+      "brief": ""
     },
     {
       "id": "all-terrain-survival-kit",
-      "label": "All-Terrain Survival Kit",
-      "detail": ""
+      "name": "All-Terrain Survival Kit",
+      "brief": ""
     },
     {
       "id": "rotary-borer-drill",
-      "label": "Rotary Borer Drill",
-      "detail": ""
+      "name": "Rotary Borer Drill",
+      "brief": ""
     }
   ],
   "spends_luck": false,

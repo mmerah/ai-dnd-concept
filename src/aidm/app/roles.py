@@ -40,7 +40,7 @@ OPENING_NARRATION = (
 )
 
 
-async def master(spawner: Spawner, turn: Turn) -> None:
+async def run_master(spawner: Spawner, turn: Turn) -> None:
     """A crashed game master still played the turn, if it applied anything legal first."""
     try:
         await spawner.run("master", turn.master_prompt(), None, turn)
@@ -52,7 +52,7 @@ async def master(spawner: Spawner, turn: Turn) -> None:
         )
 
 
-async def narrate(
+async def run_narrator(
     spawner: Spawner, engine: AnyEngine, draft: AnyGame, facts: tuple[Fact, ...], prompt: str
 ) -> tuple[SpokenLine, ...]:
     view = engine.narrator_view(draft)
@@ -71,7 +71,7 @@ async def narrate(
     return view.spoken(narration.lines)
 
 
-async def interject(
+async def run_interjection(
     spawner: Spawner, engine: AnyEngine, state: AnyGame, member: Companion
 ) -> tuple[tuple[SpokenLine, ...], str]:
     view = engine.narrator_view(state)
@@ -90,11 +90,11 @@ async def interject(
 async def ask[T: BaseModel](
     spawner: Spawner, role: Role, prompt: str, model: type[T], check: Check[T]
 ) -> T:
-    asked, refused, session = prompt, "", None
+    asked, refused, conversation = prompt, "", None
     for _ in range(RETRIES + 1):
         try:
-            spoken = await spawner.run(role, asked, session)
-            session = spoken.session
+            spoken = await spawner.run(role, asked, conversation)
+            conversation = spoken.conversation
             answer = parse_text(model, spoken.text)
             check(answer)
         except Refusal as invalid:
@@ -103,12 +103,12 @@ async def ask[T: BaseModel](
             return answer
         correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
         # The retry carries on the refused attempt, which has read the prompt already.
-        asked = correction if session is not None else f"{prompt}\n\n{correction}"
+        asked = correction if conversation is not None else f"{prompt}\n\n{correction}"
     LOGGER.warning("the %s answered nothing usable: %s", role, refused)
     raise Refusal(f"the {role} answered nothing usable")
 
 
-def worldsmith(spawner: Spawner) -> WorldsmithAnswer:
+def worldsmith_answer(spawner: Spawner) -> WorldsmithAnswer:
     return partial(ask, spawner, "worldsmith")
 
 
@@ -129,7 +129,7 @@ def render_interjection(
     view: NarratorView, member: Companion, scenes: Sequence[Chapter], evidence: str
 ) -> str:
     role = read_cached_text(PROMPTS_DIR / "interjection.md").format(
-        name=member.label, brief=member.detail, id=member.id
+        name=member.name, brief=member.brief, id=member.id
     )
     return sections(
         (

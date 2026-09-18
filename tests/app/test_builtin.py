@@ -89,7 +89,7 @@ async def test_a_writer_is_asked_once_and_its_fenced_answer_is_unwrapped(
 
     spoken = await RoleRunner(_settings(narrator=narrator)).run("narrator", "THE WHOLE BRIEF", None)
 
-    assert (json.loads(spoken.text), spoken.session) == ({"lines": []}, None)
+    assert (json.loads(spoken.text), spoken.conversation) == ({"lines": []}, None)
     assert len(sent) == 1
     assert "tools" not in sent[0]
     assert sent[0]["model"] == "qwen" and sent[0]["reasoning_effort"] == "low"

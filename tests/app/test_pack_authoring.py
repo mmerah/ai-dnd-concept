@@ -7,17 +7,17 @@ from support.table import LONER3E, ScriptedSpawner, narrowed, offline_settings
 
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
-from aidm.engines.engine import SCOPELESS
-from aidm.engines.loner3e.worldsmith import Loner3ePack
+from aidm.engines.loner3e.pack import Loner3ePack
+from aidm.engines.packs import SCOPELESS
 
 PREMISE = "A drowned coast where the lower town is under water and the bells still ring."
 SKILLS: list[JsonValue] = [
-    {"label": "Reads the tide"},
-    {"label": "Holds their breath"},
-    {"label": "Knots and splices"},
-    {"label": "Talks the docks"},
-    {"label": "Walks the rooftops"},
-    {"label": "Finds the way down"},
+    {"name": "Reads the tide"},
+    {"name": "Holds their breath"},
+    {"name": "Knots and splices"},
+    {"name": "Talks the docks"},
+    {"name": "Walks the rooftops"},
+    {"name": "Finds the way down"},
 ]
 _HEAD: dict[str, JsonValue] = {
     "setting": "The sea took the lower town and left the towers standing in it.",
@@ -25,35 +25,35 @@ _HEAD: dict[str, JsonValue] = {
     "rules": "",
     "spends_luck": False,
     "concepts": [
-        {"label": "A salt diver", "detail": "Works the flooded streets for what is left."},
-        {"label": "A lamp keeper"},
-        {"label": "A tide reader"},
-        {"label": "A wreck broker"},
-        {"label": "A bell ringer"},
-        {"label": "A ferry hand"},
+        {"name": "A salt diver", "brief": "Works the flooded streets for what is left."},
+        {"name": "A lamp keeper"},
+        {"name": "A tide reader"},
+        {"name": "A wreck broker"},
+        {"name": "A bell ringer"},
+        {"name": "A ferry hand"},
     ],
     "skills": SKILLS,
     "frailties": [
-        {"label": "Owes the wrecking crew"},
-        {"label": "Afraid of the deep"},
-        {"label": "Coughs in cold air"},
-        {"label": "Cannot swim"},
-        {"label": "Too well known"},
-        {"label": "Sleeps badly"},
+        {"name": "Owes the wrecking crew"},
+        {"name": "Afraid of the deep"},
+        {"name": "Coughs in cold air"},
+        {"name": "Cannot swim"},
+        {"name": "Too well known"},
+        {"name": "Sleeps badly"},
     ],
     "gear": [
-        {"label": "A drowned lantern"},
-        {"label": "A coil of wet rope"},
-        {"label": "A gutting knife"},
-        {"label": "A cork float"},
-        {"label": "A tin whistle"},
-        {"label": "A sealed tin of matches"},
+        {"name": "A drowned lantern"},
+        {"name": "A coil of wet rope"},
+        {"name": "A gutting knife"},
+        {"name": "A cork float"},
+        {"name": "A tin whistle"},
+        {"name": "A sealed tin of matches"},
     ],
 }
 _LOCATIONS: list[JsonValue] = [
-    {"label": "The Bell Tower", "detail": "Standing in the water, still ringing the hour."},
-    {"label": "The Rope Walk", "detail": "A rooftop road the salvagers strung together."},
-    {"label": "The Dry Quarter", "detail": "The streets the sea has not reached yet."},
+    {"name": "The Bell Tower", "brief": "Standing in the water, still ringing the hour."},
+    {"name": "The Rope Walk", "brief": "A rooftop road the salvagers strung together."},
+    {"name": "The Dry Quarter", "brief": "The streets the sea has not reached yet."},
 ]
 _BLOCK: dict[str, JsonValue] = {
     "name": "The Wrecking Crew",
@@ -92,7 +92,7 @@ async def test_a_written_pack_lands_on_disk_and_in_the_running_engine(tmp_path: 
 async def test_a_head_whose_label_makes_no_id_is_re_prompted_with_the_reason(
     tmp_path: Path,
 ) -> None:
-    unnamed = _head(skills=[{"label": "???"}, *SKILLS[1:]])
+    unnamed = _head(skills=[{"name": "???"}, *SKILLS[1:]])
     runtime, spawner = _runtime(tmp_path, [unnamed, _head(), _body()])
 
     pack_id = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")

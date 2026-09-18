@@ -5,7 +5,7 @@ from typing import ClassVar, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Mutable, Refusal, Slug, check_unique
+from aidm.core.entities import Mutable, Refusal, Slug, check_unique, headline_of, tag_of
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.prompt import Sections
 from aidm.core.views import Chattiness, Panel, PanelRow, Rows, Subject
@@ -56,11 +56,11 @@ class Thing(Mutable):
 
     @property
     def tag(self) -> str:
-        return f"{self.name}[{self.id}]"
+        return tag_of(self.name, self.id)
 
     @property
     def headline(self) -> str:
-        return self.tag + (f" — {self.brief}" if self.brief else "")
+        return headline_of(self.name, self.id, self.brief)
 
     @property
     def met_label(self) -> str:
@@ -100,7 +100,7 @@ class Thing(Mutable):
         return [self.fact(f"learned of {self.mention}", card=card)]
 
     def subject(self) -> Subject:
-        return Subject(id=self.id, label=self.name, detail=self.brief)
+        return Subject(id=self.id, name=self.name, brief=self.brief)
 
 
 class Person(Thing):
@@ -213,7 +213,7 @@ def character_panel(rows: Rows) -> Panel:
     return Panel(
         title="Character",
         portrait=True,
-        rows=tuple(PanelRow(label=label, detail=detail) for label, detail in rows),
+        rows=tuple(PanelRow(name=name, brief=brief) for name, brief in rows),
     )
 
 
@@ -236,14 +236,14 @@ def party_panel(members: Sequence[Thing]) -> tuple[Panel, ...]:
         for member in members
         for row in (
             member.subject().row(),
-            *(PanelRow(label=label, detail=detail) for label, detail in member.rows()),
+            *(PanelRow(name=name, brief=brief) for name, brief in member.rows()),
         )
     )
     return (Panel(title="Party", rows=rows),)
 
 
 def trail_panel(titles: Iterable[str]) -> Panel:
-    return Panel(title="Trail", rows=tuple(PanelRow(label=title, detail="") for title in titles))
+    return Panel(title="Trail", rows=tuple(PanelRow(name=title, brief="") for title in titles))
 
 
 def joined(*parts: str) -> str:
@@ -256,7 +256,7 @@ def check_filing(pool: Mapping[Slug, Thing]) -> None:
             raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
 
 
-def required_unmet(pool: Mapping[Slug, Person], filed: Iterable[Slug]) -> list[str]:
+def required_needs(pool: Mapping[Slug, Person], filed: Iterable[Slug]) -> list[str]:
     already = set(filed)
     return [
         f"{entity_id}: {why}"

@@ -68,8 +68,8 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
 
     # The family's own write, not the seam's `hire`: the detail is a place to go.
     operation = next(operation for operation in engine.unwritten if operation != HIRE)
-    request = Commission(operation=operation, detail="Deeper in, toward the sound.")
+    commission = Commission(operation=operation, detail="Deeper in, toward the sound.")
     with pytest.raises(Refusal, match="recorded"):
-        await engine.advance(state.draft(), request, recording)
+        await engine.advance(state.draft(), commission, recording)
     golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", masked(prompts[0]))
     golden_schema(FIXTURES / "schemas" / engine_id / "worldsmith_answer.json", models[0])

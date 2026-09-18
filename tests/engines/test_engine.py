@@ -182,9 +182,9 @@ async def test_advance_matches_every_operation_the_engine_declares_unwritten(
             draft = small_world().draft()
         else:
             draft, target = state.draft(), None
-        request = Commission(
-            operation=operation, detail="a request the stub never reads", target=target
+        commission = Commission(
+            operation=operation, detail="a commission the stub never reads", target=target
         )
 
         with pytest.raises(Refusal, match="stubbed"):
-            await engine.advance(draft, request, _stubbed)
+            await engine.advance(draft, commission, _stubbed)

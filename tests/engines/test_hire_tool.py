@@ -95,4 +95,4 @@ async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party(case: Hi
     member = world.require_member_here(case.member)
     assert member.hired
     assert case.member in world.party
-    assert written.telling == SIGNED_ON.format(name=member.name)
+    assert written.narrator_prompt == SIGNED_ON.format(name=member.name)

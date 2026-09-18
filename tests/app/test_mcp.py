@@ -48,9 +48,9 @@ class HttpMaster:
     change_result: Result | None = None
 
     async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
     ) -> RunResult:
-        del prompt, session, tools
+        del prompt, conversation, tools
         if role != "master":
             return RunResult(narrated("You wait."), None)
         assert self.client is not None

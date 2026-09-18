@@ -99,7 +99,7 @@ def test_everyone_known_and_present_may_speak() -> None:
 
 
 def test_a_narrator_view_naming_a_speaker_who_is_not_a_subject_is_refused() -> None:
-    subject = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+    subject = Subject(id="mara", name="Mara", brief="A ferrywoman.")
     with pytest.raises(ValidationError, match="not subjects"):
         _ = NarratorView(
             place="p",
@@ -114,8 +114,8 @@ def test_a_narrator_view_naming_a_speaker_who_is_not_a_subject_is_refused() -> N
 
 
 def test_a_narrator_views_party_refuses_a_stranger_or_a_repeat_and_others_excludes_it() -> None:
-    subject = Subject(id="mara", label="Mara", detail="A ferrywoman.")
-    other = Subject(id="kael", label="Kael", detail="")
+    subject = Subject(id="mara", name="Mara", brief="A ferrywoman.")
+    other = Subject(id="kael", name="Kael", brief="")
 
     with pytest.raises(ValidationError, match="not subjects"):
         _ = NarratorView(
@@ -161,7 +161,7 @@ def test_a_spoken_line_names_its_speaker_or_nobody() -> None:
 
 
 def test_spoken_refuses_a_subject_who_is_not_a_speaker() -> None:
-    subject = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+    subject = Subject(id="mara", name="Mara", brief="A ferrywoman.")
     view = NarratorView(
         place="p",
         title="t",
@@ -185,7 +185,7 @@ def test_check_interjection_accepts_the_members_own_lines_and_refuses_the_rest()
     stranger = Interjection(lines=(Line(speaker_id="kael", text="Careful."),))
     bare_proposal = Interjection(lines=(), proposal="I check the door.")
 
-    subject = Subject(id=member_id, label="Mara", detail="A ferrywoman.")
+    subject = Subject(id=member_id, name="Mara", brief="A ferrywoman.")
     view = NarratorView(
         place="p",
         title="t",
@@ -216,4 +216,4 @@ def test_the_player_view_panels_carry_icon_ids_for_who_else_is_here() -> None:
     here = next(panel for panel in view.panels if panel.title == "Also here")
     icon_ids = {row.icon_id for row in here.rows}
     assert "mara" in icon_ids
-    assert all(row.label != "The Secret" for panel in view.panels for row in panel.rows)
+    assert all(row.name != "The Secret" for panel in view.panels for row in panel.rows)

@@ -5,7 +5,7 @@ from random import Random
 import pytest
 from support.game import initialized, with_entity
 
-from aidm.app.roles import ask, master, render_interjection, render_narrator
+from aidm.app.roles import ask, render_interjection, render_narrator, run_master
 from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
@@ -31,12 +31,12 @@ def _view(subject: Subject) -> NarratorView:
 
 def _companion(subject: Subject, sheet: Rows) -> Companion:
     return Companion(
-        id=subject.id, label=subject.label, detail=subject.detail, sheet=sheet, chattiness="normal"
+        id=subject.id, name=subject.name, brief=subject.brief, sheet=sheet, chattiness="normal"
     )
 
 
 def test_render_interjection_prints_the_members_own_sheet_or_none() -> None:
-    mara = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+    mara = Subject(id="mara", name="Mara", brief="A ferrywoman.")
     sheeted = _companion(mara, (("Skill", "Stealth d8"),))
 
     with_sheet = render_interjection(_view(mara), sheeted, (), "")
@@ -47,7 +47,7 @@ def test_render_interjection_prints_the_members_own_sheet_or_none() -> None:
 
 
 def test_render_narrator_asks_for_the_narration_shape_not_the_interjections() -> None:
-    mara = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+    mara = Subject(id="mara", name="Mara", brief="A ferrywoman.")
 
     rendered = render_narrator(_view(mara), evidence="", prompt="", scenes=())
 
@@ -55,7 +55,7 @@ def test_render_narrator_asks_for_the_narration_shape_not_the_interjections() ->
 
 
 def test_render_interjection_asks_for_the_interjection_shape_not_the_narrations() -> None:
-    mara = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+    mara = Subject(id="mara", name="Mara", brief="A ferrywoman.")
 
     rendered = render_interjection(_view(mara), _companion(mara, ()), (), "")
 
@@ -79,8 +79,8 @@ def test_companions_returns_the_partys_members_with_their_rows() -> None:
     assert engine.companions(state) == (
         Companion(
             id=member.id,
-            label=member.name,
-            detail=member.brief,
+            name=member.name,
+            brief=member.brief,
             sheet=member.rows(),
             chattiness=member.chattiness,
         ),
@@ -92,9 +92,9 @@ class _AlwaysRefuses:
     calls: int = 0
 
     async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
     ) -> RunResult:
-        del role, prompt, session, tools
+        del role, prompt, conversation, tools
         self.calls += 1
         raise Refusal("boom")
 
@@ -109,7 +109,7 @@ async def test_a_master_that_lands_nothing_is_asked_once_not_retried() -> None:
     spawner = _AlwaysRefuses()
 
     with pytest.raises(Refusal, match="boom"):
-        await master(spawner, turn)
+        await run_master(spawner, turn)
 
     assert spawner.calls == 1
 
@@ -124,7 +124,7 @@ async def test_a_master_that_already_landed_facts_is_not_retried_and_does_not_ra
     spawner = _AlwaysRefuses()
 
     with caplog.at_level(logging.WARNING, logger="aidm.app.roles"):
-        await master(spawner, turn)
+        await run_master(spawner, turn)
 
     assert spawner.calls == 1
     assert "applying 1 facts" in caplog.text
@@ -135,11 +135,11 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
 
     class _Spawner:
         async def run(
-            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+            self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
         ) -> RunResult:
             del role, tools
-            asked.append((prompt, session))
-            return RunResult('{"lines": []}' if session else "not json", "abc-123")
+            asked.append((prompt, conversation))
+            return RunResult('{"lines": []}' if conversation else "not json", "abc-123")
 
     _ = await ask(_Spawner(), "narrator", "THE WHOLE BRIEF", Narration, lambda _: None)
 
@@ -153,10 +153,10 @@ async def test_a_spawn_that_refuses_once_still_gets_its_one_retry() -> None:
 
     class _Spawner:
         async def run(
-            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+            self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
         ) -> RunResult:
             del role, prompt, tools
-            attempts.append(session)
+            attempts.append(conversation)
             if len(attempts) == 1:
                 raise Refusal("the narrator exited 1")
             return RunResult('{"lines": []}', "abc-123")
@@ -170,10 +170,10 @@ async def test_a_spawn_that_refuses_once_still_gets_its_one_retry() -> None:
 async def test_answered_nothing_usable_does_not_quote_the_checks_message() -> None:
     class _Spawner:
         async def run(
-            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+            self, role: Role, prompt: str, conversation: str | None, tools: Tools | None = None
         ) -> RunResult:
             del role, prompt, tools
-            return RunResult('{"lines": []}', session or "abc-123")
+            return RunResult('{"lines": []}', conversation or "abc-123")
 
     def _check(_: Narration) -> None:
         raise Refusal("a scene that does not name what is hidden: ['Bell']")

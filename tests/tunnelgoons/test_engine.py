@@ -6,8 +6,8 @@ from aidm.core.entities import Refusal
 from aidm.engines.engine import AnyEngine
 from aidm.engines.packs import SRD_PACK, PackSet
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
+from aidm.engines.tunnelgoons.pack import TunnelGoonsPack
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
-from aidm.engines.tunnelgoons.worldsmith import TunnelGoonsPack
 
 PICKS = {
     "brute": "1",

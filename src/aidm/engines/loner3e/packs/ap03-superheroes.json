@@ -161,33 +161,33 @@
   "rules": "> *\"With great power comes great complication.\"* — Every action has weight in a world shaped by supers. These special rules reflect the dramatic highs, brutal costs, and cinematic moments that define solo superhero stories.\n\nSignature Power Surge:\n\nOnce per mission, when the protagonist uses a **signature power** in a context where it would dramatically shift the scene, you may declare a **Power Surge**.\n- Skip the Oracle entirely. The result is an automatic **“Yes, and…”**, narrated as a flashy, awe-inspiring moment.\n- Afterward, the protagonist gains the **“Drained”** condition until they can rest or recover.\n\n> *Example: The Tempest channels a city-wide storm to disable a fleet of drones. Power Surge activated — drones down in a flash, but he's left reeling, off-balance, and vulnerable.*\n\nHero Points:\n\nThe protagonist begins each adventure with **3 Hero Points**. These represent not just luck, but *willpower, improvisation, and the unstoppable drive to do what’s right*.\n\nYou may spend 1 Hero Point to:\n- **Re-roll** an unfavorable result.\n- **Ask a question with advantage**, even when normally rolling at a disadvantage.\n- **Ignore a frailty or condition** for one scene.\n- **Stagger dramatically instead of falling** when a twist or failure would otherwise remove you from action.\n\nHero Points **refresh at the start of a new adventure** or after a scene of deep rest, healing, or personal reconnection (even a dramatic rooftop monologue will do).\n\nPublic Perception:\n\nSuperheroes live under scrutiny. At the end of key scenes, you may roll 1d6 to check how your recent actions shifted public opinion. This affects future events, opportunities, and even Oracle rolls involving civilians or institutions.\n\n- 1: Fear and backlash\n- 2–3: Mistrust and uncertainty\n- 4–5: Supportive but divided\n- 6: Celebrated and admired\n\nYou may optionally track **Reputation** as a tag that changes over time.\n\nCollateral Tags:\n\nDuring dramatic or large-scale scenes, introduce **Collateral Tags** to locations or situations that reflect unintended consequences of superhuman actions.\nThese can then be used as **risk factors**, **story prompts**, or **scene complications**.\n\n> *Examples: “Downtown in Rubble,” “Citizens Trapped in Fire,” “News Drone Watching,” “Power Grid Unstable.”*",
   "locations": [
     {
-      "label": "Metropia",
-      "detail": "A vertical megacity of neon spires and forgotten streets, torn between corporate heroes, rogue vigilantes, and rebel factions.",
+      "name": "Metropia",
+      "brief": "A vertical megacity of neon spires and forgotten streets, torn between corporate heroes, rogue vigilantes, and rebel factions.",
       "encounters": "Drone swarm hijacks a rooftop chase; Protest escalates after metahuman interference; Superteam caught pushing their own energy drink"
     },
     {
-      "label": "Jiston City",
-      "detail": "Cracked concrete and rusting skylines. Retired villains play kingmakers while outlaw tech floods the black market.",
+      "name": "Jiston City",
+      "brief": "Cracked concrete and rusting skylines. Retired villains play kingmakers while outlaw tech floods the black market.",
       "encounters": "Black market auction for seized superweapons; Cage fight between washed-up sidekicks; Gang war crashes into suburbia"
     },
     {
-      "label": "Central City",
-      "detail": "Clean suits and camera flashes. A bright surface over deep cracks.",
+      "name": "Central City",
+      "brief": "Clean suits and camera flashes. A bright surface over deep cracks.",
       "encounters": "Fundraiser ambushed on live TV; Hero scandal sparks viral fallout; Tourist from a parallel timeline drops in"
     },
     {
-      "label": "The Harmony Post",
-      "detail": "Media monolith and damage control empire. Sells truth with one hand, buries it with the other.",
+      "name": "The Harmony Post",
+      "brief": "Media monolith and damage control empire. Sells truth with one hand, buries it with the other.",
       "encounters": "Whistleblower hiding in the datacore; Rogue AI reporter breaks containment; Broadcast countdown targeting your past"
     },
     {
-      "label": "Vortex Island",
-      "detail": "Orbital guns, time-locked walls, and locked-down truths. The Concord’s crown jewel.",
+      "name": "Vortex Island",
+      "brief": "Orbital guns, time-locked walls, and locked-down truths. The Concord’s crown jewel.",
       "encounters": "Cell Zero breach during a peace summit; Clone flagged mid-training; Psychic sweep uncovers buried memories"
     },
     {
-      "label": "Crimson Castle",
-      "detail": "Baroque school for unstable powers. Red Crane vanished years ago—but her eyes might still be watching.",
+      "name": "Crimson Castle",
+      "brief": "Baroque school for unstable powers. Red Crane vanished years ago—but her eyes might still be watching.",
       "encounters": "Forbidden wing reopens; Sudden, catastrophic mutation; Rival school launches covert extraction"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "washed-up-icon",
-      "label": "Washed-Up Icon",
-      "detail": ""
+      "name": "Washed-Up Icon",
+      "brief": ""
     },
     {
       "id": "street-level-vigilante",
-      "label": "Street-Level Vigilante",
-      "detail": ""
+      "name": "Street-Level Vigilante",
+      "brief": ""
     },
     {
       "id": "rogue-experiment",
-      "label": "Rogue Experiment",
-      "detail": ""
+      "name": "Rogue Experiment",
+      "brief": ""
     },
     {
       "id": "secret-heir",
-      "label": "Secret Heir",
-      "detail": ""
+      "name": "Secret Heir",
+      "brief": ""
     },
     {
       "id": "reality-bent-outcast",
-      "label": "Reality-Bent Outcast",
-      "detail": ""
+      "name": "Reality-Bent Outcast",
+      "brief": ""
     },
     {
       "id": "blue-collar-brawler",
-      "label": "Blue-Collar Brawler",
-      "detail": ""
+      "name": "Blue-Collar Brawler",
+      "brief": ""
     },
     {
       "id": "interdimensional-orphan",
-      "label": "Interdimensional Orphan",
-      "detail": ""
+      "name": "Interdimensional Orphan",
+      "brief": ""
     },
     {
       "id": "meme-fueled-influencer",
-      "label": "Meme-Fueled Influencer",
-      "detail": ""
+      "name": "Meme-Fueled Influencer",
+      "brief": ""
     },
     {
       "id": "bio-enhanced-animal",
-      "label": "Bio-Enhanced Animal",
-      "detail": ""
+      "name": "Bio-Enhanced Animal",
+      "brief": ""
     },
     {
       "id": "techno-retro-defender",
-      "label": "Techno-Retro Defender",
-      "detail": ""
+      "name": "Techno-Retro Defender",
+      "brief": ""
     },
     {
       "id": "grieving-legacy-holder",
-      "label": "Grieving Legacy Holder",
-      "detail": ""
+      "name": "Grieving Legacy Holder",
+      "brief": ""
     },
     {
       "id": "reckless-energy-core",
-      "label": "Reckless Energy Core",
-      "detail": ""
+      "name": "Reckless Energy Core",
+      "brief": ""
     },
     {
       "id": "corporate-mascot",
-      "label": "Corporate Mascot",
-      "detail": ""
+      "name": "Corporate Mascot",
+      "brief": ""
     },
     {
       "id": "disaster-survivor",
-      "label": "Disaster Survivor",
-      "detail": ""
+      "name": "Disaster Survivor",
+      "brief": ""
     },
     {
       "id": "espionage-prototype",
-      "label": "Espionage Prototype",
-      "detail": ""
+      "name": "Espionage Prototype",
+      "brief": ""
     },
     {
       "id": "awakened-civilian",
-      "label": "Awakened Civilian",
-      "detail": ""
+      "name": "Awakened Civilian",
+      "brief": ""
     },
     {
       "id": "haunted-time-refugee",
-      "label": "Haunted Time Refugee",
-      "detail": ""
+      "name": "Haunted Time Refugee",
+      "brief": ""
     },
     {
       "id": "cosmic-horror-symbiote",
-      "label": "Cosmic Horror Symbiote",
-      "detail": ""
+      "name": "Cosmic Horror Symbiote",
+      "brief": ""
     },
     {
       "id": "utopian-defector",
-      "label": "Utopian Defector",
-      "detail": ""
+      "name": "Utopian Defector",
+      "brief": ""
     },
     {
       "id": "nanotech-preacher",
-      "label": "Nanotech Preacher",
-      "detail": ""
+      "name": "Nanotech Preacher",
+      "brief": ""
     },
     {
       "id": "rehabilitated-villain",
-      "label": "Rehabilitated Villain",
-      "detail": ""
+      "name": "Rehabilitated Villain",
+      "brief": ""
     },
     {
       "id": "post-human-idealist",
-      "label": "Post-Human Idealist",
-      "detail": ""
+      "name": "Post-Human Idealist",
+      "brief": ""
     },
     {
       "id": "ai-human-hybrid",
-      "label": "AI-Human Hybrid",
-      "detail": ""
+      "name": "AI-Human Hybrid",
+      "brief": ""
     },
     {
       "id": "dimensional-janitor",
-      "label": "Dimensional Janitor",
-      "detail": ""
+      "name": "Dimensional Janitor",
+      "brief": ""
     },
     {
       "id": "cursed-maskbearer",
-      "label": "Cursed Maskbearer",
-      "detail": ""
+      "name": "Cursed Maskbearer",
+      "brief": ""
     },
     {
       "id": "weaponized-media-star",
-      "label": "Weaponized Media Star",
-      "detail": ""
+      "name": "Weaponized Media Star",
+      "brief": ""
     },
     {
       "id": "psychic-underground-rebel",
-      "label": "Psychic Underground Rebel",
-      "detail": ""
+      "name": "Psychic Underground Rebel",
+      "brief": ""
     },
     {
       "id": "forgotten-sidekick",
-      "label": "Forgotten Sidekick",
-      "detail": ""
+      "name": "Forgotten Sidekick",
+      "brief": ""
     },
     {
       "id": "living-conspiracy",
-      "label": "Living Conspiracy",
-      "detail": ""
+      "name": "Living Conspiracy",
+      "brief": ""
     },
     {
       "id": "oathbound-warrior-monk",
-      "label": "Oathbound Warrior Monk",
-      "detail": ""
+      "name": "Oathbound Warrior Monk",
+      "brief": ""
     },
     {
       "id": "climate-crisis-responder",
-      "label": "Climate Crisis Responder",
-      "detail": ""
+      "name": "Climate Crisis Responder",
+      "brief": ""
     },
     {
       "id": "urban-myth-embodiment",
-      "label": "Urban Myth Embodiment",
-      "detail": ""
+      "name": "Urban Myth Embodiment",
+      "brief": ""
     },
     {
       "id": "experimental-pacifist",
-      "label": "Experimental Pacifist",
-      "detail": ""
+      "name": "Experimental Pacifist",
+      "brief": ""
     },
     {
       "id": "nightwatch-volunteer",
-      "label": "Nightwatch Volunteer",
-      "detail": ""
+      "name": "Nightwatch Volunteer",
+      "brief": ""
     },
     {
       "id": "fractured-clone",
-      "label": "Fractured Clone",
-      "detail": ""
+      "name": "Fractured Clone",
+      "brief": ""
     },
     {
       "id": "faceless-doppelganger",
-      "label": "Faceless Doppelgänger",
-      "detail": ""
+      "name": "Faceless Doppelgänger",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "gravity-disruption",
-      "label": "Gravity Disruption",
-      "detail": ""
+      "name": "Gravity Disruption",
+      "brief": ""
     },
     {
       "id": "kinetic-deflection",
-      "label": "Kinetic Deflection",
-      "detail": ""
+      "name": "Kinetic Deflection",
+      "brief": ""
     },
     {
       "id": "organic-camouflage",
-      "label": "Organic Camouflage",
-      "detail": ""
+      "name": "Organic Camouflage",
+      "brief": ""
     },
     {
       "id": "dimensional-blink",
-      "label": "Dimensional Blink",
-      "detail": ""
+      "name": "Dimensional Blink",
+      "brief": ""
     },
     {
       "id": "illusion-weaving",
-      "label": "Illusion Weaving",
-      "detail": ""
+      "name": "Illusion Weaving",
+      "brief": ""
     },
     {
       "id": "tactical-microdrone-control",
-      "label": "Tactical Microdrone Control",
-      "detail": ""
+      "name": "Tactical Microdrone Control",
+      "brief": ""
     },
     {
       "id": "public-manipulation",
-      "label": "Public Manipulation",
-      "detail": ""
+      "name": "Public Manipulation",
+      "brief": ""
     },
     {
       "id": "phase-shifting",
-      "label": "Phase Shifting",
-      "detail": ""
+      "name": "Phase Shifting",
+      "brief": ""
     },
     {
       "id": "time-lag-acceleration",
-      "label": "Time Lag Acceleration",
-      "detail": ""
+      "name": "Time Lag Acceleration",
+      "brief": ""
     },
     {
       "id": "urban-terrain-mastery",
-      "label": "Urban Terrain Mastery",
-      "detail": ""
+      "name": "Urban Terrain Mastery",
+      "brief": ""
     },
     {
       "id": "emotion-reading",
-      "label": "Emotion Reading",
-      "detail": ""
+      "name": "Emotion Reading",
+      "brief": ""
     },
     {
       "id": "memory-invasion",
-      "label": "Memory Invasion",
-      "detail": ""
+      "name": "Memory Invasion",
+      "brief": ""
     },
     {
       "id": "energy-tethering",
-      "label": "Energy Tethering",
-      "detail": ""
+      "name": "Energy Tethering",
+      "brief": ""
     },
     {
       "id": "hexcode-hacking",
-      "label": "Hexcode Hacking",
-      "detail": ""
+      "name": "Hexcode Hacking",
+      "brief": ""
     },
     {
       "id": "bioelectric-overload",
-      "label": "Bioelectric Overload",
-      "detail": ""
+      "name": "Bioelectric Overload",
+      "brief": ""
     },
     {
       "id": "super-sense-network",
-      "label": "Super-Sense Network",
-      "detail": ""
+      "name": "Super-Sense Network",
+      "brief": ""
     },
     {
       "id": "adaptive-counterattack",
-      "label": "Adaptive Counterattack",
-      "detail": ""
+      "name": "Adaptive Counterattack",
+      "brief": ""
     },
     {
       "id": "nightmare-projection",
-      "label": "Nightmare Projection",
-      "detail": ""
+      "name": "Nightmare Projection",
+      "brief": ""
     },
     {
       "id": "crowd-control",
-      "label": "Crowd Control",
-      "detail": ""
+      "name": "Crowd Control",
+      "brief": ""
     },
     {
       "id": "construct-generation",
-      "label": "Construct Generation",
-      "detail": ""
+      "name": "Construct Generation",
+      "brief": ""
     },
     {
       "id": "quantum-echo-tracking",
-      "label": "Quantum Echo Tracking",
-      "detail": ""
+      "name": "Quantum Echo Tracking",
+      "brief": ""
     },
     {
       "id": "power-channeling",
-      "label": "Power Channeling",
-      "detail": ""
+      "name": "Power Channeling",
+      "brief": ""
     },
     {
       "id": "sonic-barrier-generation",
-      "label": "Sonic Barrier Generation",
-      "detail": ""
+      "name": "Sonic Barrier Generation",
+      "brief": ""
     },
     {
       "id": "reality-anchoring",
-      "label": "Reality Anchoring",
-      "detail": ""
+      "name": "Reality Anchoring",
+      "brief": ""
     },
     {
       "id": "ghost-negotiation",
-      "label": "Ghost Negotiation",
-      "detail": ""
+      "name": "Ghost Negotiation",
+      "brief": ""
     },
     {
       "id": "mass-hypnosis",
-      "label": "Mass Hypnosis",
-      "detail": ""
+      "name": "Mass Hypnosis",
+      "brief": ""
     },
     {
       "id": "symbiotic-command",
-      "label": "Symbiotic Command",
-      "detail": ""
+      "name": "Symbiotic Command",
+      "brief": ""
     },
     {
       "id": "remote-tech-hijack",
-      "label": "Remote Tech Hijack",
-      "detail": ""
+      "name": "Remote Tech Hijack",
+      "brief": ""
     },
     {
       "id": "mutagenic-synthesis",
-      "label": "Mutagenic Synthesis",
-      "detail": ""
+      "name": "Mutagenic Synthesis",
+      "brief": ""
     },
     {
       "id": "neural-firewall-evasion",
-      "label": "Neural Firewall Evasion",
-      "detail": ""
+      "name": "Neural Firewall Evasion",
+      "brief": ""
     },
     {
       "id": "immunity-override",
-      "label": "Immunity Override",
-      "detail": ""
+      "name": "Immunity Override",
+      "brief": ""
     },
     {
       "id": "satellite-warfare",
-      "label": "Satellite Warfare",
-      "detail": ""
+      "name": "Satellite Warfare",
+      "brief": ""
     },
     {
       "id": "precise-recall",
-      "label": "Precise Recall",
-      "detail": ""
+      "name": "Precise Recall",
+      "brief": ""
     },
     {
       "id": "ambush-optimization",
-      "label": "Ambush Optimization",
-      "detail": ""
+      "name": "Ambush Optimization",
+      "brief": ""
     },
     {
       "id": "surveillance-jamming",
-      "label": "Surveillance Jamming",
-      "detail": ""
+      "name": "Surveillance Jamming",
+      "brief": ""
     },
     {
       "id": "anti-magic-instinct",
-      "label": "Anti-Magic Instinct",
-      "detail": ""
+      "name": "Anti-Magic Instinct",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "glitches-when-observed",
-      "label": "Glitches When Observed",
-      "detail": ""
+      "name": "Glitches When Observed",
+      "brief": ""
     },
     {
       "id": "overreactive-biotech",
-      "label": "Overreactive Biotech",
-      "detail": ""
+      "name": "Overreactive Biotech",
+      "brief": ""
     },
     {
       "id": "symptom-triggered-collapse",
-      "label": "Symptom-Triggered Collapse",
-      "detail": ""
+      "name": "Symptom-Triggered Collapse",
+      "brief": ""
     },
     {
       "id": "unstable-dimensional-anchor",
-      "label": "Unstable Dimensional Anchor",
-      "detail": ""
+      "name": "Unstable Dimensional Anchor",
+      "brief": ""
     },
     {
       "id": "weak-to-emotional-feedback",
-      "label": "Weak to Emotional Feedback",
-      "detail": ""
+      "name": "Weak to Emotional Feedback",
+      "brief": ""
     },
     {
       "id": "detachment-from-linear-time",
-      "label": "Detachment from Linear Time",
-      "detail": ""
+      "name": "Detachment from Linear Time",
+      "brief": ""
     },
     {
       "id": "feeds-on-attention",
-      "label": "Feeds on Attention",
-      "detail": ""
+      "name": "Feeds on Attention",
+      "brief": ""
     },
     {
       "id": "haunted-by-unlived-futures",
-      "label": "Haunted by Unlived Futures",
-      "detail": ""
+      "name": "Haunted by Unlived Futures",
+      "brief": ""
     },
     {
       "id": "emotionally-mirrored-powers",
-      "label": "Emotionally Mirrored Powers",
-      "detail": ""
+      "name": "Emotionally Mirrored Powers",
+      "brief": ""
     },
     {
       "id": "cannot-perceive-lies",
-      "label": "Cannot Perceive Lies",
-      "detail": ""
+      "name": "Cannot Perceive Lies",
+      "brief": ""
     },
     {
       "id": "system-reboots-under-stress",
-      "label": "System Reboots Under Stress",
-      "detail": ""
+      "name": "System Reboots Under Stress",
+      "brief": ""
     },
     {
       "id": "craving-for-forgotten-identity",
-      "label": "Craving for Forgotten Identity",
-      "detail": ""
+      "name": "Craving for Forgotten Identity",
+      "brief": ""
     },
     {
       "id": "inverted-moral-compass",
-      "label": "Inverted Moral Compass",
-      "detail": ""
+      "name": "Inverted Moral Compass",
+      "brief": ""
     },
     {
       "id": "controlled-by-crowd-mood",
-      "label": "Controlled by Crowd Mood",
-      "detail": ""
+      "name": "Controlled by Crowd Mood",
+      "brief": ""
     },
     {
       "id": "delusions-of-past-self",
-      "label": "Delusions of Past Self",
-      "detail": ""
+      "name": "Delusions of Past Self",
+      "brief": ""
     },
     {
       "id": "needs-recharging-via-conflict",
-      "label": "Needs Recharging via Conflict",
-      "detail": ""
+      "name": "Needs Recharging via Conflict",
+      "brief": ""
     },
     {
       "id": "slips-between-personalities",
-      "label": "Slips Between Personalities",
-      "detail": ""
+      "name": "Slips Between Personalities",
+      "brief": ""
     },
     {
       "id": "cannot-cross-water",
-      "label": "Cannot Cross Water",
-      "detail": ""
+      "name": "Cannot Cross Water",
+      "brief": ""
     },
     {
       "id": "exposed-in-the-sunlight",
-      "label": "Exposed in the Sunlight",
-      "detail": ""
+      "name": "Exposed in the Sunlight",
+      "brief": ""
     },
     {
       "id": "drawn-to-cosmic-anomalies",
-      "label": "Drawn to Cosmic Anomalies",
-      "detail": ""
+      "name": "Drawn to Cosmic Anomalies",
+      "brief": ""
     },
     {
       "id": "reliant-on-external-signal",
-      "label": "Reliant on External Signal",
-      "detail": ""
+      "name": "Reliant on External Signal",
+      "brief": ""
     },
     {
       "id": "allergy-to-natural-materials",
-      "label": "Allergy to Natural Materials",
-      "detail": ""
+      "name": "Allergy to Natural Materials",
+      "brief": ""
     },
     {
       "id": "lost-sense-of-touch",
-      "label": "Lost Sense of Touch",
-      "detail": ""
+      "name": "Lost Sense of Touch",
+      "brief": ""
     },
     {
       "id": "bound-by-ritual-protocol",
-      "label": "Bound by Ritual Protocol",
-      "detail": ""
+      "name": "Bound by Ritual Protocol",
+      "brief": ""
     },
     {
       "id": "lives-a-repeating-day",
-      "label": "Lives a Repeating Day",
-      "detail": ""
+      "name": "Lives a Repeating Day",
+      "brief": ""
     },
     {
       "id": "echoes-alternate-versions",
-      "label": "Echoes Alternate Versions",
-      "detail": ""
+      "name": "Echoes Alternate Versions",
+      "brief": ""
     },
     {
       "id": "terminal-nostalgia",
-      "label": "Terminal Nostalgia",
-      "detail": ""
+      "name": "Terminal Nostalgia",
+      "brief": ""
     },
     {
       "id": "empathy-override-syndrome",
-      "label": "Empathy Override Syndrome",
-      "detail": ""
+      "name": "Empathy Override Syndrome",
+      "brief": ""
     },
     {
       "id": "sound-sensitivity-overload",
-      "label": "Sound Sensitivity Overload",
-      "detail": ""
+      "name": "Sound Sensitivity Overload",
+      "brief": ""
     },
     {
       "id": "phantom-limb-feedback",
-      "label": "Phantom Limb Feedback",
-      "detail": ""
+      "name": "Phantom Limb Feedback",
+      "brief": ""
     },
     {
       "id": "addicted-to-heroism",
-      "label": "Addicted to Heroism",
-      "detail": ""
+      "name": "Addicted to Heroism",
+      "brief": ""
     },
     {
       "id": "believes-they-re-fictional",
-      "label": "Believes They’re Fictional",
-      "detail": ""
+      "name": "Believes They’re Fictional",
+      "brief": ""
     },
     {
       "id": "power-swaps-when-stressed",
-      "label": "Power Swaps When Stressed",
-      "detail": ""
+      "name": "Power Swaps When Stressed",
+      "brief": ""
     },
     {
       "id": "degeneration-trigger-memory",
-      "label": "Degeneration Trigger Memory",
-      "detail": ""
+      "name": "Degeneration Trigger Memory",
+      "brief": ""
     },
     {
       "id": "hunted-by-own-future-self",
-      "label": "Hunted by Own Future Self",
-      "detail": ""
+      "name": "Hunted by Own Future Self",
+      "brief": ""
     },
     {
       "id": "randomized-vocal-output",
-      "label": "Randomized Vocal Output",
-      "detail": ""
+      "name": "Randomized Vocal Output",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "reprogrammable-super-suit",
-      "label": "Reprogrammable Super Suit",
-      "detail": ""
+      "name": "Reprogrammable Super Suit",
+      "brief": ""
     },
     {
       "id": "memory-spliced-identity-card",
-      "label": "Memory-Spliced Identity Card",
-      "detail": ""
+      "name": "Memory-Spliced Identity Card",
+      "brief": ""
     },
     {
       "id": "adaptive-nanite-swarm-capsule",
-      "label": "Adaptive Nanite Swarm Capsule",
-      "detail": ""
+      "name": "Adaptive Nanite Swarm Capsule",
+      "brief": ""
     },
     {
       "id": "temporal-anchor-ring",
-      "label": "Temporal Anchor Ring",
-      "detail": ""
+      "name": "Temporal Anchor Ring",
+      "brief": ""
     },
     {
       "id": "pocket-rift-generator",
-      "label": "Pocket Rift Generator",
-      "detail": ""
+      "name": "Pocket Rift Generator",
+      "brief": ""
     },
     {
       "id": "modular-civic-armor",
-      "label": "Modular Civic Armor",
-      "detail": ""
+      "name": "Modular Civic Armor",
+      "brief": ""
     },
     {
       "id": "neural-spike-glasses",
-      "label": "Neural Spike Glasses",
-      "detail": ""
+      "name": "Neural Spike Glasses",
+      "brief": ""
     },
     {
       "id": "sentient-cloak",
-      "label": "Sentient Cloak",
-      "detail": ""
+      "name": "Sentient Cloak",
+      "brief": ""
     },
     {
       "id": "subdermal-recorder-grid",
-      "label": "Subdermal Recorder Grid",
-      "detail": ""
+      "name": "Subdermal Recorder Grid",
+      "brief": ""
     },
     {
       "id": "beacon-blade",
-      "label": "Beacon Blade",
-      "detail": ""
+      "name": "Beacon Blade",
+      "brief": ""
     },
     {
       "id": "causality-disruptor-beacon",
-      "label": "Causality Disruptor Beacon",
-      "detail": ""
+      "name": "Causality Disruptor Beacon",
+      "brief": ""
     },
     {
       "id": "hollow-voice-communicator",
-      "label": "Hollow Voice Communicator",
-      "detail": ""
+      "name": "Hollow Voice Communicator",
+      "brief": ""
     },
     {
       "id": "ghost-signal-emitter",
-      "label": "Ghost-Signal Emitter",
-      "detail": ""
+      "name": "Ghost-Signal Emitter",
+      "brief": ""
     },
     {
       "id": "portable-personal-archive",
-      "label": "Portable Personal Archive",
-      "detail": ""
+      "name": "Portable Personal Archive",
+      "brief": ""
     },
     {
       "id": "mind-link-transmitter",
-      "label": "Mind-Link Transmitter",
-      "detail": ""
+      "name": "Mind-Link Transmitter",
+      "brief": ""
     },
     {
       "id": "pain-filtering-skin-layer",
-      "label": "Pain-Filtering Skin Layer",
-      "detail": ""
+      "name": "Pain-Filtering Skin Layer",
+      "brief": ""
     },
     {
       "id": "hybrid-cloaking-core",
-      "label": "Hybrid Cloaking Core",
-      "detail": ""
+      "name": "Hybrid Cloaking Core",
+      "brief": ""
     },
     {
       "id": "quantum-spliced-gloves",
-      "label": "Quantum-Spliced Gloves",
-      "detail": ""
+      "name": "Quantum-Spliced Gloves",
+      "brief": ""
     },
     {
       "id": "corp-spoof-id-implant",
-      "label": "Corp-Spoof ID Implant",
-      "detail": ""
+      "name": "Corp-Spoof ID Implant",
+      "brief": ""
     },
     {
       "id": "dreamscape-tether",
-      "label": "Dreamscape Tether",
-      "detail": ""
+      "name": "Dreamscape Tether",
+      "brief": ""
     },
     {
       "id": "morphogenic-travel-rig",
-      "label": "Morphogenic Travel Rig",
-      "detail": ""
+      "name": "Morphogenic Travel Rig",
+      "brief": ""
     },
     {
       "id": "superconductive-battle-wrap",
-      "label": "Superconductive Battle Wrap",
-      "detail": ""
+      "name": "Superconductive Battle Wrap",
+      "brief": ""
     },
     {
       "id": "anti-tracking-glitch-field",
-      "label": "Anti-Tracking Glitch Field",
-      "detail": ""
+      "name": "Anti-Tracking Glitch Field",
+      "brief": ""
     },
     {
       "id": "dimensional-barometer",
-      "label": "Dimensional Barometer",
-      "detail": ""
+      "name": "Dimensional Barometer",
+      "brief": ""
     },
     {
       "id": "emotion-stabilizer-beads",
-      "label": "Emotion Stabilizer Beads",
-      "detail": ""
+      "name": "Emotion Stabilizer Beads",
+      "brief": ""
     },
     {
       "id": "broadcast-override-injector",
-      "label": "Broadcast Override Injector",
-      "detail": ""
+      "name": "Broadcast Override Injector",
+      "brief": ""
     },
     {
       "id": "external-memory-back-up-node",
-      "label": "External Memory Back-up Node",
-      "detail": ""
+      "name": "External Memory Back-up Node",
+      "brief": ""
     },
     {
       "id": "hyperspectral-night-lens",
-      "label": "Hyperspectral Night Lens",
-      "detail": ""
+      "name": "Hyperspectral Night Lens",
+      "brief": ""
     },
     {
       "id": "crisis-mode-wristband",
-      "label": "Crisis Mode Wristband",
-      "detail": ""
+      "name": "Crisis Mode Wristband",
+      "brief": ""
     },
     {
       "id": "codex-of-forgotten-protocols",
-      "label": "Codex of Forgotten Protocols",
-      "detail": ""
+      "name": "Codex of Forgotten Protocols",
+      "brief": ""
     },
     {
       "id": "reflex-loop-shoes",
-      "label": "Reflex-Loop Shoes",
-      "detail": ""
+      "name": "Reflex-Loop Shoes",
+      "brief": ""
     },
     {
       "id": "holographic-doppel-coin",
-      "label": "Holographic Doppel Coin",
-      "detail": ""
+      "name": "Holographic Doppel Coin",
+      "brief": ""
     },
     {
       "id": "telepresence-proxy-drone",
-      "label": "Telepresence Proxy Drone",
-      "detail": ""
+      "name": "Telepresence Proxy Drone",
+      "brief": ""
     },
     {
       "id": "old-school-radio-uplink",
-      "label": "Old-School Radio Uplink",
-      "detail": ""
+      "name": "Old-School Radio Uplink",
+      "brief": ""
     },
     {
       "id": "blackbox-recorder-skullcap",
-      "label": "Blackbox Recorder Skullcap",
-      "detail": ""
+      "name": "Blackbox Recorder Skullcap",
+      "brief": ""
     },
     {
       "id": "portable-mutation-syringe",
-      "label": "Portable Mutation Syringe",
-      "detail": ""
+      "name": "Portable Mutation Syringe",
+      "brief": ""
     }
   ],
   "spends_luck": false,

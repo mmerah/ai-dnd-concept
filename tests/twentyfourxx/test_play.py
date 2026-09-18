@@ -39,7 +39,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     assert world.player.require_sheet().hindrances == ["Maimed"]
 
     state = await play_turn(table, "Ask what else this shift wants of Kael.", the_way_on())
-    assert state.world.scene.offered
+    assert state.world.scene.way_offered
 
     before = len(state.exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(NEXT_SCENE)]
@@ -95,7 +95,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
     assert state.pending is not None
     assert state.pending.kind == "succession"
     assert [option.id for option in state.pending.options] == [member_id]
-    assert table.service.engine.over(state) is None
+    assert table.service.engine.ending(state) is None
 
     state = await play_turn(table, Answer(option_id=member_id))
 

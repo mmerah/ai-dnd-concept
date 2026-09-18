@@ -161,33 +161,33 @@
   "rules": "Quick-Draw Duels:\n\nIn this land, justice is often decided in a heartbeat — or the failure of one.\n\n- When a duel begins, both participants roll a closed Oracle question:\n“Do I outdraw my opponent?”\nUse Advantage if tags support it (e.g. Quick Hands, Fast Reflexes, Gunfighter Instinct).\n- The winner gains Advantage on their first Conflict roll.\n\nAfter that, combat proceeds normally — each side takes turns resolving Conflicts until one is down, disarmed, or flees.\n\nWanted Levels:\n\nA good name goes a long way in the West. A bad one goes even further.\n\nEach time you commit crimes or notorious acts, your **Wanted Level** increases. Higher levels draw the attention of lawmen, bounty hunters, and the occasional vigilante. Good deeds may reduce your notoriety — but only if someone’s watching.\n\n**Wanted Levels:**\n\n1. **Unknown** – You're a nobody. Free to roam.\n2. **Petty Criminal** – You've stolen, lied, or trespassed. Some folks might take note.\n3. **Notorious Outlaw** – There's a poster with your face on it somewhere.\n4. **Infamous Gang Leader** – You're a known threat. Most towns will refuse you service or shoot on sight.\n5. **Public Enemy** – Your name spreads faster than your horse can ride. You’re hunted.\n6. **Legendary Outlaw** – You’re a living myth. The law wants your head. So does half the territory.\n\n> **Tip:** Some towns or factions may react based on your level. At Level 3+, roll Faction Tags with Disadvantage unless disguised or protected.\n\nHardship:\n\nThe frontier doesn’t care about your plans. It breaks them — and you — without apology.\n\n- You must track **thirst**, **hunger**, and **exposure**.\n- When injured, healing is slow unless you have access to clean water, shelter, or proper medicine.\n- Harsh conditions (drought, dust storms, blizzards) may impose penalties or force checks to continue travel or avoid Frailty Tags.\n\n> **Example:**\n> You’re stranded on the mesa. No water, no shade. After a day’s travel, you gain the tag `Parched`. Keep it until you find water. If `Parched` is still active and you fail a survival check, gain `Delirious` or `Sunburned`.\n\n> **Note:** Use Frailty Tags like `Starving`, `Frostbitten`, or `Exhausted` to represent long-term hardship effects.",
   "locations": [
     {
-      "label": "Red Lantern Saloon",
-      "detail": "Faded hub of drink, smoke, and whispered deals. Known for poker games that end in gunfire.",
+      "name": "Red Lantern Saloon",
+      "brief": "Faded hub of drink, smoke, and whispered deals. Known for poker games that end in gunfire.",
       "encounters": "Bartender, Drifter, Card Shark"
     },
     {
-      "label": "Devil’s Spine Pass",
-      "detail": "Narrow switchback trail carved through jagged rock. Ideal ground for ambushes — or accidents.",
+      "name": "Devil’s Spine Pass",
+      "brief": "Narrow switchback trail carved through jagged rock. Ideal ground for ambushes — or accidents.",
       "encounters": "Highwayman, Scout, Coyote"
     },
     {
-      "label": "Lost Pick Mine",
-      "detail": "Partially collapsed claim with rumors of hidden silver. Echoes travel too far down here.",
+      "name": "Lost Pick Mine",
+      "brief": "Partially collapsed claim with rumors of hidden silver. Echoes travel too far down here.",
       "encounters": "Claim Jumper, Stray Mule, Cave-In Risk"
     },
     {
-      "label": "Fort Redemption",
-      "detail": "Old Union fort turned garrison for local patrols. Supplies are short, tempers shorter.",
+      "name": "Fort Redemption",
+      "brief": "Old Union fort turned garrison for local patrols. Supplies are short, tempers shorter.",
       "encounters": "Captain, Deserter, Supply Officer"
     },
     {
-      "label": "Dusthaven",
-      "detail": "Boomtown gone bust, now ruled by backroom politics. Streets are dry, but blood still runs.",
+      "name": "Dusthaven",
+      "brief": "Boomtown gone bust, now ruled by backroom politics. Streets are dry, but blood still runs.",
       "encounters": "Corrupt Mayor, Deputy, Loan Shark"
     },
     {
-      "label": "Hollow Tree Ranch",
-      "detail": "Well-fenced spread on disputed land. Guards work for pay — and switch sides fast.",
+      "name": "Hollow Tree Ranch",
+      "brief": "Well-fenced spread on disputed land. Guards work for pay — and switch sides fast.",
       "encounters": "Ranch Hand, Foreman, Trespasser"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "weathered-sheriff",
-      "label": "Weathered Sheriff",
-      "detail": ""
+      "name": "Weathered Sheriff",
+      "brief": ""
     },
     {
       "id": "wandering-gunslinger",
-      "label": "Wandering Gunslinger",
-      "detail": ""
+      "name": "Wandering Gunslinger",
+      "brief": ""
     },
     {
       "id": "jaded-bounty-hunter",
-      "label": "Jaded Bounty Hunter",
-      "detail": ""
+      "name": "Jaded Bounty Hunter",
+      "brief": ""
     },
     {
       "id": "stoic-homesteader",
-      "label": "Stoic Homesteader",
-      "detail": ""
+      "name": "Stoic Homesteader",
+      "brief": ""
     },
     {
       "id": "retired-outlaw",
-      "label": "Retired Outlaw",
-      "detail": ""
+      "name": "Retired Outlaw",
+      "brief": ""
     },
     {
       "id": "lone-preacher",
-      "label": "Lone Preacher",
-      "detail": ""
+      "name": "Lone Preacher",
+      "brief": ""
     },
     {
       "id": "broken-deputy",
-      "label": "Broken Deputy",
-      "detail": ""
+      "name": "Broken Deputy",
+      "brief": ""
     },
     {
       "id": "mute-tracker",
-      "label": "Mute Tracker",
-      "detail": ""
+      "name": "Mute Tracker",
+      "brief": ""
     },
     {
       "id": "gambling-drifter",
-      "label": "Gambling Drifter",
-      "detail": ""
+      "name": "Gambling Drifter",
+      "brief": ""
     },
     {
       "id": "snake-oil-salesman",
-      "label": "Snake-Oil Salesman",
-      "detail": ""
+      "name": "Snake-Oil Salesman",
+      "brief": ""
     },
     {
       "id": "vengeful-widow",
-      "label": "Vengeful Widow",
-      "detail": ""
+      "name": "Vengeful Widow",
+      "brief": ""
     },
     {
       "id": "ex-soldier-turned-rancher",
-      "label": "Ex-Soldier Turned Rancher",
-      "detail": ""
+      "name": "Ex-Soldier Turned Rancher",
+      "brief": ""
     },
     {
       "id": "ghost-town-survivor",
-      "label": "Ghost Town Survivor",
-      "detail": ""
+      "name": "Ghost Town Survivor",
+      "brief": ""
     },
     {
       "id": "railroad-scout",
-      "label": "Railroad Scout",
-      "detail": ""
+      "name": "Railroad Scout",
+      "brief": ""
     },
     {
       "id": "illiterate-farmhand",
-      "label": "Illiterate Farmhand",
-      "detail": ""
+      "name": "Illiterate Farmhand",
+      "brief": ""
     },
     {
       "id": "reluctant-hero",
-      "label": "Reluctant Hero",
-      "detail": ""
+      "name": "Reluctant Hero",
+      "brief": ""
     },
     {
       "id": "cold-blooded-killer",
-      "label": "Cold-Blooded Killer",
-      "detail": ""
+      "name": "Cold-Blooded Killer",
+      "brief": ""
     },
     {
       "id": "escaped-convict",
-      "label": "Escaped Convict",
-      "detail": ""
+      "name": "Escaped Convict",
+      "brief": ""
     },
     {
       "id": "desert-prophet",
-      "label": "Desert Prophet",
-      "detail": ""
+      "name": "Desert Prophet",
+      "brief": ""
     },
     {
       "id": "grizzled-gold-miner",
-      "label": "Grizzled Gold Miner",
-      "detail": ""
+      "name": "Grizzled Gold Miner",
+      "brief": ""
     },
     {
       "id": "runaway-heiress",
-      "label": "Runaway Heiress",
-      "detail": ""
+      "name": "Runaway Heiress",
+      "brief": ""
     },
     {
       "id": "reformed-rustler",
-      "label": "Reformed Rustler",
-      "detail": ""
+      "name": "Reformed Rustler",
+      "brief": ""
     },
     {
       "id": "veteran-indian-scout",
-      "label": "Veteran Indian Scout",
-      "detail": ""
+      "name": "Veteran Indian Scout",
+      "brief": ""
     },
     {
       "id": "drunkard-with-a-past",
-      "label": "Drunkard with a Past",
-      "detail": ""
+      "name": "Drunkard with a Past",
+      "brief": ""
     },
     {
       "id": "reckless-stagecoach-driver",
-      "label": "Reckless Stagecoach Driver",
-      "detail": ""
+      "name": "Reckless Stagecoach Driver",
+      "brief": ""
     },
     {
       "id": "frontier-doctor",
-      "label": "Frontier Doctor",
-      "detail": ""
+      "name": "Frontier Doctor",
+      "brief": ""
     },
     {
       "id": "charismatic-con-man",
-      "label": "Charismatic Con Man",
-      "detail": ""
+      "name": "Charismatic Con Man",
+      "brief": ""
     },
     {
       "id": "doom-whispering-hermit",
-      "label": "Doom-Whispering Hermit",
-      "detail": ""
+      "name": "Doom-Whispering Hermit",
+      "brief": ""
     },
     {
       "id": "sharp-tongued-saloon-singer",
-      "label": "Sharp-Tongued Saloon Singer",
-      "detail": ""
+      "name": "Sharp-Tongued Saloon Singer",
+      "brief": ""
     },
     {
       "id": "former-pinkerton-agent",
-      "label": "Former Pinkerton Agent",
-      "detail": ""
+      "name": "Former Pinkerton Agent",
+      "brief": ""
     },
     {
       "id": "outcast-orphan",
-      "label": "Outcast Orphan",
-      "detail": ""
+      "name": "Outcast Orphan",
+      "brief": ""
     },
     {
       "id": "mysterious-stranger",
-      "label": "Mysterious Stranger",
-      "detail": ""
+      "name": "Mysterious Stranger",
+      "brief": ""
     },
     {
       "id": "whispering-gravekeeper",
-      "label": "Whispering Gravekeeper",
-      "detail": ""
+      "name": "Whispering Gravekeeper",
+      "brief": ""
     },
     {
       "id": "foreign-mercenary",
-      "label": "Foreign Mercenary",
-      "detail": ""
+      "name": "Foreign Mercenary",
+      "brief": ""
     },
     {
       "id": "grave-robbing-tinkerer",
-      "label": "Grave-Robbing Tinkerer",
-      "detail": ""
+      "name": "Grave-Robbing Tinkerer",
+      "brief": ""
     },
     {
       "id": "one-eyed-ranch-hand",
-      "label": "One-Eyed Ranch Hand",
-      "detail": ""
+      "name": "One-Eyed Ranch Hand",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "quick-draw",
-      "label": "Quick Draw",
-      "detail": ""
+      "name": "Quick Draw",
+      "brief": ""
     },
     {
       "id": "animal-handling",
-      "label": "Animal Handling",
-      "detail": ""
+      "name": "Animal Handling",
+      "brief": ""
     },
     {
       "id": "blunt-honesty",
-      "label": "Blunt Honesty",
-      "detail": ""
+      "name": "Blunt Honesty",
+      "brief": ""
     },
     {
       "id": "card-sharping",
-      "label": "Card Sharping",
-      "detail": ""
+      "name": "Card Sharping",
+      "brief": ""
     },
     {
       "id": "gun-maintenance",
-      "label": "Gun Maintenance",
-      "detail": ""
+      "name": "Gun Maintenance",
+      "brief": ""
     },
     {
       "id": "desert-navigation",
-      "label": "Desert Navigation",
-      "detail": ""
+      "name": "Desert Navigation",
+      "brief": ""
     },
     {
       "id": "long-range-shot",
-      "label": "Long-Range Shot",
-      "detail": ""
+      "name": "Long-Range Shot",
+      "brief": ""
     },
     {
       "id": "rope-lasso",
-      "label": "Rope & Lasso",
-      "detail": ""
+      "name": "Rope & Lasso",
+      "brief": ""
     },
     {
       "id": "silent-movement",
-      "label": "Silent Movement",
-      "detail": ""
+      "name": "Silent Movement",
+      "brief": ""
     },
     {
       "id": "ambush-planning",
-      "label": "Ambush Planning",
-      "detail": ""
+      "name": "Ambush Planning",
+      "brief": ""
     },
     {
       "id": "bluffing",
-      "label": "Bluffing",
-      "detail": ""
+      "name": "Bluffing",
+      "brief": ""
     },
     {
       "id": "campfire-cooking",
-      "label": "Campfire Cooking",
-      "detail": ""
+      "name": "Campfire Cooking",
+      "brief": ""
     },
     {
       "id": "riding-hard",
-      "label": "Riding Hard",
-      "detail": ""
+      "name": "Riding Hard",
+      "brief": ""
     },
     {
       "id": "dowsing",
-      "label": "Dowsing",
-      "detail": ""
+      "name": "Dowsing",
+      "brief": ""
     },
     {
       "id": "staring-contest-winner",
-      "label": "Staring Contest Winner",
-      "detail": ""
+      "name": "Staring Contest Winner",
+      "brief": ""
     },
     {
       "id": "old-wound-diagnosis",
-      "label": "Old Wound Diagnosis",
-      "detail": ""
+      "name": "Old Wound Diagnosis",
+      "brief": ""
     },
     {
       "id": "barroom-brawling",
-      "label": "Barroom Brawling",
-      "detail": ""
+      "name": "Barroom Brawling",
+      "brief": ""
     },
     {
       "id": "makeshift-repairs",
-      "label": "Makeshift Repairs",
-      "detail": ""
+      "name": "Makeshift Repairs",
+      "brief": ""
     },
     {
       "id": "threat-assessment",
-      "label": "Threat Assessment",
-      "detail": ""
+      "name": "Threat Assessment",
+      "brief": ""
     },
     {
       "id": "gun-twirling",
-      "label": "Gun Twirling",
-      "detail": ""
+      "name": "Gun Twirling",
+      "brief": ""
     },
     {
       "id": "hoofprint-reading",
-      "label": "Hoofprint Reading",
-      "detail": ""
+      "name": "Hoofprint Reading",
+      "brief": ""
     },
     {
       "id": "dynamite-timing",
-      "label": "Dynamite Timing",
-      "detail": ""
+      "name": "Dynamite Timing",
+      "brief": ""
     },
     {
       "id": "sharp-aim",
-      "label": "Sharp Aim",
-      "detail": ""
+      "name": "Sharp Aim",
+      "brief": ""
     },
     {
       "id": "standoff-nerve",
-      "label": "Standoff Nerve",
-      "detail": ""
+      "name": "Standoff Nerve",
+      "brief": ""
     },
     {
       "id": "preaching-fire",
-      "label": "Preaching Fire",
-      "detail": ""
+      "name": "Preaching Fire",
+      "brief": ""
     },
     {
       "id": "reading-people",
-      "label": "Reading People",
-      "detail": ""
+      "name": "Reading People",
+      "brief": ""
     },
     {
       "id": "riding-side-saddle",
-      "label": "Riding Side Saddle",
-      "detail": ""
+      "name": "Riding Side Saddle",
+      "brief": ""
     },
     {
       "id": "poker-face",
-      "label": "Poker Face",
-      "detail": ""
+      "name": "Poker Face",
+      "brief": ""
     },
     {
       "id": "quick-reload",
-      "label": "Quick Reload",
-      "detail": ""
+      "name": "Quick Reload",
+      "brief": ""
     },
     {
       "id": "map-memory",
-      "label": "Map Memory",
-      "detail": ""
+      "name": "Map Memory",
+      "brief": ""
     },
     {
       "id": "lie-detection",
-      "label": "Lie Detection",
-      "detail": ""
+      "name": "Lie Detection",
+      "brief": ""
     },
     {
       "id": "makeshift-surgery",
-      "label": "Makeshift Surgery",
-      "detail": ""
+      "name": "Makeshift Surgery",
+      "brief": ""
     },
     {
       "id": "spitting-distance",
-      "label": "Spitting Distance",
-      "detail": ""
+      "name": "Spitting Distance",
+      "brief": ""
     },
     {
       "id": "horse-whispering",
-      "label": "Horse Whispering",
-      "detail": ""
+      "name": "Horse Whispering",
+      "brief": ""
     },
     {
       "id": "lock-busting",
-      "label": "Lock Busting",
-      "detail": ""
+      "name": "Lock Busting",
+      "brief": ""
     },
     {
       "id": "ghost-storytelling",
-      "label": "Ghost Storytelling",
-      "detail": ""
+      "name": "Ghost Storytelling",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "haunted-by-the-war",
-      "label": "Haunted by the War",
-      "detail": ""
+      "name": "Haunted by the War",
+      "brief": ""
     },
     {
       "id": "one-eye",
-      "label": "One Eye",
-      "detail": ""
+      "name": "One Eye",
+      "brief": ""
     },
     {
       "id": "bad-gambling-habit",
-      "label": "Bad Gambling Habit",
-      "detail": ""
+      "name": "Bad Gambling Habit",
+      "brief": ""
     },
     {
       "id": "constant-cough",
-      "label": "Constant Cough",
-      "detail": ""
+      "name": "Constant Cough",
+      "brief": ""
     },
     {
       "id": "hunted-for-a-bounty",
-      "label": "Hunted for a Bounty",
-      "detail": ""
+      "name": "Hunted for a Bounty",
+      "brief": ""
     },
     {
       "id": "allergic-to-horses",
-      "label": "Allergic to Horses",
-      "detail": ""
+      "name": "Allergic to Horses",
+      "brief": ""
     },
     {
       "id": "trusts-no-one",
-      "label": "Trusts No One",
-      "detail": ""
+      "name": "Trusts No One",
+      "brief": ""
     },
     {
       "id": "nightmares-every-night",
-      "label": "Nightmares Every Night",
-      "detail": ""
+      "name": "Nightmares Every Night",
+      "brief": ""
     },
     {
       "id": "wanted-in-another-state",
-      "label": "Wanted in Another State",
-      "detail": ""
+      "name": "Wanted in Another State",
+      "brief": ""
     },
     {
       "id": "blames-self-for-a-massacre",
-      "label": "Blames Self for a Massacre",
-      "detail": ""
+      "name": "Blames Self for a Massacre",
+      "brief": ""
     },
     {
       "id": "see-ghosts-sometimes",
-      "label": "See Ghosts Sometimes",
-      "detail": ""
+      "name": "See Ghosts Sometimes",
+      "brief": ""
     },
     {
       "id": "afraid-of-gunfire",
-      "label": "Afraid of Gunfire",
-      "detail": ""
+      "name": "Afraid of Gunfire",
+      "brief": ""
     },
     {
       "id": "never-learned-to-read",
-      "label": "Never Learned to Read",
-      "detail": ""
+      "name": "Never Learned to Read",
+      "brief": ""
     },
     {
       "id": "drinking-problem",
-      "label": "Drinking Problem",
-      "detail": ""
+      "name": "Drinking Problem",
+      "brief": ""
     },
     {
       "id": "can-t-say-no-to-a-dare",
-      "label": "Can't Say No to a Dare",
-      "detail": ""
+      "name": "Can't Say No to a Dare",
+      "brief": ""
     },
     {
       "id": "estranged-from-kin",
-      "label": "Estranged from Kin",
-      "detail": ""
+      "name": "Estranged from Kin",
+      "brief": ""
     },
     {
       "id": "marked-by-the-devil",
-      "label": "Marked by the Devil",
-      "detail": ""
+      "name": "Marked by the Devil",
+      "brief": ""
     },
     {
       "id": "shaky-hands-at-dusk",
-      "label": "Shaky Hands at Dusk",
-      "detail": ""
+      "name": "Shaky Hands at Dusk",
+      "brief": ""
     },
     {
       "id": "talks-to-the-dead",
-      "label": "Talks to the Dead",
-      "detail": ""
+      "name": "Talks to the Dead",
+      "brief": ""
     },
     {
       "id": "crossed-the-wrong-man",
-      "label": "Crossed the Wrong Man",
-      "detail": ""
+      "name": "Crossed the Wrong Man",
+      "brief": ""
     },
     {
       "id": "old-bullet-still-inside",
-      "label": "Old Bullet Still Inside",
-      "detail": ""
+      "name": "Old Bullet Still Inside",
+      "brief": ""
     },
     {
       "id": "townsfolk-hate-you",
-      "label": "Townsfolk Hate You",
-      "detail": ""
+      "name": "Townsfolk Hate You",
+      "brief": ""
     },
     {
       "id": "superstitious-wreck",
-      "label": "Superstitious Wreck",
-      "detail": ""
+      "name": "Superstitious Wreck",
+      "brief": ""
     },
     {
       "id": "can-t-leave-the-county",
-      "label": "Can't Leave the County",
-      "detail": ""
+      "name": "Can't Leave the County",
+      "brief": ""
     },
     {
       "id": "sworn-vow-of-silence",
-      "label": "Sworn Vow of Silence",
-      "detail": ""
+      "name": "Sworn Vow of Silence",
+      "brief": ""
     },
     {
       "id": "falls-for-every-scam",
-      "label": "Falls for Every Scam",
-      "detail": ""
+      "name": "Falls for Every Scam",
+      "brief": ""
     },
     {
       "id": "cursed-by-a-dying-woman",
-      "label": "Cursed by a Dying Woman",
-      "detail": ""
+      "name": "Cursed by a Dying Woman",
+      "brief": ""
     },
     {
       "id": "missing-a-finger",
-      "label": "Missing a Finger",
-      "detail": ""
+      "name": "Missing a Finger",
+      "brief": ""
     },
     {
       "id": "refuses-to-carry-a-gun",
-      "label": "Refuses to Carry a Gun",
-      "detail": ""
+      "name": "Refuses to Carry a Gun",
+      "brief": ""
     },
     {
       "id": "flat-broke-always",
-      "label": "Flat Broke Always",
-      "detail": ""
+      "name": "Flat Broke Always",
+      "brief": ""
     },
     {
       "id": "walks-with-a-limp",
-      "label": "Walks with a Limp",
-      "detail": ""
+      "name": "Walks with a Limp",
+      "brief": ""
     },
     {
       "id": "claustrophobic",
-      "label": "Claustrophobic",
-      "detail": ""
+      "name": "Claustrophobic",
+      "brief": ""
     },
     {
       "id": "known-liar",
-      "label": "Known Liar",
-      "detail": ""
+      "name": "Known Liar",
+      "brief": ""
     },
     {
       "id": "fear-of-snakes",
-      "label": "Fear of Snakes",
-      "detail": ""
+      "name": "Fear of Snakes",
+      "brief": ""
     },
     {
       "id": "old-flames-burn-hot",
-      "label": "Old Flames Burn Hot",
-      "detail": ""
+      "name": "Old Flames Burn Hot",
+      "brief": ""
     },
     {
       "id": "suspect-in-disappearances",
-      "label": "Suspect in Disappearances",
-      "detail": ""
+      "name": "Suspect in Disappearances",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "rusted-revolver",
-      "label": "Rusted Revolver",
-      "detail": ""
+      "name": "Rusted Revolver",
+      "brief": ""
     },
     {
       "id": "bloodstained-hat",
-      "label": "Bloodstained Hat",
-      "detail": ""
+      "name": "Bloodstained Hat",
+      "brief": ""
     },
     {
       "id": "trusted-lasso",
-      "label": "Trusted Lasso",
-      "detail": ""
+      "name": "Trusted Lasso",
+      "brief": ""
     },
     {
       "id": "custom-made-spurs",
-      "label": "Custom-Made Spurs",
-      "detail": ""
+      "name": "Custom-Made Spurs",
+      "brief": ""
     },
     {
       "id": "deck-of-marked-cards",
-      "label": "Deck of Marked Cards",
-      "detail": ""
+      "name": "Deck of Marked Cards",
+      "brief": ""
     },
     {
       "id": "snakebite-tonic-flask",
-      "label": "Snakebite Tonic Flask",
-      "detail": ""
+      "name": "Snakebite Tonic Flask",
+      "brief": ""
     },
     {
       "id": "sawed-off-shotgun",
-      "label": "Sawed-Off Shotgun",
-      "detail": ""
+      "name": "Sawed-Off Shotgun",
+      "brief": ""
     },
     {
       "id": "dog-eared-wanted-posters",
-      "label": "Dog-Eared Wanted Posters",
-      "detail": ""
+      "name": "Dog-Eared Wanted Posters",
+      "brief": ""
     },
     {
       "id": "ornate-bowie-knife",
-      "label": "Ornate Bowie Knife",
-      "detail": ""
+      "name": "Ornate Bowie Knife",
+      "brief": ""
     },
     {
       "id": "hand-carved-pipe",
-      "label": "Hand-Carved Pipe",
-      "detail": ""
+      "name": "Hand-Carved Pipe",
+      "brief": ""
     },
     {
       "id": "pocket-bible",
-      "label": "Pocket Bible",
-      "detail": ""
+      "name": "Pocket Bible",
+      "brief": ""
     },
     {
       "id": "lockpick-hairpin",
-      "label": "Lockpick Hairpin",
-      "detail": ""
+      "name": "Lockpick Hairpin",
+      "brief": ""
     },
     {
       "id": "shiny-deputy-badge",
-      "label": "Shiny Deputy Badge",
-      "detail": ""
+      "name": "Shiny Deputy Badge",
+      "brief": ""
     },
     {
       "id": "journal-of-last-words",
-      "label": "Journal of Last Words",
-      "detail": ""
+      "name": "Journal of Last Words",
+      "brief": ""
     },
     {
       "id": "fire-starting-flint",
-      "label": "Fire-Starting Flint",
-      "detail": ""
+      "name": "Fire-Starting Flint",
+      "brief": ""
     },
     {
       "id": "coin-toss-token",
-      "label": "Coin Toss Token",
-      "detail": ""
+      "name": "Coin Toss Token",
+      "brief": ""
     },
     {
       "id": "flask-of-strong-stuff",
-      "label": "Flask of Strong Stuff",
-      "detail": ""
+      "name": "Flask of Strong Stuff",
+      "brief": ""
     },
     {
       "id": "engraved-pocket-watch",
-      "label": "Engraved Pocket Watch",
-      "detail": ""
+      "name": "Engraved Pocket Watch",
+      "brief": ""
     },
     {
       "id": "folding-shovel",
-      "label": "Folding Shovel",
-      "detail": ""
+      "name": "Folding Shovel",
+      "brief": ""
     },
     {
       "id": "last-bullet-in-a-matchbox",
-      "label": "Last Bullet in a Matchbox",
-      "detail": ""
+      "name": "Last Bullet in a Matchbox",
+      "brief": ""
     },
     {
       "id": "silver-horseshoe-charm",
-      "label": "Silver Horseshoe Charm",
-      "detail": ""
+      "name": "Silver Horseshoe Charm",
+      "brief": ""
     },
     {
       "id": "rusty-bear-trap",
-      "label": "Rusty Bear Trap",
-      "detail": ""
+      "name": "Rusty Bear Trap",
+      "brief": ""
     },
     {
       "id": "map-to-a-lost-mine",
-      "label": "Map to a Lost Mine",
-      "detail": ""
+      "name": "Map to a Lost Mine",
+      "brief": ""
     },
     {
       "id": "tattered-trenchcoat",
-      "label": "Tattered Trenchcoat",
-      "detail": ""
+      "name": "Tattered Trenchcoat",
+      "brief": ""
     },
     {
       "id": "homemade-rifle",
-      "label": "Homemade Rifle",
-      "detail": ""
+      "name": "Homemade Rifle",
+      "brief": ""
     },
     {
       "id": "whispering-saddlebag",
-      "label": "Whispering Saddlebag",
-      "detail": ""
+      "name": "Whispering Saddlebag",
+      "brief": ""
     },
     {
       "id": "mirror-from-a-lover",
-      "label": "Mirror from a Lover",
-      "detail": ""
+      "name": "Mirror from a Lover",
+      "brief": ""
     },
     {
       "id": "saloon-token-necklace",
-      "label": "Saloon Token Necklace",
-      "detail": ""
+      "name": "Saloon Token Necklace",
+      "brief": ""
     },
     {
       "id": "hand-drawn-wanted-poster-self",
-      "label": "Hand-Drawn Wanted Poster (self)",
-      "detail": ""
+      "name": "Hand-Drawn Wanted Poster (self)",
+      "brief": ""
     },
     {
       "id": "cracked-spyglass",
-      "label": "Cracked Spyglass",
-      "detail": ""
+      "name": "Cracked Spyglass",
+      "brief": ""
     },
     {
       "id": "keepsake-revolver-no-bullets",
-      "label": "Keepsake Revolver (no bullets)",
-      "detail": ""
+      "name": "Keepsake Revolver (no bullets)",
+      "brief": ""
     },
     {
       "id": "charred-sheriff-s-star",
-      "label": "Charred Sheriff's Star",
-      "detail": ""
+      "name": "Charred Sheriff's Star",
+      "brief": ""
     },
     {
       "id": "vial-of-river-dust",
-      "label": "Vial of River Dust",
-      "detail": ""
+      "name": "Vial of River Dust",
+      "brief": ""
     },
     {
       "id": "lockbox-with-no-key",
-      "label": "Lockbox with No Key",
-      "detail": ""
+      "name": "Lockbox with No Key",
+      "brief": ""
     },
     {
       "id": "sacred-amulet-of-a-dying-tribe",
-      "label": "Sacred Amulet of a Dying Tribe",
-      "detail": ""
+      "name": "Sacred Amulet of a Dying Tribe",
+      "brief": ""
     },
     {
       "id": "tin-can-with-a-rattlesnake-tail",
-      "label": "Tin Can with a Rattlesnake Tail",
-      "detail": ""
+      "name": "Tin Can with a Rattlesnake Tail",
+      "brief": ""
     }
   ],
   "spends_luck": false,

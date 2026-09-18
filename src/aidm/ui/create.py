@@ -126,7 +126,7 @@ class CharacterForm:
         given = picked(self.picks, step.id)
         if not step.options:
             typed = ui.input(
-                label=step.label,
+                label=step.name,
                 placeholder=step.hint or "In your own words",
                 value=given,
                 on_change=partial(self.write, step.id),
@@ -136,15 +136,15 @@ class CharacterForm:
             return
         # Quasar returns typed text as its own key, so a typed answer only lands on a keyed label.
         options = {
-            (option.label if step.allows_text else option.id): (
-                f"{option.label} — {option.detail}" if option.detail else option.label
+            (option.name if step.allows_text else option.id): (
+                f"{option.name} — {option.brief}" if option.brief else option.name
             )
             for option in step.options
         }
         chosen = ui.select(
             options=options,
             value=given or None,
-            label=step.label,
+            label=step.name,
             on_change=partial(self.choose, step.id),
             with_input=step.allows_text,
             new_value_mode="add-unique" if step.allows_text else None,
@@ -260,7 +260,7 @@ class ScenarioForm:
             "outline dense"
         )
         self.character = ui.select(
-            options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
+            options={entry.id: f"{entry.name} — {entry.brief}" for entry in characters},
             value=characters[0].id if characters else None,
             label="Character",
         )
@@ -428,7 +428,7 @@ def _pack_select(
     if len(offered) == 1:
         return
     ui.select(
-        options={option.id: option.label for option in offered},
+        options={option.id: option.name for option in offered},
         value=chosen,
         label="Pack",
         on_change=on_change,

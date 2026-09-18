@@ -10,6 +10,7 @@ from aidm.engines.base import PLAYER_ID
 from aidm.engines.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import items_from_kits
+from aidm.engines.twentyfourxx.pack import Kit
 from aidm.engines.twentyfourxx.tools import AskWorld, Helper, Job, Raise, Roll
 from aidm.engines.twentyfourxx.world import (
     SHIP_IDS,
@@ -18,7 +19,6 @@ from aidm.engines.twentyfourxx.world import (
     Gear,
     TwentyfourxxGame,
 )
-from aidm.engines.twentyfourxx.worldsmith import Kit
 
 
 def _rolled(draft: TwentyfourxxGame, roll: Roll, *, seed: int = 0) -> list[Fact]:
@@ -894,7 +894,7 @@ def test_job_validator_refuses_fields_that_do_not_match_the_verb() -> None:
 def test_kill_on_the_player_flips_player_over(draft: TwentyfourxxGame) -> None:
     facts = change(ENGINE, draft, "kill", target_id=PLAYER_ID)
     assert not draft.world.player.alive
-    assert ENGINE.over(draft) == "You died."
+    assert ENGINE.ending(draft) == "You died."
     assert any(fact.card == "You are dead" for fact in facts)
 
 
@@ -907,7 +907,7 @@ def test_risk_disaster_with_hired_member_sets_succession_and_over_stays_none() -
     assert draft.pending is not None
     assert draft.pending.kind == "succession"
     assert [option.id for option in draft.pending.options] == [KESTREL]
-    assert ENGINE.over(draft) is None
+    assert ENGINE.ending(draft) is None
     assert any(fact.card == "You are dead" for fact in facts)
 
 
@@ -916,7 +916,7 @@ def test_kill_on_the_lead_with_a_hired_member_opens_the_succession() -> None:
     _ = change(ENGINE, draft, "kill", target_id=PLAYER_ID)
     assert draft.pending is not None
     assert draft.pending.kind == "succession"
-    assert ENGINE.over(draft) is None
+    assert ENGINE.ending(draft) is None
 
 
 def test_risk_disaster_with_none_hired_ends_the_game(draft: TwentyfourxxGame) -> None:
@@ -925,7 +925,7 @@ def test_risk_disaster_with_none_hired_ends_the_game(draft: TwentyfourxxGame) ->
     )
     assert not draft.world.player.alive
     assert draft.pending is None
-    assert ENGINE.over(draft) == "You died."
+    assert ENGINE.ending(draft) == "You died."
 
 
 def test_answering_the_succession_decision_makes_the_member_the_player() -> None:
@@ -935,7 +935,7 @@ def test_answering_the_succession_decision_makes_the_member_the_player() -> None
     )
     assert draft.pending is not None
     option = draft.pending.options[0]
-    facts = ENGINE.answer(draft, option, Random(0))
+    facts = ENGINE.play_option(draft, option, Random(0))
     assert draft.world.player.id == KESTREL
     assert any(fact.card == "Kestrel leads now" for fact in facts)
 
@@ -962,7 +962,7 @@ def test_defend_and_repair_item_on_the_ships_hull_armor(draft: TwentyfourxxGame)
 
 def test_next_scene_offers_the_way_on_and_refuses_a_second_offer(draft: TwentyfourxxGame) -> None:
     _ = ENGINE.next_scene(draft, NextScene(), Random(0))
-    assert draft.world.scene.offered
+    assert draft.world.scene.way_offered
     with pytest.raises(Refusal, match="already offers"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
 

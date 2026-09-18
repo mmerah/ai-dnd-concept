@@ -6,7 +6,7 @@ from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
 from aidm.engines.packs import SRD_PACK, PackSet
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.worldsmith import TwentyfourxxPack
+from aidm.engines.twentyfourxx.pack import TwentyfourxxPack
 
 SNEAK = {
     "specialty": "sneak",
@@ -48,7 +48,7 @@ def test_a_written_pack_adds_no_skills_to_the_increase_step() -> None:
                 name="Extra",
                 source="",
                 license="",
-                skills=(DecisionOption(id="brewing", label="Brewing"),),
+                skills=(DecisionOption(id="brewing", name="Brewing"),),
             ),
         },
         {},

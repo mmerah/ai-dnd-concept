@@ -1,23 +1,26 @@
 import json
 import logging
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue, model_validator
 
 from aidm.core.entities import EngineId, Frozen, Refusal, Slug, content_id, slug
 from aidm.core.io import read_model
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, section_if, sections
+from aidm.core.tools import schema_text
 
 LOGGER = logging.getLogger(__name__)
 
-DASH = " — "  # parts a label from its detail (`Labelled`, `Pack.sections`); inside neither
+DASH = " — "  # parts a name from its brief (`Named`, `Pack.sections`); inside neither
 SEPARATOR = ", "  # parts one name from the next in the NAMES line; nowhere inside a name
 PROVENANCE = frozenset(("name", "source", "license"))  # the pack's own; no box edits it
 SRD_PACK: Slug = "srd"
+SOURCELESS = "(none — write from what is below)"
+SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
 SOURCE_BOUND = (
     "Everything comes from SOURCE MATERIAL, its premise and, when it holds one, its document; "
     "nothing outside it."
@@ -25,8 +28,8 @@ SOURCE_BOUND = (
 HEAD_ASK = (
     "Write the head of a pack for this setting. A pack is a genre kit the worldsmith reads when "
     "it writes scenarios in this setting. `setting` is a few paragraphs on what this world is "
-    "and what a story in it is about. The creation tables are the labels a player picks from, "
-    "each with a one-line `detail` only where the label does not explain itself. The name lists "
+    "and what a story in it is about. The creation tables are the names a player picks from, "
+    "each with a one-line `brief` only where the name does not explain itself. The name lists "
     "fit the setting, six to twelve each, and a list is left empty when the setting has no such "
     "names. `rules` is the genre's one special rule as prose, if it has one, else empty. "
     f"{SOURCE_BOUND}"
@@ -63,28 +66,28 @@ class Names(Frozen):
         return self
 
 
-class Labelled(Frozen):
+class Named(Frozen):
     """One row of a creation table as the worldsmith writes it, before code makes its id."""
 
-    label: str = Field(min_length=1, max_length=60)
-    detail: str = Field(default="", max_length=200)
+    name: str = Field(min_length=1, max_length=60)
+    brief: str = Field(default="", max_length=200)
 
     @model_validator(mode="after")
     def _reads_as_one_table_line(self) -> Self:
-        check_lines("a table entry", (self.label, self.detail))
-        if DASH in self.label or DASH in self.detail:
-            raise ValueError(f'a table entry holds "{DASH}", which parts a label from its detail')
+        check_lines("a table entry", (self.name, self.brief))
+        if DASH in self.name or DASH in self.brief:
+            raise ValueError(f'a table entry holds "{DASH}", which parts a name from its brief')
         return self
 
 
 class Location(Frozen):
-    label: str = Field(min_length=1)
-    detail: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    brief: str = Field(min_length=1)
     encounters: str = ""  # the SRD's "Possible encounters" line, names the worldsmith may use
 
     @model_validator(mode="after")
     def _reads_in_a_block(self) -> Self:
-        check_lines("a location", (self.label, self.detail, self.encounters))
+        check_lines("a location", (self.name, self.brief, self.encounters))
         return self
 
 
@@ -114,7 +117,7 @@ class Pack(Frozen):
         )
         location_lines: list[str] = []
         for location in self.locations:
-            location_lines.append(f"- {location.label} — {location.detail}")
+            location_lines.append(f"- {location.name} — {location.brief}")
             if location.encounters:
                 location_lines.append(f"  encounters: {location.encounters}")
         return (
@@ -183,10 +186,10 @@ class PackSet[K: Pack]:
     engine: EngineId
     shipped: Mapping[Slug, K]
     written: Mapping[Slug, K]  # the player's, from `packs/<engine>/`; never shadows a shipped id
-    installed: Mapping[Slug, K] = field(init=False)
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "installed", {**self.shipped, **self.written})
+    @property
+    def installed(self) -> Mapping[Slug, K]:
+        return {**self.shipped, **self.written}
 
     def srd(self) -> K:
         found = self.installed.get(SRD_PACK)
@@ -208,11 +211,11 @@ class PackSet[K: Pack]:
     def options(self) -> tuple[DecisionOption, ...]:
         """The SRD first, then the rest of `installed` in order; id and `pack.name`."""
         rest = tuple(
-            DecisionOption(id=pack_id, label=pack.name)
+            DecisionOption(id=pack_id, name=pack.name)
             for pack_id, pack in self.installed.items()
             if pack_id != SRD_PACK
         )
-        return (DecisionOption(id=SRD_PACK, label=self.srd().name), *rest)
+        return (DecisionOption(id=SRD_PACK, name=self.srd().name), *rest)
 
     def installing(self, pack_id: Slug, pack: K) -> "PackSet[K]":
         """A new set: the same shipped packs, `written` with this one added or replaced."""
@@ -232,18 +235,39 @@ class PackSet[K: Pack]:
         return self.require(pack_id).seeds
 
 
+def render_worldsmith(
+    role: str,
+    *,
+    source: str,
+    scope: str,
+    world_sections: Sections,
+    intent: str,
+    guidance: str,
+    answer_model: type[BaseModel],
+) -> str:
+    return sections(
+        (
+            ("YOUR ROLE", role),
+            ("SOURCE MATERIAL", source or SOURCELESS),
+            ("THE SCOPE OF PLAY", scope or SCOPELESS),
+            *world_sections,
+            ("WHAT COMES NEXT", intent),
+            ("ENGINE GUIDANCE", guidance),
+            ("ANSWER WITH", schema_text(answer_model)),
+        )
+    )
+
+
 def block_line(name: str, brief: str, *fields: tuple[str, str]) -> str:
     """`name — brief; key: value; …`, empty values dropped: how a cast block reads in a prompt."""
     return "; ".join((f"{name} — {brief}", *(f"{key}: {value}" for key, value in fields if value)))
 
 
-def options(labelled: Iterable[Labelled], taken: list[Slug]) -> tuple[DecisionOption, ...]:
-    """Ids from labels; `taken` grows so the ids stay unique across a pack's tables."""
+def with_ids(rows: Iterable[Named], taken: list[Slug]) -> tuple[DecisionOption, ...]:
+    """Ids from names; `taken` grows so the ids stay unique across a pack's tables."""
     made: list[DecisionOption] = []
-    for entry in labelled:
-        made.append(
-            DecisionOption(id=slug(entry.label, taken), label=entry.label, detail=entry.detail)
-        )
+    for entry in rows:
+        made.append(DecisionOption(id=slug(entry.name, taken), name=entry.name, brief=entry.brief))
         taken.append(made[-1].id)
     return tuple(made)
 

@@ -49,14 +49,14 @@ class LaunchForm:
         scenario = catalog.scenario(self.scenario_id)
         theme.set_look(scenario.look)
         ui.select(
-            options={entry.id: f"{entry.label} · {entry.rules}" for entry in catalog.scenarios},
+            options={entry.id: f"{entry.name} · {entry.rules}" for entry in catalog.scenarios},
             value=self.scenario_id,
             label="Scenario",
             on_change=self.choose_scenario,
         )
-        ui.label(scenario.detail).classes("text-sm opacity-70")
+        ui.label(scenario.brief).classes("text-sm opacity-70")
         characters = {
-            entry.id: f"{entry.label} — {entry.detail}"
+            entry.id: f"{entry.name} — {entry.brief}"
             for entry in catalog.characters_for(scenario.engine)
         }
         chosen = (
@@ -179,7 +179,7 @@ def _packs(catalog: LauncherCatalog) -> None:
     with ui.column().classes("w-full game-gap-md"):
         for pack in catalog.packs:
             with ui.row().classes("w-full items-center game-gap-lg"):
-                ui.label(pack.label).classes("game-title")
+                ui.label(pack.name).classes("game-title")
                 ui.label(pack.tables).classes("text-sm opacity-70 col")
                 ui.badge(pack.rules)
                 if pack.written:

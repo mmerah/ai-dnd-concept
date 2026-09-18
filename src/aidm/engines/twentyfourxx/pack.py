@@ -7,7 +7,7 @@ from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, section_if
 from aidm.engines.packs import (
-    Labelled,
+    Named,
     Pack,
     PackBody,
     PackHead,
@@ -47,14 +47,14 @@ class Specialty(DecisionOption):
     def line(self) -> str:
         fixed = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
         if not self.choice:
-            return f"{self.label}: {fixed}"
+            return f"{self.name}: {fixed}"
         alternatives = " / ".join(
             ", ".join(f"{skill} d{die}" for skill, die in option.skills.items())
             for option in self.choice
         )
         if fixed:
-            return f"{self.label}: {fixed} plus one of: {alternatives}"
-        return f"{self.label}: one of: {alternatives}"
+            return f"{self.name}: {fixed} plus one of: {alternatives}"
+        return f"{self.name}: one of: {alternatives}"
 
 
 class Body(DecisionOption):
@@ -97,14 +97,14 @@ class TwentyfourxxPack(Pack):
     starting_kit: tuple[Kit, ...] = ()
     factions: tuple[TwentyfourxxBlock, ...] = ()
     npcs: tuple[TwentyfourxxBlock, ...] = ()
-    hostiles: tuple[TwentyfourxxBlock, ...] = ()
+    monsters: tuple[TwentyfourxxBlock, ...] = ()
 
     @model_validator(mode="after")
     def _every_pick_told(self) -> Self:
-        """A pick's detail is its prompt text, so a pack may not leave it blank."""
-        untold = [option.id for option in (*self.specialties, *self.origins) if not option.detail]
+        """A pick's brief is its prompt text, so a pack may not leave it blank."""
+        untold = [option.id for option in (*self.specialties, *self.origins) if not option.brief]
         if untold:
-            raise ValueError(f"no detail for {', '.join(untold)}")
+            raise ValueError(f"no brief for {', '.join(untold)}")
         return self
 
     def specialty_lines(self) -> str:
@@ -116,7 +116,7 @@ class TwentyfourxxPack(Pack):
             ("origins", len(self.origins)),
             ("factions", len(self.factions)),
             ("people", len(self.npcs)),
-            ("hostiles", len(self.hostiles)),
+            ("monsters", len(self.monsters)),
             *super().counts(),
         )
 
@@ -124,10 +124,10 @@ class TwentyfourxxPack(Pack):
         return (
             *super().sections(opening=opening),
             *section_if("SPECIALTIES", self.specialty_lines()),
-            *bullets("ORIGINS", (f"{origin.label} — {origin.detail}" for origin in self.origins)),
+            *bullets("ORIGINS", (f"{origin.name} — {origin.brief}" for origin in self.origins)),
             *bullets("FACTIONS", (block.line() for block in self.factions)),
             *bullets("PEOPLE", (block.line() for block in self.npcs)),
-            *bullets("HOSTILES", (block.line() for block in self.hostiles)),
+            *bullets("MONSTERS", (block.line() for block in self.monsters)),
         )
 
 
@@ -152,16 +152,16 @@ class SheetProposal(Frozen):
     def check(self, packs: Sequence[TwentyfourxxPack]) -> None:
         check_unique("items", self.items)
         check_unique("hindrances", self.hindrances)
-        specialties = {specialty.label for pack in packs for specialty in pack.specialties}
+        specialties = {specialty.name for pack in packs for specialty in pack.specialties}
         if self.specialty not in specialties:
             raise Refusal(f"{self.specialty!r} is not a specialty these packs list")
 
 
-class SpecialtyProposal(Labelled):
+class SpecialtyProposal(Named):
     """A written pack offers no picks-within-a-pick, so a specialty names its skills outright."""
 
-    # `default=...` is pydantic for required: a pick's prompt text, which `Labelled` lets be empty.
-    detail: str = Field(
+    # `default=...` is pydantic for required: a pick's prompt text, which `Named` lets be empty.
+    brief: str = Field(
         default=...,
         min_length=1,
         max_length=200,
@@ -188,10 +188,10 @@ class SpecialtyProposal(Labelled):
         return self
 
 
-class OriginProposal(Labelled):
+class OriginProposal(Named):
     """Where an operator comes from: what it hands them at creation, beyond the prose."""
 
-    detail: str = Field(
+    brief: str = Field(
         default=...,
         min_length=1,
         max_length=200,
@@ -226,12 +226,12 @@ class TwentyfourxxHead(PackHead):
         taken: list[Slug] = []
         specialties: list[Specialty] = []
         for draft in self.specialties:
-            # Appended as each id is made: two rows sharing a label must not share an id.
+            # Appended as each id is made: two rows sharing a name must not share an id.
             specialties.append(
                 Specialty(
-                    id=slug(draft.label, taken),
-                    label=draft.label,
-                    detail=draft.detail,
+                    id=slug(draft.name, taken),
+                    name=draft.name,
+                    brief=draft.brief,
                     skills=dict.fromkeys(draft.skills, 8),
                     kit=tuple(Kit(name=name) for name in draft.kit),
                 )
@@ -241,9 +241,9 @@ class TwentyfourxxHead(PackHead):
         for draft in self.origins:
             origins.append(
                 Origin(
-                    id=slug(draft.label, taken),
-                    label=draft.label,
-                    detail=draft.detail,
+                    id=slug(draft.name, taken),
+                    name=draft.name,
+                    brief=draft.brief,
                     increases=draft.increases,
                     invents=draft.invents,
                 )
@@ -265,7 +265,7 @@ class TwentyfourxxBody(PackBody):
     npcs: tuple[TwentyfourxxBlock, ...] = Field(
         min_length=1, max_length=6, description="People a player could meet and work with."
     )
-    hostiles: tuple[TwentyfourxxBlock, ...] = Field(
+    monsters: tuple[TwentyfourxxBlock, ...] = Field(
         min_length=1,
         max_length=6,
         description="What stands against the player: a boarding crew, a drone, a thing in the "

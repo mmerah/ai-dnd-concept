@@ -161,33 +161,33 @@
   "rules": "Fear:\n\nFear is not a feeling — it’s a **Conflict**. When your character faces overwhelming terror, they don’t just react — they fight to stay in control.\n\n- When confronted by a terrifying situation — a creature, a location, an event — and your character is trying to resist panic, keep moving, or push through, **treat it as a Conflict**.\n- Roll as usual and apply the **Harm rules** — but instead of taking physical damage, **Fear reduces your Luck**.\n- Tags like *Composed Under Pressure* or *Panics in Silence* apply as they would in any other Conflict, granting **Advantage** or **Disadvantage**.\n- The key difference: **Luck lost to Fear cannot be recovered** through resting or normal healing scenes.\n- To recover Luck lost to Fear, your character must **retreat to a safe, emotionally grounded place** — somewhere that reminds them who they are. This can be a literal home, a symbolic space, or a moment of true safety with someone they trust.\n\nInsanity:\n\nWhen the veil lifts and the mind glimpses what lies beyond, the damage is deeper than fear — it is existential.\n\n- Any **direct exposure to the Supernatural** (ritual anomalies, cognitohazards, time fractures, unfiltered alien contact, or reality-warping phenomena) triggers a **Sanity check**.\n- Ask the Oracle: *\"Does my mind withstand the encounter?\"*\n- If the result is unfavorable, **apply the Harm rules**, but to **Sanity**, not Luck.\n- Unlike Fear, this is not a Conflict — there is no contest. This is the mind breaking under the weight of the incomprehensible.\n- **Sanity does not recover naturally**. It can only be restored through:\n- **Closure**: resolving what caused the fracture.\n- **Ritual grounding**: personal, cultural, or symbolic.\n- **Human connection**: someone believing you, helping you make sense of it.\n- If Sanity reaches **zero**, the character is no longer in control. Their fate is shaped by what broke them — fugue states, delusions, possession, catatonia, or worse.",
   "locations": [
     {
-      "label": "The Hollow Hotel",
-      "detail": "A once-opulent hotel, now sagging with time and secrets. Hallways stretch longer than they should. Lights flicker even when the power’s off. Some rooms are still occupied. None are checked in.",
+      "name": "The Hollow Hotel",
+      "brief": "A once-opulent hotel, now sagging with time and secrets. Hallways stretch longer than they should. Lights flicker even when the power’s off. Some rooms are still occupied. None are checked in.",
       "encounters": "Specter, Cultist, Concierge who remembers too much, Hidden guest with no ID, Bellhop who’s been here too long, Dripping suitcase that wasn’t there before"
     },
     {
-      "label": "The Grieving Woods",
-      "detail": "A forest where the wind whispers names you know. Footpaths vanish. Animal calls never sound quite right. Sometimes, the trees bleed sap that smells like rust.",
+      "name": "The Grieving Woods",
+      "brief": "A forest where the wind whispers names you know. Footpaths vanish. Animal calls never sound quite right. Sometimes, the trees bleed sap that smells like rust.",
       "encounters": "Werebeast, Shadow Fiend, Lost hiker who should be dead, Hermit with burned maps, Park ranger with the wrong eyes, Ritual site still warm"
     },
     {
-      "label": "Ashridge Manor",
-      "detail": "A mansion sealed by time and bad memory. Its wings are larger inside than out, and the mirrors don’t follow your movements. The cellar has doors no owner ever mentioned.",
+      "name": "Ashridge Manor",
+      "brief": "A mansion sealed by time and bad memory. Its wings are larger inside than out, and the mirrors don’t follow your movements. The cellar has doors no owner ever mentioned.",
       "encounters": "Vampiric Noble, Specter, Cultist, Inheritor with gaps in her past, Caretaker who never aged, Portrait that changes when no one looks"
     },
     {
-      "label": "Gravelight Cemetery",
-      "detail": "A graveyard where names wear off faster than stone. The air always smells of turned earth, even in frost. Someone leaves fresh flowers on graves no one remembers.",
+      "name": "Gravelight Cemetery",
+      "brief": "A graveyard where names wear off faster than stone. The air always smells of turned earth, even in frost. Someone leaves fresh flowers on graves no one remembers.",
       "encounters": "Specter, Cultist, Grave robber who buries instead of stealing, Mourner with empty eyes, Caretaker who speaks to the soil, Priest who lost his faith but not his rites"
     },
     {
-      "label": "The Deep Verge Facility",
-      "detail": "An isolated lab hidden behind blank coordinates. Every hallway looks the same. Some lead to different years. The server room hums like it’s thinking.",
+      "name": "The Deep Verge Facility",
+      "brief": "An isolated lab hidden behind blank coordinates. Every hallway looks the same. Some lead to different years. The server room hums like it’s thinking.",
       "encounters": "Infected, Mad scientist, Janitor who knows too much, Technician with missing time, Security agent who doesn’t blink, Survivor kept alive by the machinery"
     },
     {
-      "label": "St. Arda’s Asylum (Condemned)",
-      "detail": "Once a towering institution, now a tangle of ruin and rust. Files remain, but the ink fades if you read them twice. Some padded cells have scratch marks on the *outside*.",
+      "name": "St. Arda’s Asylum (Condemned)",
+      "brief": "Once a towering institution, now a tangle of ruin and rust. Files remain, but the ink fades if you read them twice. Some padded cells have scratch marks on the *outside*.",
       "encounters": "Specter, Cultist, Former nurse who still makes rounds, Patient who never left, Archivist with redacted memories, Phantom doctor calling old codes through broken speakers"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "jaded-parapsychologist",
-      "label": "Jaded Parapsychologist",
-      "detail": ""
+      "name": "Jaded Parapsychologist",
+      "brief": ""
     },
     {
       "id": "isolated-field-medic",
-      "label": "Isolated Field Medic",
-      "detail": ""
+      "name": "Isolated Field Medic",
+      "brief": ""
     },
     {
       "id": "guilt-ridden-exorcist",
-      "label": "Guilt-Ridden Exorcist",
-      "detail": ""
+      "name": "Guilt-Ridden Exorcist",
+      "brief": ""
     },
     {
       "id": "burned-out-cop",
-      "label": "Burned-Out Cop",
-      "detail": ""
+      "name": "Burned-Out Cop",
+      "brief": ""
     },
     {
       "id": "trauma-scarred-witness",
-      "label": "Trauma-Scarred Witness",
-      "detail": ""
+      "name": "Trauma-Scarred Witness",
+      "brief": ""
     },
     {
       "id": "sleepless-journalist",
-      "label": "Sleepless Journalist",
-      "detail": ""
+      "name": "Sleepless Journalist",
+      "brief": ""
     },
     {
       "id": "disavowed-agent",
-      "label": "Disavowed Agent",
-      "detail": ""
+      "name": "Disavowed Agent",
+      "brief": ""
     },
     {
       "id": "retired-cult-hunter",
-      "label": "Retired Cult Hunter",
-      "detail": ""
+      "name": "Retired Cult Hunter",
+      "brief": ""
     },
     {
       "id": "night-shift-coroner",
-      "label": "Night Shift Coroner",
-      "detail": ""
+      "name": "Night Shift Coroner",
+      "brief": ""
     },
     {
       "id": "amateur-occultist",
-      "label": "Amateur Occultist",
-      "detail": ""
+      "name": "Amateur Occultist",
+      "brief": ""
     },
     {
       "id": "estranged-psychic",
-      "label": "Estranged Psychic",
-      "detail": ""
+      "name": "Estranged Psychic",
+      "brief": ""
     },
     {
       "id": "obsessive-archivist",
-      "label": "Obsessive Archivist",
-      "detail": ""
+      "name": "Obsessive Archivist",
+      "brief": ""
     },
     {
       "id": "haunted-war-veteran",
-      "label": "Haunted War Veteran",
-      "detail": ""
+      "name": "Haunted War Veteran",
+      "brief": ""
     },
     {
       "id": "rural-emt-with-a-secret",
-      "label": "Rural EMT with a Secret",
-      "detail": ""
+      "name": "Rural EMT with a Secret",
+      "brief": ""
     },
     {
       "id": "grief-stricken-parent",
-      "label": "Grief-Stricken Parent",
-      "detail": ""
+      "name": "Grief-Stricken Parent",
+      "brief": ""
     },
     {
       "id": "conspiracy-blogger",
-      "label": "Conspiracy Blogger",
-      "detail": ""
+      "name": "Conspiracy Blogger",
+      "brief": ""
     },
     {
       "id": "forgotten-survivor",
-      "label": "Forgotten Survivor",
-      "detail": ""
+      "name": "Forgotten Survivor",
+      "brief": ""
     },
     {
       "id": "hollow-eyed-medium",
-      "label": "Hollow-Eyed Medium",
-      "detail": ""
+      "name": "Hollow-Eyed Medium",
+      "brief": ""
     },
     {
       "id": "local-sheriff-in-denial",
-      "label": "Local Sheriff in Denial",
-      "detail": ""
+      "name": "Local Sheriff in Denial",
+      "brief": ""
     },
     {
       "id": "bleeding-edge-parapsych-tech",
-      "label": "Bleeding-Edge Parapsych Tech",
-      "detail": ""
+      "name": "Bleeding-Edge Parapsych Tech",
+      "brief": ""
     },
     {
       "id": "fringe-paranormal-scholar",
-      "label": "Fringe Paranormal Scholar",
-      "detail": ""
+      "name": "Fringe Paranormal Scholar",
+      "brief": ""
     },
     {
       "id": "backwoods-guide",
-      "label": "Backwoods Guide",
-      "detail": ""
+      "name": "Backwoods Guide",
+      "brief": ""
     },
     {
       "id": "disillusioned-social-worker",
-      "label": "Disillusioned Social Worker",
-      "detail": ""
+      "name": "Disillusioned Social Worker",
+      "brief": ""
     },
     {
       "id": "quiet-kid-from-the-woods",
-      "label": "Quiet Kid from the Woods",
-      "detail": ""
+      "name": "Quiet Kid from the Woods",
+      "brief": ""
     },
     {
       "id": "washed-up-tv-host",
-      "label": "Washed-Up TV Host",
-      "detail": ""
+      "name": "Washed-Up TV Host",
+      "brief": ""
     },
     {
       "id": "burnt-out-paranormal-debunker",
-      "label": "Burnt-Out Paranormal Debunker",
-      "detail": ""
+      "name": "Burnt-Out Paranormal Debunker",
+      "brief": ""
     },
     {
       "id": "apocalyptic-prepper",
-      "label": "Apocalyptic Prepper",
-      "detail": ""
+      "name": "Apocalyptic Prepper",
+      "brief": ""
     },
     {
       "id": "ex-patient-turned-healer",
-      "label": "Ex-Patient Turned Healer",
-      "detail": ""
+      "name": "Ex-Patient Turned Healer",
+      "brief": ""
     },
     {
       "id": "volunteer-gravekeeper",
-      "label": "Volunteer Gravekeeper",
-      "detail": ""
+      "name": "Volunteer Gravekeeper",
+      "brief": ""
     },
     {
       "id": "descendant-of-a-cult",
-      "label": "Descendant of a Cult",
-      "detail": ""
+      "name": "Descendant of a Cult",
+      "brief": ""
     },
     {
       "id": "faithless-preacher",
-      "label": "Faithless Preacher",
-      "detail": ""
+      "name": "Faithless Preacher",
+      "brief": ""
     },
     {
       "id": "hypnagogic-dream-researcher",
-      "label": "Hypnagogic Dream Researcher",
-      "detail": ""
+      "name": "Hypnagogic Dream Researcher",
+      "brief": ""
     },
     {
       "id": "fogtown-local",
-      "label": "Fogtown Local",
-      "detail": ""
+      "name": "Fogtown Local",
+      "brief": ""
     },
     {
       "id": "psychic-hotline-operator",
-      "label": "Psychic Hotline Operator",
-      "detail": ""
+      "name": "Psychic Hotline Operator",
+      "brief": ""
     },
     {
       "id": "missing-persons-investigator",
-      "label": "Missing Persons Investigator",
-      "detail": ""
+      "name": "Missing Persons Investigator",
+      "brief": ""
     },
     {
       "id": "chronic-trespasser",
-      "label": "Chronic Trespasser",
-      "detail": ""
+      "name": "Chronic Trespasser",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "cold-reading",
-      "label": "Cold Reading",
-      "detail": ""
+      "name": "Cold Reading",
+      "brief": ""
     },
     {
       "id": "crime-scene-analysis",
-      "label": "Crime Scene Analysis",
-      "detail": ""
+      "name": "Crime Scene Analysis",
+      "brief": ""
     },
     {
       "id": "quick-reflexes",
-      "label": "Quick Reflexes",
-      "detail": ""
+      "name": "Quick Reflexes",
+      "brief": ""
     },
     {
       "id": "field-medicine",
-      "label": "Field Medicine",
-      "detail": ""
+      "name": "Field Medicine",
+      "brief": ""
     },
     {
       "id": "fear-suppression",
-      "label": "Fear Suppression",
-      "detail": ""
+      "name": "Fear Suppression",
+      "brief": ""
     },
     {
       "id": "broken-mind-mapping",
-      "label": "Broken Mind Mapping",
-      "detail": ""
+      "name": "Broken Mind Mapping",
+      "brief": ""
     },
     {
       "id": "urban-tracking",
-      "label": "Urban Tracking",
-      "detail": ""
+      "name": "Urban Tracking",
+      "brief": ""
     },
     {
       "id": "banishment-rites",
-      "label": "Banishment Rites",
-      "detail": ""
+      "name": "Banishment Rites",
+      "brief": ""
     },
     {
       "id": "cryptid-lore",
-      "label": "Cryptid Lore",
-      "detail": ""
+      "name": "Cryptid Lore",
+      "brief": ""
     },
     {
       "id": "occult-symbolism",
-      "label": "Occult Symbolism",
-      "detail": ""
+      "name": "Occult Symbolism",
+      "brief": ""
     },
     {
       "id": "breath-control",
-      "label": "Breath Control",
-      "detail": ""
+      "name": "Breath Control",
+      "brief": ""
     },
     {
       "id": "survive-alone",
-      "label": "Survive Alone",
-      "detail": ""
+      "name": "Survive Alone",
+      "brief": ""
     },
     {
       "id": "forensic-insight",
-      "label": "Forensic Insight",
-      "detail": ""
+      "name": "Forensic Insight",
+      "brief": ""
     },
     {
       "id": "old-school-locksmith",
-      "label": "Old-School Locksmith",
-      "detail": ""
+      "name": "Old-School Locksmith",
+      "brief": ""
     },
     {
       "id": "parkour",
-      "label": "Parkour",
-      "detail": ""
+      "name": "Parkour",
+      "brief": ""
     },
     {
       "id": "gaslight-detection",
-      "label": "Gaslight Detection",
-      "detail": ""
+      "name": "Gaslight Detection",
+      "brief": ""
     },
     {
       "id": "improvised-weapons",
-      "label": "Improvised Weapons",
-      "detail": ""
+      "name": "Improvised Weapons",
+      "brief": ""
     },
     {
       "id": "psychic-resistance",
-      "label": "Psychic Resistance",
-      "detail": ""
+      "name": "Psychic Resistance",
+      "brief": ""
     },
     {
       "id": "evp-interpretation",
-      "label": "EVP Interpretation",
-      "detail": ""
+      "name": "EVP Interpretation",
+      "brief": ""
     },
     {
       "id": "dream-recall",
-      "label": "Dream Recall",
-      "detail": ""
+      "name": "Dream Recall",
+      "brief": ""
     },
     {
       "id": "lie-detection",
-      "label": "Lie Detection",
-      "detail": ""
+      "name": "Lie Detection",
+      "brief": ""
     },
     {
       "id": "hexbreaking",
-      "label": "Hexbreaking",
-      "detail": ""
+      "name": "Hexbreaking",
+      "brief": ""
     },
     {
       "id": "local-lore",
-      "label": "Local Lore",
-      "detail": ""
+      "name": "Local Lore",
+      "brief": ""
     },
     {
       "id": "dimensional-awareness",
-      "label": "Dimensional Awareness",
-      "detail": ""
+      "name": "Dimensional Awareness",
+      "brief": ""
     },
     {
       "id": "calm-under-pressure",
-      "label": "Calm Under Pressure",
-      "detail": ""
+      "name": "Calm Under Pressure",
+      "brief": ""
     },
     {
       "id": "nightmare-dissection",
-      "label": "Nightmare Dissection",
-      "detail": ""
+      "name": "Nightmare Dissection",
+      "brief": ""
     },
     {
       "id": "signal-scrambling",
-      "label": "Signal Scrambling",
-      "detail": ""
+      "name": "Signal Scrambling",
+      "brief": ""
     },
     {
       "id": "binding-circle-work",
-      "label": "Binding Circle Work",
-      "detail": ""
+      "name": "Binding Circle Work",
+      "brief": ""
     },
     {
       "id": "ritual-memory",
-      "label": "Ritual Memory",
-      "detail": ""
+      "name": "Ritual Memory",
+      "brief": ""
     },
     {
       "id": "flash-glitch-navigation",
-      "label": "Flash-Glitch Navigation",
-      "detail": ""
+      "name": "Flash-Glitch Navigation",
+      "brief": ""
     },
     {
       "id": "old-network-contacts",
-      "label": "Old Network Contacts",
-      "detail": ""
+      "name": "Old Network Contacts",
+      "brief": ""
     },
     {
       "id": "deadpan-negotiation",
-      "label": "Deadpan Negotiation",
-      "detail": ""
+      "name": "Deadpan Negotiation",
+      "brief": ""
     },
     {
       "id": "fragmented-visions",
-      "label": "Fragmented Visions",
-      "detail": ""
+      "name": "Fragmented Visions",
+      "brief": ""
     },
     {
       "id": "analog-surveillance",
-      "label": "Analog Surveillance",
-      "detail": ""
+      "name": "Analog Surveillance",
+      "brief": ""
     },
     {
       "id": "trauma-counseling",
-      "label": "Trauma Counseling",
-      "detail": ""
+      "name": "Trauma Counseling",
+      "brief": ""
     },
     {
       "id": "tension-listening",
-      "label": "Tension Listening",
-      "detail": ""
+      "name": "Tension Listening",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "panic-in-small-spaces",
-      "label": "Panic in Small Spaces",
-      "detail": ""
+      "name": "Panic in Small Spaces",
+      "brief": ""
     },
     {
       "id": "shadow-sensitivity",
-      "label": "Shadow Sensitivity",
-      "detail": ""
+      "name": "Shadow Sensitivity",
+      "brief": ""
     },
     {
       "id": "nocturnal-insomnia",
-      "label": "Nocturnal Insomnia",
-      "detail": ""
+      "name": "Nocturnal Insomnia",
+      "brief": ""
     },
     {
       "id": "belief-in-everything",
-      "label": "Belief in Everything",
-      "detail": ""
+      "name": "Belief in Everything",
+      "brief": ""
     },
     {
       "id": "can-t-stand-to-be-alone",
-      "label": "Can’t Stand to Be Alone",
-      "detail": ""
+      "name": "Can’t Stand to Be Alone",
+      "brief": ""
     },
     {
       "id": "uncontrolled-empathy",
-      "label": "Uncontrolled Empathy",
-      "detail": ""
+      "name": "Uncontrolled Empathy",
+      "brief": ""
     },
     {
       "id": "sleepwalking",
-      "label": "Sleepwalking",
-      "detail": ""
+      "name": "Sleepwalking",
+      "brief": ""
     },
     {
       "id": "hallucination-prone",
-      "label": "Hallucination-Prone",
-      "detail": ""
+      "name": "Hallucination-Prone",
+      "brief": ""
     },
     {
       "id": "trusts-the-wrong-people",
-      "label": "Trusts the Wrong People",
-      "detail": ""
+      "name": "Trusts the Wrong People",
+      "brief": ""
     },
     {
       "id": "flashbacks-to-a-mass-event",
-      "label": "Flashbacks to a Mass Event",
-      "detail": ""
+      "name": "Flashbacks to a Mass Event",
+      "brief": ""
     },
     {
       "id": "fear-of-children",
-      "label": "Fear of Children",
-      "detail": ""
+      "name": "Fear of Children",
+      "brief": ""
     },
     {
       "id": "tactile-delusions",
-      "label": "Tactile Delusions",
-      "detail": ""
+      "name": "Tactile Delusions",
+      "brief": ""
     },
     {
       "id": "vertigo-on-uneven-ground",
-      "label": "Vertigo on Uneven Ground",
-      "detail": ""
+      "name": "Vertigo on Uneven Ground",
+      "brief": ""
     },
     {
       "id": "bound-to-an-old-pact",
-      "label": "Bound to an Old Pact",
-      "detail": ""
+      "name": "Bound to an Old Pact",
+      "brief": ""
     },
     {
       "id": "known-to-local-authorities",
-      "label": "Known to Local Authorities",
-      "detail": ""
+      "name": "Known to Local Authorities",
+      "brief": ""
     },
     {
       "id": "disassociates-under-stress",
-      "label": "Disassociates Under Stress",
-      "detail": ""
+      "name": "Disassociates Under Stress",
+      "brief": ""
     },
     {
       "id": "always-carries-a-relic",
-      "label": "Always Carries a Relic",
-      "detail": ""
+      "name": "Always Carries a Relic",
+      "brief": ""
     },
     {
       "id": "high-functioning-denial",
-      "label": "High-Functioning Denial",
-      "detail": ""
+      "name": "High-Functioning Denial",
+      "brief": ""
     },
     {
       "id": "drawn-to-ruins",
-      "label": "Drawn to Ruins",
-      "detail": ""
+      "name": "Drawn to Ruins",
+      "brief": ""
     },
     {
       "id": "obsessive-note-taking",
-      "label": "Obsessive Note-Taking",
-      "detail": ""
+      "name": "Obsessive Note-Taking",
+      "brief": ""
     },
     {
       "id": "cannot-let-go",
-      "label": "Cannot Let Go",
-      "detail": ""
+      "name": "Cannot Let Go",
+      "brief": ""
     },
     {
       "id": "hunted-by-a-dream-voice",
-      "label": "Hunted by a Dream Voice",
-      "detail": ""
+      "name": "Hunted by a Dream Voice",
+      "brief": ""
     },
     {
       "id": "sudden-rage-in-silence",
-      "label": "Sudden Rage in Silence",
-      "detail": ""
+      "name": "Sudden Rage in Silence",
+      "brief": ""
     },
     {
       "id": "numb-to-human-pain",
-      "label": "Numb to Human Pain",
-      "detail": ""
+      "name": "Numb to Human Pain",
+      "brief": ""
     },
     {
       "id": "hearing-the-dead",
-      "label": "Hearing the Dead",
-      "detail": ""
+      "name": "Hearing the Dead",
+      "brief": ""
     },
     {
       "id": "forgot-why-they-re-here",
-      "label": "Forgot Why They’re Here",
-      "detail": ""
+      "name": "Forgot Why They’re Here",
+      "brief": ""
     },
     {
       "id": "inexplicable-nosebleeds",
-      "label": "Inexplicable Nosebleeds",
-      "detail": ""
+      "name": "Inexplicable Nosebleeds",
+      "brief": ""
     },
     {
       "id": "digital-paranoia",
-      "label": "Digital Paranoia",
-      "detail": ""
+      "name": "Digital Paranoia",
+      "brief": ""
     },
     {
       "id": "visions-of-alternate-lives",
-      "label": "Visions of Alternate Lives",
-      "detail": ""
+      "name": "Visions of Alternate Lives",
+      "brief": ""
     },
     {
       "id": "stalked-by-doppelganger",
-      "label": "Stalked by Doppelgänger",
-      "detail": ""
+      "name": "Stalked by Doppelgänger",
+      "brief": ""
     },
     {
       "id": "time-sense-disruption",
-      "label": "Time-Sense Disruption",
-      "detail": ""
+      "name": "Time-Sense Disruption",
+      "brief": ""
     },
     {
       "id": "too-calm-when-afraid",
-      "label": "Too Calm When Afraid",
-      "detail": ""
+      "name": "Too Calm When Afraid",
+      "brief": ""
     },
     {
       "id": "phobia-mirrors",
-      "label": "Phobia: Mirrors",
-      "detail": ""
+      "name": "Phobia: Mirrors",
+      "brief": ""
     },
     {
       "id": "audio-hallucinations",
-      "label": "Audio Hallucinations",
-      "detail": ""
+      "name": "Audio Hallucinations",
+      "brief": ""
     },
     {
       "id": "avoids-all-technology",
-      "label": "Avoids All Technology",
-      "detail": ""
+      "name": "Avoids All Technology",
+      "brief": ""
     },
     {
       "id": "vague-pre-mortem-visions",
-      "label": "Vague Pre-Mortem Visions",
-      "detail": ""
+      "name": "Vague Pre-Mortem Visions",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "rusty-revolver",
-      "label": "Rusty Revolver",
-      "detail": ""
+      "name": "Rusty Revolver",
+      "brief": ""
     },
     {
       "id": "tattered-field-notes",
-      "label": "Tattered Field Notes",
-      "detail": ""
+      "name": "Tattered Field Notes",
+      "brief": ""
     },
     {
       "id": "old-audio-cassette",
-      "label": "Old Audio Cassette",
-      "detail": ""
+      "name": "Old Audio Cassette",
+      "brief": ""
     },
     {
       "id": "lead-lined-zippo",
-      "label": "Lead-Lined Zippo",
-      "detail": ""
+      "name": "Lead-Lined Zippo",
+      "brief": ""
     },
     {
       "id": "iron-pendant",
-      "label": "Iron Pendant",
-      "detail": ""
+      "name": "Iron Pendant",
+      "brief": ""
     },
     {
       "id": "bottle-of-lithium-pills",
-      "label": "Bottle of Lithium Pills",
-      "detail": ""
+      "name": "Bottle of Lithium Pills",
+      "brief": ""
     },
     {
       "id": "broken-compass",
-      "label": "Broken Compass",
-      "detail": ""
+      "name": "Broken Compass",
+      "brief": ""
     },
     {
       "id": "static-speckled-radio",
-      "label": "Static-Speckled Radio",
-      "detail": ""
+      "name": "Static-Speckled Radio",
+      "brief": ""
     },
     {
       "id": "analog-camera",
-      "label": "Analog Camera",
-      "detail": ""
+      "name": "Analog Camera",
+      "brief": ""
     },
     {
       "id": "silvered-flashlight",
-      "label": "Silvered Flashlight",
-      "detail": ""
+      "name": "Silvered Flashlight",
+      "brief": ""
     },
     {
       "id": "obsidian-dagger",
-      "label": "Obsidian Dagger",
-      "detail": ""
+      "name": "Obsidian Dagger",
+      "brief": ""
     },
     {
       "id": "plastic-wrapped-id-card",
-      "label": "Plastic-Wrapped ID Card",
-      "detail": ""
+      "name": "Plastic-Wrapped ID Card",
+      "brief": ""
     },
     {
       "id": "emf-reader",
-      "label": "EMF Reader",
-      "detail": ""
+      "name": "EMF Reader",
+      "brief": ""
     },
     {
       "id": "cracked-protective-amulet",
-      "label": "Cracked Protective Amulet",
-      "detail": ""
+      "name": "Cracked Protective Amulet",
+      "brief": ""
     },
     {
       "id": "diy-spirit-trap",
-      "label": "DIY Spirit Trap",
-      "detail": ""
+      "name": "DIY Spirit Trap",
+      "brief": ""
     },
     {
       "id": "flask-of-anointed-water",
-      "label": "Flask of Anointed Water",
-      "detail": ""
+      "name": "Flask of Anointed Water",
+      "brief": ""
     },
     {
       "id": "fragmented-map",
-      "label": "Fragmented Map",
-      "detail": ""
+      "name": "Fragmented Map",
+      "brief": ""
     },
     {
       "id": "police-issued-walkie",
-      "label": "Police-Issued Walkie",
-      "detail": ""
+      "name": "Police-Issued Walkie",
+      "brief": ""
     },
     {
       "id": "coil-of-red-string",
-      "label": "Coil of Red String",
-      "detail": ""
+      "name": "Coil of Red String",
+      "brief": ""
     },
     {
       "id": "ritual-chalk-pouch",
-      "label": "Ritual Chalk Pouch",
-      "detail": ""
+      "name": "Ritual Chalk Pouch",
+      "brief": ""
     },
     {
       "id": "uv-lens-visor",
-      "label": "UV Lens Visor",
-      "detail": ""
+      "name": "UV Lens Visor",
+      "brief": ""
     },
     {
       "id": "folded-survival-blanket",
-      "label": "Folded Survival Blanket",
-      "detail": ""
+      "name": "Folded Survival Blanket",
+      "brief": ""
     },
     {
       "id": "miniature-book-of-psalms",
-      "label": "Miniature Book of Psalms",
-      "detail": ""
+      "name": "Miniature Book of Psalms",
+      "brief": ""
     },
     {
       "id": "duct-taped-knife",
-      "label": "Duct-Taped Knife",
-      "detail": ""
+      "name": "Duct-Taped Knife",
+      "brief": ""
     },
     {
       "id": "vhs-of-a-lost-broadcast",
-      "label": "VHS of a Lost Broadcast",
-      "detail": ""
+      "name": "VHS of a Lost Broadcast",
+      "brief": ""
     },
     {
       "id": "journal-with-missing-pages",
-      "label": "Journal with Missing Pages",
-      "detail": ""
+      "name": "Journal with Missing Pages",
+      "brief": ""
     },
     {
       "id": "whisper-sensitive-mic",
-      "label": "Whisper-Sensitive Mic",
-      "detail": ""
+      "name": "Whisper-Sensitive Mic",
+      "brief": ""
     },
     {
       "id": "modified-stun-baton",
-      "label": "Modified Stun Baton",
-      "detail": ""
+      "name": "Modified Stun Baton",
+      "brief": ""
     },
     {
       "id": "locked-steel-case",
-      "label": "Locked Steel Case",
-      "detail": ""
+      "name": "Locked Steel Case",
+      "brief": ""
     },
     {
       "id": "bag-of-charred-bones",
-      "label": "Bag of Charred Bones",
-      "detail": ""
+      "name": "Bag of Charred Bones",
+      "brief": ""
     },
     {
       "id": "expired-anti-rad-pills",
-      "label": "Expired Anti-Rad Pills",
-      "detail": ""
+      "name": "Expired Anti-Rad Pills",
+      "brief": ""
     },
     {
       "id": "blood-stained-scarf",
-      "label": "Blood-Stained Scarf",
-      "detail": ""
+      "name": "Blood-Stained Scarf",
+      "brief": ""
     },
     {
       "id": "cryptex-encoded-lighter",
-      "label": "Cryptex-Encoded Lighter",
-      "detail": ""
+      "name": "Cryptex-Encoded Lighter",
+      "brief": ""
     },
     {
       "id": "metal-cross-with-bite-marks",
-      "label": "Metal Cross with Bite Marks",
-      "detail": ""
+      "name": "Metal Cross with Bite Marks",
+      "brief": ""
     },
     {
       "id": "chemical-lightsticks",
-      "label": "Chemical Lightsticks",
-      "detail": ""
+      "name": "Chemical Lightsticks",
+      "brief": ""
     },
     {
       "id": "recorder-with-ongoing-playback",
-      "label": "Recorder with Ongoing Playback",
-      "detail": ""
+      "name": "Recorder with Ongoing Playback",
+      "brief": ""
     }
   ],
   "spends_luck": false,

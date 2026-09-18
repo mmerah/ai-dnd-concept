@@ -24,9 +24,9 @@ class _StubDriver:
     secrets: tuple[str, ...] = ()
 
     def command(
-        self, role: Role, config: RoleConfig, session: str | None, url: str
+        self, role: Role, config: RoleConfig, conversation: str | None, url: str
     ) -> tuple[str, ...]:
-        del role, config, session, url
+        del role, config, conversation, url
         return self.argv
 
     def read_result(self, output: str) -> RunResult:
@@ -147,7 +147,7 @@ async def test_a_crashed_roles_raw_output_never_reaches_the_player(
 
 
 @pytest.mark.parametrize(
-    ("driver", "output", "session"),
+    ("driver", "output", "conversation"),
     (
         (
             ClaudeDriver(),
@@ -158,10 +158,10 @@ async def test_a_crashed_roles_raw_output_never_reaches_the_player(
     ),
     ids=("claude", "codex"),
 )
-def test_a_driver_reads_the_session_its_cli_reported(
-    driver: ClaudeDriver | CodexDriver, output: str, session: str
+def test_a_driver_reads_the_conversation_its_cli_reported(
+    driver: ClaudeDriver | CodexDriver, output: str, conversation: str
 ) -> None:
-    assert driver.read_result(output).session == session
+    assert driver.read_result(output).conversation == conversation
 
 
 def test_final_message_tries_only_the_first_brace_not_every_one() -> None:

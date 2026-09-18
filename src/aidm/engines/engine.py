@@ -24,7 +24,7 @@ from aidm.core.model import (
 )
 from aidm.core.play import Chapter, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.prompt import Sections, sections
-from aidm.core.tools import MasterTool, schema_text, tool, tools_of
+from aidm.core.tools import MasterTool, tool, tools_of
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import PLAYER_ID, Person, World
 from aidm.engines.packs import (
@@ -36,11 +36,10 @@ from aidm.engines.packs import (
     PackHead,
     PackSet,
     read_packs,
+    render_worldsmith,
 )
 from aidm.engines.tools import JoinParty, Kill, LeaveParty, Reveal
 
-SOURCELESS = "(none — write from what is below)"
-SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
 PACK_SO_FAR = "THE PACK SO FAR"
 WRITES_NO = "the {engine!r} engine writes no {operation!r}"
 
@@ -50,11 +49,11 @@ type AnyEngine = Engine[Any, Any]
 @dataclass(frozen=True, slots=True)
 class Written:
     facts: tuple[Fact, ...]
-    telling: str | None
+    narrator_prompt: str | None
 
 
 class Engine[W: World[Any, Any], K: Pack](ABC):
-    # The fact filed when a worldsmith request fails, by operation.
+    # The fact filed when a worldsmith commission fails, by operation.
     unwritten: ClassVar[dict[Slug, Fact]]
     # Declared, not `ClassVar`: `type[W]` cannot be one.
     id: EngineId
@@ -74,9 +73,10 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
     instructions: str
     look: Look
     tools: dict[str, MasterTool]
+    worldsmith_role: str
 
-    def __init__(self, written: Path) -> None:
-        self.packs = read_packs(self.id, self.directory / "packs", written, self.pack)
+    def __init__(self, player_packs: Path) -> None:
+        self.packs = read_packs(self.id, self.directory / "packs", player_packs, self.pack)
         self.packs.srd()  # an engine that ships no srd pack is a bug, not a refusal
         self.instructions = (
             f"{read_cached_text(self.directory / 'rules.md')}\n"
@@ -86,6 +86,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         if self.world.tempo < 2:
             raise ValueError(f"the {self.id!r} engine ticks every {self.world.tempo} turns")
         self.tools = tools_of(self)
+        self.worldsmith_role = read_cached_text(self.family_dir / "worldsmith.md")
 
     @tool
     def reveal(self, draft: Game[W], args: Reveal, _rng: Random) -> list[Fact]:
@@ -113,7 +114,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
     def pack_of(
         self, head: PackHead, body: PackBody | None, *, name: str, origin: str, license: str
     ) -> K:
-        """Every id the pack carries is made here, by code, from the labels the worldsmith wrote."""
+        """Every id the pack carries is made here, by code, from the names the worldsmith wrote."""
         return parse(
             self.pack,
             {
@@ -142,21 +143,24 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         def check_head(answer: PackHead) -> None:
             built(answer, None)
 
-        head = await worldsmith(
-            self.render_worldsmith(source, "", (), HEAD_ASK, self.authoring, self.head),
-            self.head,
-            check_head,
-        )
+        def asked(intent: str, world_sections: Sections, answer_model: type[BaseModel]) -> str:
+            return render_worldsmith(
+                self.worldsmith_role,
+                source=source,
+                scope="",
+                world_sections=world_sections,
+                intent=intent,
+                guidance=self.authoring,
+                answer_model=answer_model,
+            )
+
+        head = await worldsmith(asked(HEAD_ASK, (), self.head), self.head, check_head)
         so_far = ((PACK_SO_FAR, sections(built(head, None).sections(opening=True))),)
 
         def check_body(answer: PackBody) -> None:
             built(head, answer)
 
-        body = await worldsmith(
-            self.render_worldsmith(source, "", so_far, BODY_ASK, self.authoring, self.body),
-            self.body,
-            check_body,
-        )
+        body = await worldsmith(asked(BODY_ASK, so_far, self.body), self.body, check_body)
         return built(head, body)
 
     def edited(self, pack: K, values: Mapping[str, str]) -> K:
@@ -183,8 +187,8 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         return tuple(
             Companion(
                 id=member.id,
-                label=member.name,
-                detail=member.brief,
+                name=member.name,
+                brief=member.brief,
                 sheet=member.rows(),
                 chattiness=member.chattiness,
             )
@@ -207,40 +211,20 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
             raise Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")
         return found
 
-    def answer(self, draft: Game[W], chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        return self.require_tool(chosen.name).call(draft, chosen.args, rng)
+    def play_option(self, draft: Game[W], chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+        return self.require_tool(chosen.tool_name).call(draft, chosen.args, rng)
 
-    def render_request(
-        self, draft: Game[W], *, intent: str, guidance: str, answer: type[BaseModel]
+    def render_commission(
+        self, draft: Game[W], *, intent: str, guidance: str, answer_model: type[BaseModel]
     ) -> str:
-        return self.render_worldsmith(
-            draft.source,
-            draft.scenario.scope,
-            self.worldsmith_sections(draft),
-            intent,
-            guidance,
-            answer,
-        )
-
-    def render_worldsmith(
-        self,
-        source: str,
-        scope: str,
-        world_sections: Sections,
-        intent: str,
-        guidance: str,
-        answer: type[BaseModel],
-    ) -> str:
-        return sections(
-            (
-                ("YOUR ROLE", read_cached_text(self.family_dir / "worldsmith.md")),
-                ("SOURCE MATERIAL", source or SOURCELESS),
-                ("THE SCOPE OF PLAY", scope or SCOPELESS),
-                *world_sections,
-                ("WHAT COMES NEXT", intent),
-                ("ENGINE GUIDANCE", guidance),
-                ("ANSWER WITH", schema_text(answer)),
-            )
+        return render_worldsmith(
+            self.worldsmith_role,
+            source=draft.source,
+            scope=draft.scenario.scope,
+            world_sections=self.worldsmith_sections(draft),
+            intent=intent,
+            guidance=guidance,
+            answer_model=answer_model,
         )
 
     def sheet_character(self, name: str, sheet: BaseModel) -> AnyCharacter:
@@ -336,7 +320,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
             raise Refusal(f"{character.id!r} is not a {self.title} sheet")
         return deepcopy(character.sheet)
 
-    def over(self, state: Game[W]) -> str | None:
+    def ending(self, state: Game[W]) -> str | None:
         return "You died." if not state.world.player.alive else None
 
     def create_character(self, name: str, brief: str, pack_id: Slug, picks: Picks) -> AnyCharacter:
@@ -347,9 +331,9 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
         if not state.log:
             raise Refusal(f"a {self.id!r} game has no chapter open")
-        request = state.commission
-        if request is not None and request.operation not in self.unwritten:
-            raise Refusal(WRITES_NO.format(engine=self.id, operation=request.operation))
+        commission = state.commission
+        if commission is not None and commission.operation not in self.unwritten:
+            raise Refusal(WRITES_NO.format(engine=self.id, operation=commission.operation))
 
     @abstractmethod
     def player_of(self, character: AnyCharacter) -> Person: ...
@@ -379,10 +363,10 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario: ...
     @abstractmethod
-    def act(self, draft: Game[W], action: Slug, words: str, /) -> None:
+    def act(self, draft: Game[W], action_id: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
 
     @abstractmethod
     async def advance(
-        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written: ...

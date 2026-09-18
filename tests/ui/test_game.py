@@ -44,10 +44,10 @@ from aidm.ui.game import (
 )
 from aidm.ui.transcript import can_type, standing_proposal
 
-WREN = Subject(id="player", label="Wren", detail="A quiet scout")
+WREN = Subject(id="player", name="Wren", brief="A quiet scout")
 
 
-def _view(decision: PendingDecision | None = None, over: str | None = None) -> PlayerView:
+def _view(decision: PendingDecision | None = None, ending: str | None = None) -> PlayerView:
     return PlayerView(
         player=WREN,
         scene_title="The Cloister Walk",
@@ -55,7 +55,7 @@ def _view(decision: PendingDecision | None = None, over: str | None = None) -> P
         panels=(),
         decision=decision,
         action=None,
-        over=over,
+        ending=ending,
     )
 
 
@@ -63,7 +63,7 @@ def _pick(*, allows_text: bool) -> PendingDecision:
     return PendingDecision(
         kind="pick",
         prompt="Which door?",
-        options=(PendingOption(id="left", label="Left", name="pick"),),
+        options=(PendingOption(id="left", name="Left", tool_name="pick"),),
         allows_text=allows_text,
     )
 
@@ -73,7 +73,7 @@ def test_the_composer_opens_only_between_turns_on_a_game_still_going() -> None:
     assert not can_type(_view(), "master")
     assert not can_type(_view(decision=_pick(allows_text=False)), None)
     assert can_type(_view(decision=_pick(allows_text=True)), None)
-    assert not can_type(_view(over="Wren is dead"), None)
+    assert not can_type(_view(ending="Wren is dead"), None)
 
 
 def _spoken(*, proposal: str = "") -> Exchange:
@@ -109,10 +109,10 @@ def test_placeholder_names_the_working_role_between_turns() -> None:
 
 
 def test_placeholder_names_game_over_before_anything_else() -> None:
-    assert placeholder(_view(over="Wren is dead"), None) == (
+    assert placeholder(_view(ending="Wren is dead"), None) == (
         "The game is over. Restart it from the menu."
     )
-    assert placeholder(_view(over="Wren is dead"), "master") == (
+    assert placeholder(_view(ending="Wren is dead"), "master") == (
         "The game is over. Restart it from the menu."
     )
 
@@ -130,7 +130,7 @@ def test_draft_spent_is_false_for_an_empty_draft() -> None:
 
 
 def test_only_a_moving_fact_count_spares_the_whole_page() -> None:
-    seen = Observed(phase="master", facts=2, exchanges=1, action=None, over=None)
+    seen = Observed(phase="master", facts=2, exchanges=1, action=None, ending=None)
     assert not whole_page(replace(seen, facts=3), seen)
     assert whole_page(replace(seen, facts=3, exchanges=2), seen)
     assert whole_page(replace(seen, phase=None), seen)

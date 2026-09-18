@@ -5,8 +5,8 @@ from support.twentyfourxx import ENGINE, SCENE_BASE
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyScenario, ScenarioMeta
 from aidm.engines.scenes.world import SceneProposal
+from aidm.engines.twentyfourxx.pack import SheetProposal
 from aidm.engines.twentyfourxx.world import Crewmate, TwentyfourxxCharacter
-from aidm.engines.twentyfourxx.worldsmith import SheetProposal
 
 SRD = ENGINE.packs.srd()
 
@@ -58,8 +58,8 @@ def test_sheet_check_refuses_a_repeated_hindrance() -> None:
 
 
 def test_the_pack_s_android_case_carries_the_kit() -> None:
-    android = next(origin for origin in SRD.origins if origin.label == "Android")
-    case = next(body for body in android.choice if body.label == "Case")
+    android = next(origin for origin in SRD.origins if origin.name == "Android")
+    case = next(body for body in android.choice if body.name == "Case")
     assert case.kit is not None
     assert case.kit.name == "Case"
 

@@ -11,7 +11,7 @@ from aidm.core.creation import (
     option_of,
     picked,
 )
-from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug, tag_of
 from aidm.core.facts import Fact, roll
 from aidm.core.model import AnyCharacter, Commission, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
@@ -37,6 +37,17 @@ from aidm.engines.tools import (
     SIGNS_ON,
     Hire,
     Kill,
+)
+from aidm.engines.twentyfourxx.pack import (
+    AUTHORING,
+    HIRING,
+    SKILL_COUNT,
+    Origin,
+    SheetProposal,
+    Specialty,
+    TwentyfourxxBody,
+    TwentyfourxxHead,
+    TwentyfourxxPack,
 )
 from aidm.engines.twentyfourxx.tools import (
     AskWorld,
@@ -69,17 +80,6 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxScenario,
     TwentyfourxxWorld,
     raised,
-)
-from aidm.engines.twentyfourxx.worldsmith import (
-    AUTHORING,
-    HIRING,
-    SKILL_COUNT,
-    Origin,
-    SheetProposal,
-    Specialty,
-    TwentyfourxxBody,
-    TwentyfourxxHead,
-    TwentyfourxxPack,
 )
 
 
@@ -114,8 +114,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     member = Crewmate
     unwritten: ClassVar[dict[Slug, Fact]] = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
-    def __init__(self, written: Path) -> None:
-        super().__init__(written)
+    def __init__(self, player_packs: Path) -> None:
+        super().__init__(player_packs)
         srd = self.packs.srd()
         if len(srd.skills) != SKILL_COUNT:
             raise ValueError(
@@ -136,19 +136,19 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return [Fact(trace=trace)]
 
     async def write_hire(
-        self, draft: TwentyfourxxGame, request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: TwentyfourxxGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if request.target is None:
+        if commission.target is None:
             raise Refusal(NO_HIRE_TARGET)
-        member = draft.world.require_hireable(request.target)
+        member = draft.world.require_hireable(commission.target)
         packs = self.packs.played(draft.pack_id)
         lines = [pack.specialty_lines() for pack in packs]
-        lines.append(f"Skills: {', '.join(option.label for option in self.packs.srd().skills)}")
-        prompt = self.render_request(
+        lines.append(f"Skills: {', '.join(option.name for option in self.packs.srd().skills)}")
+        prompt = self.render_commission(
             draft,
             guidance="\n".join(lines),
-            intent=HIRING.format(name=member.name, brief=member.brief, terms=request.detail),
-            answer=SheetProposal,
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=commission.detail),
+            answer_model=SheetProposal,
         )
         answer = await worldsmith(prompt, SheetProposal, lambda sheet: sheet.check(packs))
         summary = member.sign_on(
@@ -165,51 +165,51 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
     async def advance(
-        self, draft: TwentyfourxxGame, request: Commission, worldsmith: WorldsmithAnswer
+        self, draft: TwentyfourxxGame, commission: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if request.operation == HIRE:
-            return await self.write_hire(draft, request, worldsmith)
-        return await super().advance(draft, request, worldsmith)
+        if commission.operation == HIRE:
+            return await self.write_hire(draft, commission, worldsmith)
+        return await super().advance(draft, commission, worldsmith)
 
     def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
         specialties, origins = self._offered(pack_id)
         # The rules fix the seventeen skills; a pack adds specialties and origins, not skills.
         skills = self.packs.srd().skills
-        steps = [CreationStep(id="specialty", label="Specialty", options=specialties)]
+        steps = [CreationStep(id="specialty", name="Specialty", options=specialties)]
         specialty = option_of(specialties, picked(picks, "specialty"))
         if specialty is None:
             return tuple(steps)
         if specialty.choice:
             steps.append(
                 CreationStep(
-                    id="specialty-choice", label="Specialty skill", options=specialty.choice
+                    id="specialty-choice", name="Specialty skill", options=specialty.choice
                 )
             )
         if specialty.kit_choice:
             steps.append(
                 CreationStep(
                     id="weapon",
-                    label="Weapon",
+                    name="Weapon",
                     options=tuple(
-                        DecisionOption(id=slug(kit.name, ()), label=kit.name)
+                        DecisionOption(id=slug(kit.name, ()), name=kit.name)
                         for kit in specialty.kit_choice
                     ),
                 )
             )
-        steps.append(CreationStep(id="origin", label="Origin", options=origins))
+        steps.append(CreationStep(id="origin", name="Origin", options=origins))
         origin = option_of(origins, picked(picks, "origin"))
         if origin is None:
             return tuple(steps)
         steps.extend(
-            CreationStep(id=f"trait-{number}", label=f"Trait {number}", hint=origin.detail)
+            CreationStep(id=f"trait-{number}", name=f"Trait {number}", hint=origin.brief)
             for number in range(1, origin.invents + 1)
         )
         if origin.choice:
-            steps.append(CreationStep(id="body", label="Body", options=origin.choice))
+            steps.append(CreationStep(id="body", name="Body", options=origin.choice))
         steps.extend(
             CreationStep(
                 id=f"increase-{number}",
-                label="Skill increase",
+                name="Skill increase",
                 options=skills,
                 allows_text=True,
             )
@@ -231,10 +231,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         for number in range(1, origin.increases + 1):
             typed = picked(picks, f"increase-{number}")
             option = option_of(self.packs.srd().skills, typed)
-            label = (
-                option.label if option is not None else self._match_skill(skills, typed) or typed
-            )
-            skills[label] = raised(skills.get(label))
+            skill = option.name if option is not None else self._match_skill(skills, typed) or typed
+            if (new_die := raised(skills.get(skill))) is None:
+                raise Refusal("the skill is already at d12")
+            skills[skill] = new_die
 
         weapon: Kit | None = None
         if specialty.kit_choice:
@@ -249,7 +249,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         body = None
         if origin.choice:
             body = chosen_option(origin.choice, picked(picks, "body"))
-            traits = (*traits, body.label)
+            traits = (*traits, body.name)
 
         kits = [*self.packs.srd().starting_kit, *specialty.kit]
         if weapon is not None:
@@ -262,8 +262,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             brief=brief,
             known=True,
             sheet=CrewSheet(
-                specialty=specialty.label,
-                origin=origin.label,
+                specialty=specialty.name,
+                origin=origin.name,
                 traits=traits,
                 skills=skills,
                 items=items_from_kits(kits),
@@ -298,18 +298,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     def player_view(self, state: TwentyfourxxGame) -> PlayerView:
         world = state.world
         player = world.player
-        me = player.subject()
         job = world.job
-        job_panel = (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
+        job_panel = (Panel(title="Job", rows=(PanelRow(name=job, brief=""),)),) if job else ()
         ship_panel = Panel(
             title="Ship",
             rows=tuple(
-                PanelRow(label=function.name, detail=function.notes())
+                PanelRow(name=function.name, brief=function.notes())
                 for function in world.ship.values()
             ),
         )
         return PlayerView(
-            player=me,
+            player=player.subject(),
             scene_title=world.scene.title,
             situation=world.scene.situation,
             panels=(
@@ -322,15 +321,15 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                 trail_panel(scene.title for scene in world.scenes),
             ),
             decision=state.pending,
-            action=MOVE_ON if world.scene.offered else None,
-            over=self.over(state),
+            action=MOVE_ON if world.scene.way_offered else None,
+            ending=self.ending(state),
         )
 
     def resolve_skill(self, sheet: CrewSheet, wanted: str) -> str:
         if (match := self._match_skill(sheet.skills, wanted)) is not None:
             return match
         known = ", ".join(sorted(sheet.skills)) or "none"
-        listed = ", ".join(option.label for option in self.packs.srd().skills)
+        listed = ", ".join(option.name for option in self.packs.srd().skills)
         raise Refusal(
             f"{wanted!r} is not a skill on the sheet ({known}) or in the rules ({listed})"
         )
@@ -341,8 +340,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             if key.casefold() == folded:
                 return key
         for option in self.packs.srd().skills:
-            if option.label.casefold() == folded:
-                return option.label
+            if option.name.casefold() == folded:
+                return option.name
         return None
 
     @tool
@@ -423,9 +422,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             options=tuple(
                 PendingOption(
                     id=member.id,
-                    label=member.name,
-                    detail=member.brief,
-                    name="take_lead",
+                    name=member.name,
+                    brief=member.brief,
+                    tool_name="take_lead",
                     args={"actor_id": member.id},
                 )
                 for member in members
@@ -433,9 +432,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             allows_text=False,
         )
 
-    def over(self, state: TwentyfourxxGame) -> str | None:
+    def ending(self, state: TwentyfourxxGame) -> str | None:
         """A dead lead with a hired member alive is a succession, not an ending."""
-        return None if state.world.sheeted_members() else super().over(state)
+        return None if state.world.sheeted_members() else super().ending(state)
 
     @tool
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
@@ -615,7 +614,7 @@ def items_from_kits(kits: Sequence[Kit]) -> dict[Slug, Gear]:
 
 def _item_lines(items: Mapping[Slug, Gear]) -> str:
     return lines_of(
-        f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.notes()) else "")
+        f"- {tag_of(item.name, key)}" + (f" — {detail}" if (detail := item.notes()) else "")
         for key, item in items.items()
     )
 

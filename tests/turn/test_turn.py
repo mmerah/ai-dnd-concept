@@ -14,7 +14,7 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eGame, outcome_for
 from aidm.engines.scenes.engine import WAY_UNWRITTEN
-from aidm.turn.run import REQUEST_WAIT, Turn
+from aidm.turn.run import COMMISSION_WAIT, Turn
 
 MAP = "vault-map"
 FOUND = tool_call("reveal", target_id="vault-map")
@@ -176,7 +176,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.world.scene.offered
+    assert state.world.scene.way_offered
     assert any("already offers" in refusal for refusal in table.refusals)
 
 
@@ -190,7 +190,7 @@ async def test_a_call_after_the_ask_answers_handoff_wait_and_changes_nothing(
         table, "I keep watch.", tool_call("next_scene", complication=complication), FOUND
     )
 
-    assert table.answers[1] == REQUEST_WAIT
+    assert table.answers[1] == COMMISSION_WAIT
     assert not state.world.require(MAP).known
 
 

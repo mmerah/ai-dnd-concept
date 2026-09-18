@@ -16,8 +16,8 @@ LOGGER = logging.getLogger(__name__)
 class CatalogEntry:
     id: Slug
     engine: EngineId
-    label: str
-    detail: str
+    name: str
+    brief: str
     rules: str
     look: Look
 
@@ -26,7 +26,7 @@ class CatalogEntry:
 class PackEntry:
     id: Slug
     engine: EngineId
-    label: str
+    name: str
     rules: str
     written: bool
     tables: str  # `Pack.summary()`: what the pack holds, counted
@@ -86,8 +86,8 @@ class LauncherCatalog:
             CatalogEntry(
                 id=name,
                 engine=scenario.engine,
-                label=scenario.meta.title,
-                detail=scenario.meta.premise,
+                name=scenario.meta.title,
+                brief=scenario.meta.premise,
                 rules=engines[scenario.engine].title,
                 look=engines[scenario.engine].look,
             )
@@ -98,8 +98,8 @@ class LauncherCatalog:
             CatalogEntry(
                 id=name,
                 engine=engine,
-                label=header.sheet.name,
-                detail=header.sheet.brief,
+                name=header.sheet.name,
+                brief=header.sheet.brief,
                 rules=engines[engine].title,
                 look=engines[engine].look,
             )
@@ -109,7 +109,7 @@ class LauncherCatalog:
             PackEntry(
                 id=pack_id,
                 engine=engine.id,
-                label=pack.name,
+                name=pack.name,
                 rules=engine.title,
                 written=written,
                 tables=pack.summary(),
@@ -118,7 +118,7 @@ class LauncherCatalog:
             for written, shelf in ((False, engine.packs.shipped), (True, engine.packs.written))
             for pack_id, pack in shelf.items()
         )
-        titles = {(entry.id, entry.engine): entry.label for entry in characters}
+        titles = {(entry.id, entry.engine): entry.name for entry in characters}
         played_by = {entry.id: entry.engine for entry in scenarios}
         saves: list[SaveOption] = []
         unresumable: list[str] = []

@@ -1,6 +1,6 @@
 from aidm.core.entities import Refusal
 from aidm.core.prompt import Sections
-from aidm.engines.base import PLAYER_ID, leaked_names, required_unmet
+from aidm.engines.base import PLAYER_ID, leaked_names, required_needs
 from aidm.engines.rooms.world import Dungeon, Dweller, MapProposal
 
 MAP_ASK = "Write the opening map."
@@ -12,48 +12,48 @@ OPENING_SECTIONS: Sections = (
 
 
 def check_map[N: Dweller](draft: MapProposal[N]) -> None:
-    if unmet := _map_unmet(draft, start_known=True) + _named_unmet(draft):
-        raise Refusal("the map needs " + "; ".join(unmet))
+    if needs := _map_needs(draft, start_known=True) + _named_needs(draft):
+        raise Refusal("the map needs " + "; ".join(needs))
 
 
 def check_extension[N: Dweller](draft: MapProposal[N], world: Dungeon[N]) -> None:
     if not draft.places:
         raise Refusal("the extension needs at least one new place")
-    if unmet := (
-        _map_unmet(draft, start_known=False)
-        + _overlap_unmet(draft, world)
-        + _named_unmet(draft)
-        + _planted_unmet(draft)
+    if needs := (
+        _map_needs(draft, start_known=False)
+        + _overlap_needs(draft, world)
+        + _named_needs(draft)
+        + _planted_needs(draft)
     ):
-        raise Refusal("the extension needs " + "; ".join(unmet))
+        raise Refusal("the extension needs " + "; ".join(needs))
 
 
-def _planted_unmet[N: Dweller](draft: MapProposal[N]) -> list[str]:
+def _planted_needs[N: Dweller](draft: MapProposal[N]) -> list[str]:
     """An extension may not put items straight into the player's pack: no fact, no narration."""
     if planted := sorted(item.id for item in draft.items.values() if item.on == PLAYER_ID):
         return [f"no item planted on the player: {planted}"]
     return []
 
 
-def _map_unmet[N: Dweller](draft: MapProposal[N], *, start_known: bool) -> list[str]:
+def _map_needs[N: Dweller](draft: MapProposal[N], *, start_known: bool) -> list[str]:
     places = draft.places
     if draft.start not in places:
         return [f"a starting place {draft.start!r}"]
-    unmet: list[str] = []
-    if broken := required_unmet(draft.npcs, ()):
-        unmet.append(f"npcs as the worldsmith may write them: {broken}")
+    needs: list[str] = []
+    if broken := required_needs(draft.npcs, ()):
+        needs.append(f"npcs as the worldsmith may write them: {broken}")
     if places[draft.start].known != start_known:
-        unmet.append(
+        needs.append(
             "the starting place known to the player"
             if start_known
             else "a starting place hidden from the player"
         )
     if missing := sorted(set(places) - draft.reachable(draft.start)):
-        unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
-    return unmet
+        needs.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
+    return needs
 
 
-def _overlap_unmet[N: Dweller](draft: MapProposal[N], world: Dungeon[N]) -> list[str]:
+def _overlap_needs[N: Dweller](draft: MapProposal[N], world: Dungeon[N]) -> list[str]:
     existing = {*world.places, *world.npcs, *world.items}
     added = {*draft.places, *draft.npcs, *draft.items}
     if overlap := sorted(existing & added):
@@ -61,7 +61,7 @@ def _overlap_unmet[N: Dweller](draft: MapProposal[N], world: Dungeon[N]) -> list
     return []
 
 
-def _named_unmet[N: Dweller](draft: MapProposal[N]) -> list[str]:
+def _named_needs[N: Dweller](draft: MapProposal[N]) -> list[str]:
     leaked: set[str] = set()
     hidden = [thing for thing in (*draft.npcs.values(), *draft.items.values()) if not thing.known]
     for place_id, place in draft.places.items():

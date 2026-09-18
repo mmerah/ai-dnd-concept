@@ -52,7 +52,7 @@ class Observed:
     facts: int
     exchanges: int
     action: DecisionOption | None
-    over: str | None
+    ending: str | None
 
     @classmethod
     def of(cls, session: GameService, view: PlayerView, history: Sequence[Exchange]) -> Self:
@@ -61,7 +61,7 @@ class Observed:
             facts=0 if session.turn is None else len(session.turn.facts),
             exchanges=len(history),
             action=view.action,
-            over=view.over,
+            ending=view.ending,
         )
 
 
@@ -85,7 +85,7 @@ class GamePage:
         self.restart_dialog: ui.dialog
         self.restart_label: ui.label
         self.restart_item: ui.menu_item
-        self.seen: Observed = Observed(phase=None, facts=0, exchanges=0, action=None, over=None)
+        self.seen: Observed = Observed(phase=None, facts=0, exchanges=0, action=None, ending=None)
         self.view: PlayerView
         self.history: tuple[Exchange, ...]
         self.step_started: float | None = None
@@ -265,7 +265,7 @@ class GamePage:
         with ui.row().classes(transcript.DECISION_ROW):
             ui.icon("arrow_forward").classes("game-card-icon")
             ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
-            ui.label(f"{action.detail} Press {action.label} with your words.").classes(
+            ui.label(f"{action.brief} Press {action.name} with your words.").classes(
                 "text-xs opacity-60"
             )
 
@@ -298,16 +298,16 @@ class GamePage:
             for panel in view.panels:
                 with section(panel.title, classes="game-portrait" if panel.portrait else ""):
                     if panel.portrait:
-                        entity_row(session.icon(player.id), player.label, player.detail)
+                        entity_row(session.icon(player.id), player.name, player.brief)
                     if not panel.rows:
                         ui.label("nothing").classes("text-sm opacity-60")
                     for row in panel.rows:
                         if row.icon_id is not None:
-                            entity_row(session.icon(row.icon_id), row.label, row.detail)
-                        elif row.detail:
-                            labeled_value(row.label, row.detail)
+                            entity_row(session.icon(row.icon_id), row.name, row.brief)
+                        elif row.brief:
+                            labeled_value(row.name, row.brief)
                         else:
-                            ui.label(row.label).classes("text-sm")
+                            ui.label(row.name).classes("text-sm")
 
     @ui.refreshable_method
     def journal(self) -> None:
@@ -471,8 +471,8 @@ class GamePage:
         action = player.action
         self.action_button.set_enabled(typing)
         self.action_button.set_visibility(action is not None)
-        self.action_button.set_text("" if action is None else action.label)
-        self.over_label.set_text(player.over or "")
+        self.action_button.set_text("" if action is None else action.name)
+        self.over_label.set_text(player.ending or "")
         self.box.props(f'placeholder="{placeholder(player, session.phase)}"')
         self.restart_item.set_enabled(not session.busy)
 
@@ -558,7 +558,7 @@ def whole_page(now: Observed, seen: Observed) -> bool:
 
 
 def placeholder(player: PlayerView, phase: Role | None) -> str:
-    if player.over is not None:
+    if player.ending is not None:
         return "The game is over. Restart it from the menu."
     if phase is not None:
         return f"{transcript.STEP_COPY[phase][0]} is working..."

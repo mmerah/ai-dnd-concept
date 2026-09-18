@@ -161,33 +161,33 @@
   "rules": "Clues:\nEvery mystery leaves traces in its wake. To peel back the layers of deceit and reach the truth, your character must gather fragments of information — whispered gossip, half-burned notes, overlooked fingerprints — and assemble them into something coherent.\n\nWhen attempting to uncover a clue, ask a closed question and interpret the result as follows:\n\n- **\"No, and...\"**: The trail is cold. Nothing surfaces — not even a red herring.\n- **\"No\"**: Something surfaces, but it’s little more than background noise — a detail of no real consequence.\n- **\"No, but...\"**: You find something... but it deceives. A clue that points in the wrong direction.\n- **\"Yes, but...\"**: You find a real clue — but it’s incomplete, distorted, or buried in noise. Further legwork is required.\n- **\"Yes\"**: A clear and useful piece of information emerges. A thread that can be followed.\n- **\"Yes, and...\"**: The investigation leaps forward. A cache of insight, a breakthrough — something that rewrites the board.\n\nInterrogation:\nPeople lie. They withhold. They break under pressure or hide behind smiles. When questioning a suspect or witness, every word must be weighed, every glance watched. Interrogation is a duel — not of blades, but of patience, perception, and precision.\n\nWhen questioning someone, ask a closed question and consult the result:\n\n- **\"No, and...\"**: The suspect shuts down completely. The door slams shut.\n- **\"No\"**: They offer scraps — vague, unrelated, useless.\n- **\"No, but...\"**: They lead you astray, deliberately or not. A lie wrapped in truth.\n- **\"Yes, but...\"**: The truth emerges — but slowly, and through resistance. You’ll need to work harder to make sense of it.\n- **\"Yes\"**: They talk. The details make sense. Something valuable comes through.\n- **\"Yes, and...\"**: They spill more than intended — one thread, then another. Suddenly, the whole picture begins to shift.\n\nAlibis:\nEveryone has a story. Whether it holds up under scrutiny is another matter. Some will offer details too perfect. Others will be vague in the places that matter most. It's your job to test those stories — to verify alibis, or to unpick the lies woven into them.\n\nWhen checking an alibi, ask a closed question and interpret the outcome:\n\n- **\"No, and...\"**: The alibi crumbles before you can confirm a single detail. Nothing adds up.\n- **\"No\"**: The story can’t be verified, but it doesn’t appear to matter — yet.\n- **\"No, but...\"**: You fail to confirm the alibi, but stumble onto something misleading — a false trail.\n- **\"Yes, but...\"**: The alibi checks out... mostly. But something in the way it fits is too neat, or raises other questions.\n- **\"Yes\"**: The alibi holds. It’s solid, plausible, and backed by fact.\n- **\"Yes, and...\"**: The alibi not only checks out, it sheds light on something else — a hidden motive, a second suspect, an unexpected connection.\n\nEvidence:\nBlood stains. Scratched floorboards. Fibers clinging to a cuff. The world leaves traces — even when a killer tries to erase them. Your task is to find those traces, read them, and understand what they mean.\n\nWhen collecting or analyzing physical evidence, ask a closed question and apply the result:\n\n- **\"No, and...\"**: You find nothing. Worse, you may have disturbed the scene.\n- **\"No\"**: You uncover something — but it’s mundane, or unrelated.\n- **\"No, but...\"**: You uncover something that appears meaningful… but points you the wrong way.\n- **\"Yes, but...\"**: You find something solid, but it’s partial — unclear, damaged, or out of context.\n- **\"Yes\"**: The evidence is clear, usable, and directly advances the case.\n- **\"Yes, and...\"**: Not only is the evidence decisive — it reveals connections, accelerates conclusions, or opens entirely new leads.",
   "locations": [
     {
-      "label": "The Guttering Lamp",
-      "detail": "A half-abandoned public house at the edge of the fog district, where oil smoke clings to the ceiling and regulars drink without eye contact.",
+      "name": "The Guttering Lamp",
+      "brief": "A half-abandoned public house at the edge of the fog district, where oil smoke clings to the ceiling and regulars drink without eye contact.",
       "encounters": "Rumor-hoarding bartender, washed-up inspector, figure who always sits near the door"
     },
     {
-      "label": "The Verlaine Theatre",
-      "detail": "An aging but once-illustrious playhouse known for its velvet drapes, whispered scandals, and a chandelier that once fell mid-performance.",
+      "name": "The Verlaine Theatre",
+      "brief": "An aging but once-illustrious playhouse known for its velvet drapes, whispered scandals, and a chandelier that once fell mid-performance.",
       "encounters": "Forgotten understudy, patron who never applauds, masked stagehand with a locked dressing room"
     },
     {
-      "label": "The Violet Parlour",
-      "detail": "A discreet salon for the influential and disreputable alike; officially a tea room, unofficially a place to arrange disappearances or favors.",
+      "name": "The Violet Parlour",
+      "brief": "A discreet salon for the influential and disreputable alike; officially a tea room, unofficially a place to arrange disappearances or favors.",
       "encounters": "Retired spy turned hostess, gossip broker, veiled patron with a coded fan"
     },
     {
-      "label": "The Brassworks Asylum",
-      "detail": "A grim, fortified hospital for the mentally unwell — or those made inconvenient. The gates creak even when shut.",
+      "name": "The Brassworks Asylum",
+      "brief": "A grim, fortified hospital for the mentally unwell — or those made inconvenient. The gates creak even when shut.",
       "encounters": "Rambling patient with perfect recall, overworked night doctor, missing records clerk"
     },
     {
-      "label": "Marwick College of Unnatural Philosophy",
-      "detail": "A forgotten annex of the city’s university, where outdated disciplines are still practiced and lectures are sometimes interrupted by static.",
+      "name": "Marwick College of Unnatural Philosophy",
+      "brief": "A forgotten annex of the city’s university, where outdated disciplines are still practiced and lectures are sometimes interrupted by static.",
       "encounters": "Sleep-deprived archivist, lecturer on cursed numbers, assistant with a locked satchel"
     },
     {
-      "label": "The Argent Hotel",
-      "detail": "A silver-domed establishment of faded glory, where chandeliers flicker despite rewiring, and guests often check out without packing.",
+      "name": "The Argent Hotel",
+      "brief": "A silver-domed establishment of faded glory, where chandeliers flicker despite rewiring, and guests often check out without packing.",
       "encounters": "Concierge who forgets nothing, heiress in mourning, bellboy with too many keys"
     }
   ],
@@ -232,729 +232,729 @@
   "concepts": [
     {
       "id": "veteran-constable",
-      "label": "Veteran Constable",
-      "detail": ""
+      "name": "Veteran Constable",
+      "brief": ""
     },
     {
       "id": "reclusive-forensics-expert",
-      "label": "Reclusive Forensics Expert",
-      "detail": ""
+      "name": "Reclusive Forensics Expert",
+      "brief": ""
     },
     {
       "id": "hard-boiled-inspector",
-      "label": "Hard-Boiled Inspector",
-      "detail": ""
+      "name": "Hard-Boiled Inspector",
+      "brief": ""
     },
     {
       "id": "haunted-private-investigator",
-      "label": "Haunted Private Investigator",
-      "detail": ""
+      "name": "Haunted Private Investigator",
+      "brief": ""
     },
     {
       "id": "brilliant-deductionist",
-      "label": "Brilliant Deductionist",
-      "detail": ""
+      "name": "Brilliant Deductionist",
+      "brief": ""
     },
     {
       "id": "disgraced-police-surgeon",
-      "label": "Disgraced Police Surgeon",
-      "detail": ""
+      "name": "Disgraced Police Surgeon",
+      "brief": ""
     },
     {
       "id": "former-thief-turned-spy",
-      "label": "Former Thief-Turned Spy",
-      "detail": ""
+      "name": "Former Thief-Turned Spy",
+      "brief": ""
     },
     {
       "id": "scholarly-occult-consultant",
-      "label": "Scholarly Occult Consultant",
-      "detail": ""
+      "name": "Scholarly Occult Consultant",
+      "brief": ""
     },
     {
       "id": "bohemian-puzzle-solver",
-      "label": "Bohemian Puzzle-Solver",
-      "detail": ""
+      "name": "Bohemian Puzzle-Solver",
+      "brief": ""
     },
     {
       "id": "stoic-crime-scene-reconstructor",
-      "label": "Stoic Crime Scene Reconstructor",
-      "detail": ""
+      "name": "Stoic Crime Scene Reconstructor",
+      "brief": ""
     },
     {
       "id": "quick-witted-debunker",
-      "label": "Quick-Witted Debunker",
-      "detail": ""
+      "name": "Quick-Witted Debunker",
+      "brief": ""
     },
     {
       "id": "morally-ambiguous-barrister",
-      "label": "Morally Ambiguous Barrister",
-      "detail": ""
+      "name": "Morally Ambiguous Barrister",
+      "brief": ""
     },
     {
       "id": "gaslight-street-informant",
-      "label": "Gaslight Street Informant",
-      "detail": ""
+      "name": "Gaslight Street Informant",
+      "brief": ""
     },
     {
       "id": "rogue-antiquarian",
-      "label": "Rogue Antiquarian",
-      "detail": ""
+      "name": "Rogue Antiquarian",
+      "brief": ""
     },
     {
       "id": "driven-coroner",
-      "label": "Driven Coroner",
-      "detail": ""
+      "name": "Driven Coroner",
+      "brief": ""
     },
     {
       "id": "cold-blooded-interrogator",
-      "label": "Cold-Blooded Interrogator",
-      "detail": ""
+      "name": "Cold-Blooded Interrogator",
+      "brief": ""
     },
     {
       "id": "chain-smoking-hypnotist",
-      "label": "Chain-Smoking Hypnotist",
-      "detail": ""
+      "name": "Chain-Smoking Hypnotist",
+      "brief": ""
     },
     {
       "id": "blind-archivist-with-perfect-recall",
-      "label": "Blind Archivist with Perfect Recall",
-      "detail": ""
+      "name": "Blind Archivist with Perfect Recall",
+      "brief": ""
     },
     {
       "id": "gentlewoman-detective",
-      "label": "Gentlewoman Detective",
-      "detail": ""
+      "name": "Gentlewoman Detective",
+      "brief": ""
     },
     {
       "id": "faithful-hound-of-the-yard",
-      "label": "Faithful Hound of the Yard",
-      "detail": ""
+      "name": "Faithful Hound of the Yard",
+      "brief": ""
     },
     {
       "id": "cursed-medium-in-denial",
-      "label": "Cursed Medium in Denial",
-      "detail": ""
+      "name": "Cursed Medium in Denial",
+      "brief": ""
     },
     {
       "id": "methodical-evidence-seeker",
-      "label": "Methodical Evidence Seeker",
-      "detail": ""
+      "name": "Methodical Evidence Seeker",
+      "brief": ""
     },
     {
       "id": "soft-spoken-codebreaker",
-      "label": "Soft-Spoken Codebreaker",
-      "detail": ""
+      "name": "Soft-Spoken Codebreaker",
+      "brief": ""
     },
     {
       "id": "war-torn-field-investigator",
-      "label": "War-Torn Field Investigator",
-      "detail": ""
+      "name": "War-Torn Field Investigator",
+      "brief": ""
     },
     {
       "id": "cynical-medical-examiner",
-      "label": "Cynical Medical Examiner",
-      "detail": ""
+      "name": "Cynical Medical Examiner",
+      "brief": ""
     },
     {
       "id": "clockwork-gadgeteer",
-      "label": "Clockwork Gadgeteer",
-      "detail": ""
+      "name": "Clockwork Gadgeteer",
+      "brief": ""
     },
     {
       "id": "cryptic-memoirist",
-      "label": "Cryptic Memoirist",
-      "detail": ""
+      "name": "Cryptic Memoirist",
+      "brief": ""
     },
     {
       "id": "trauma-fixated-crime-writer",
-      "label": "Trauma-Fixated Crime Writer",
-      "detail": ""
+      "name": "Trauma-Fixated Crime Writer",
+      "brief": ""
     },
     {
       "id": "polyglot-espionage-analyst",
-      "label": "Polyglot Espionage Analyst",
-      "detail": ""
+      "name": "Polyglot Espionage Analyst",
+      "brief": ""
     },
     {
       "id": "former-cultist-seeking-redemption",
-      "label": "Former Cultist Seeking Redemption",
-      "detail": ""
+      "name": "Former Cultist Seeking Redemption",
+      "brief": ""
     },
     {
       "id": "amoral-collector-of-secrets",
-      "label": "Amoral Collector of Secrets",
-      "detail": ""
+      "name": "Amoral Collector of Secrets",
+      "brief": ""
     },
     {
       "id": "dapper-master-of-disguise",
-      "label": "Dapper Master of Disguise",
-      "detail": ""
+      "name": "Dapper Master of Disguise",
+      "brief": ""
     },
     {
       "id": "retired-duelist-turned-sleuth",
-      "label": "Retired Duelist Turned Sleuth",
-      "detail": ""
+      "name": "Retired Duelist Turned Sleuth",
+      "brief": ""
     },
     {
       "id": "widowed-paranormal-debunker",
-      "label": "Widowed Paranormal Debunker",
-      "detail": ""
+      "name": "Widowed Paranormal Debunker",
+      "brief": ""
     },
     {
       "id": "journalist-with-a-grudge",
-      "label": "Journalist with a Grudge",
-      "detail": ""
+      "name": "Journalist with a Grudge",
+      "brief": ""
     },
     {
       "id": "unlicensed-enquiry-agent",
-      "label": "Unlicensed Enquiry Agent",
-      "detail": ""
+      "name": "Unlicensed Enquiry Agent",
+      "brief": ""
     }
   ],
   "skills": [
     {
       "id": "reading-subtle-expressions",
-      "label": "Reading subtle expressions",
-      "detail": ""
+      "name": "Reading subtle expressions",
+      "brief": ""
     },
     {
       "id": "analyzing-dried-bloodstains",
-      "label": "Analyzing dried bloodstains",
-      "detail": ""
+      "name": "Analyzing dried bloodstains",
+      "brief": ""
     },
     {
       "id": "following-unreliable-witnesses",
-      "label": "Following unreliable witnesses",
-      "detail": ""
+      "name": "Following unreliable witnesses",
+      "brief": ""
     },
     {
       "id": "improvised-disguise-crafting",
-      "label": "Improvised disguise crafting",
-      "detail": ""
+      "name": "Improvised disguise crafting",
+      "brief": ""
     },
     {
       "id": "piecing-together-torn-documents",
-      "label": "Piecing together torn documents",
-      "detail": ""
+      "name": "Piecing together torn documents",
+      "brief": ""
     },
     {
       "id": "identifying-obscure-poisons",
-      "label": "Identifying obscure poisons",
-      "detail": ""
+      "name": "Identifying obscure poisons",
+      "brief": ""
     },
     {
       "id": "recognizing-forged-accents",
-      "label": "Recognizing forged accents",
-      "detail": ""
+      "name": "Recognizing forged accents",
+      "brief": ""
     },
     {
       "id": "cataloguing-occult-paraphernalia",
-      "label": "Cataloguing occult paraphernalia",
-      "detail": ""
+      "name": "Cataloguing occult paraphernalia",
+      "brief": ""
     },
     {
       "id": "spotting-anomalies-in-handwriting",
-      "label": "Spotting anomalies in handwriting",
-      "detail": ""
+      "name": "Spotting anomalies in handwriting",
+      "brief": ""
     },
     {
       "id": "interrogating-reluctant-servants",
-      "label": "Interrogating reluctant servants",
-      "detail": ""
+      "name": "Interrogating reluctant servants",
+      "brief": ""
     },
     {
       "id": "tailing-someone-in-a-crowd",
-      "label": "Tailing someone in a crowd",
-      "detail": ""
+      "name": "Tailing someone in a crowd",
+      "brief": ""
     },
     {
       "id": "drawing-crime-scenes-by-memory",
-      "label": "Drawing crime scenes by memory",
-      "detail": ""
+      "name": "Drawing crime scenes by memory",
+      "brief": ""
     },
     {
       "id": "cross-referencing-case-law",
-      "label": "Cross-referencing case law",
-      "detail": ""
+      "name": "Cross-referencing case law",
+      "brief": ""
     },
     {
       "id": "whispering-into-the-right-ears",
-      "label": "Whispering into the right ears",
-      "detail": ""
+      "name": "Whispering into the right ears",
+      "brief": ""
     },
     {
       "id": "blending-into-any-social-stratum",
-      "label": "Blending into any social stratum",
-      "detail": ""
+      "name": "Blending into any social stratum",
+      "brief": ""
     },
     {
       "id": "understanding-criminal-slang",
-      "label": "Understanding criminal slang",
-      "detail": ""
+      "name": "Understanding criminal slang",
+      "brief": ""
     },
     {
       "id": "sketching-suspect-portraits",
-      "label": "Sketching suspect portraits",
-      "detail": ""
+      "name": "Sketching suspect portraits",
+      "brief": ""
     },
     {
       "id": "extracting-confessions-with-charm",
-      "label": "Extracting confessions with charm",
-      "detail": ""
+      "name": "Extracting confessions with charm",
+      "brief": ""
     },
     {
       "id": "identifying-rare-pipe-tobaccos",
-      "label": "Identifying rare pipe tobaccos",
-      "detail": ""
+      "name": "Identifying rare pipe tobaccos",
+      "brief": ""
     },
     {
       "id": "operating-clandestine-cameras",
-      "label": "Operating clandestine cameras",
-      "detail": ""
+      "name": "Operating clandestine cameras",
+      "brief": ""
     },
     {
       "id": "predicting-human-behavior-under-stress",
-      "label": "Predicting human behavior under stress",
-      "detail": ""
+      "name": "Predicting human behavior under stress",
+      "brief": ""
     },
     {
       "id": "decoding-cryptic-notes",
-      "label": "Decoding cryptic notes",
-      "detail": ""
+      "name": "Decoding cryptic notes",
+      "brief": ""
     },
     {
       "id": "detecting-manipulated-crime-scenes",
-      "label": "Detecting manipulated crime scenes",
-      "detail": ""
+      "name": "Detecting manipulated crime scenes",
+      "brief": ""
     },
     {
       "id": "reconstructing-burnt-pages",
-      "label": "Reconstructing burnt pages",
-      "detail": ""
+      "name": "Reconstructing burnt pages",
+      "brief": ""
     },
     {
       "id": "silent-entry-via-outdated-locks",
-      "label": "Silent entry via outdated locks",
-      "detail": ""
+      "name": "Silent entry via outdated locks",
+      "brief": ""
     },
     {
       "id": "field-autopsy-without-formal-lab",
-      "label": "Field autopsy without formal lab",
-      "detail": ""
+      "name": "Field autopsy without formal lab",
+      "brief": ""
     },
     {
       "id": "knowing-where-to-bribe",
-      "label": "Knowing where to bribe",
-      "detail": ""
+      "name": "Knowing where to bribe",
+      "brief": ""
     },
     {
       "id": "reading-lips-from-afar",
-      "label": "Reading lips from afar",
-      "detail": ""
+      "name": "Reading lips from afar",
+      "brief": ""
     },
     {
       "id": "trapping-a-lie-mid-sentence",
-      "label": "Trapping a lie mid-sentence",
-      "detail": ""
+      "name": "Trapping a lie mid-sentence",
+      "brief": ""
     },
     {
       "id": "concealing-weapons-or-tools",
-      "label": "Concealing weapons or tools",
-      "detail": ""
+      "name": "Concealing weapons or tools",
+      "brief": ""
     },
     {
       "id": "discerning-hidden-compartments",
-      "label": "Discerning hidden compartments",
-      "detail": ""
+      "name": "Discerning hidden compartments",
+      "brief": ""
     },
     {
       "id": "sensing-when-you-re-being-followed",
-      "label": "Sensing when you're being followed",
-      "detail": ""
+      "name": "Sensing when you're being followed",
+      "brief": ""
     },
     {
       "id": "filing-under-aliases",
-      "label": "Filing under aliases",
-      "detail": ""
+      "name": "Filing under aliases",
+      "brief": ""
     },
     {
       "id": "tracking-movement-through-footprints",
-      "label": "Tracking movement through footprints",
-      "detail": ""
+      "name": "Tracking movement through footprints",
+      "brief": ""
     },
     {
       "id": "noticing-what-s-not-present",
-      "label": "Noticing what’s *not* present",
-      "detail": ""
+      "name": "Noticing what’s *not* present",
+      "brief": ""
     },
     {
       "id": "throwing-off-a-tail",
-      "label": "Throwing off a tail",
-      "detail": ""
+      "name": "Throwing off a tail",
+      "brief": ""
     }
   ],
   "frailties": [
     {
       "id": "dread-of-closed-doors",
-      "label": "Dread of closed doors",
-      "detail": ""
+      "name": "Dread of closed doors",
+      "brief": ""
     },
     {
       "id": "afflicted-by-ghostly-whispers",
-      "label": "Afflicted by ghostly whispers",
-      "detail": ""
+      "name": "Afflicted by ghostly whispers",
+      "brief": ""
     },
     {
       "id": "cannot-sleep-without-laudanum",
-      "label": "Cannot sleep without laudanum",
-      "detail": ""
+      "name": "Cannot sleep without laudanum",
+      "brief": ""
     },
     {
       "id": "tormented-by-a-single-unsolved-case",
-      "label": "Tormented by a single unsolved case",
-      "detail": ""
+      "name": "Tormented by a single unsolved case",
+      "brief": ""
     },
     {
       "id": "suffers-visions-during-storms",
-      "label": "Suffers visions during storms",
-      "detail": ""
+      "name": "Suffers visions during storms",
+      "brief": ""
     },
     {
       "id": "keeps-secrets-even-from-themselves",
-      "label": "Keeps secrets even from themselves",
-      "detail": ""
+      "name": "Keeps secrets even from themselves",
+      "brief": ""
     },
     {
       "id": "bleeding-heart-for-the-poor",
-      "label": "Bleeding heart for the poor",
-      "detail": ""
+      "name": "Bleeding heart for the poor",
+      "brief": ""
     },
     {
       "id": "visibly-trembles-under-pressure",
-      "label": "Visibly trembles under pressure",
-      "detail": ""
+      "name": "Visibly trembles under pressure",
+      "brief": ""
     },
     {
       "id": "has-an-enemy-in-the-force",
-      "label": "Has an enemy in the force",
-      "detail": ""
+      "name": "Has an enemy in the force",
+      "brief": ""
     },
     {
       "id": "believes-they-re-always-watched",
-      "label": "Believes they're always watched",
-      "detail": ""
+      "name": "Believes they're always watched",
+      "brief": ""
     },
     {
       "id": "obsessed-with-unsent-letters",
-      "label": "Obsessed with unsent letters",
-      "detail": ""
+      "name": "Obsessed with unsent letters",
+      "brief": ""
     },
     {
       "id": "distrusts-all-forms-of-authority",
-      "label": "Distrusts all forms of authority",
-      "detail": ""
+      "name": "Distrusts all forms of authority",
+      "brief": ""
     },
     {
       "id": "lost-faith-in-justice",
-      "label": "Lost faith in justice",
-      "detail": ""
+      "name": "Lost faith in justice",
+      "brief": ""
     },
     {
       "id": "touch-averse",
-      "label": "Touch-averse",
-      "detail": ""
+      "name": "Touch-averse",
+      "brief": ""
     },
     {
       "id": "claustrophobia-from-a-past-trauma",
-      "label": "Claustrophobia from a past trauma",
-      "detail": ""
+      "name": "Claustrophobia from a past trauma",
+      "brief": ""
     },
     {
       "id": "prone-to-brutal-interrogations",
-      "label": "Prone to brutal interrogations",
-      "detail": ""
+      "name": "Prone to brutal interrogations",
+      "brief": ""
     },
     {
       "id": "ill-tempered-under-scrutiny",
-      "label": "Ill-tempered under scrutiny",
-      "detail": ""
+      "name": "Ill-tempered under scrutiny",
+      "brief": ""
     },
     {
       "id": "feels-nothing-around-corpses",
-      "label": "Feels nothing around corpses",
-      "detail": ""
+      "name": "Feels nothing around corpses",
+      "brief": ""
     },
     {
       "id": "cannot-lie-effectively",
-      "label": "Cannot lie effectively",
-      "detail": ""
+      "name": "Cannot lie effectively",
+      "brief": ""
     },
     {
       "id": "sees-patterns-where-there-are-none",
-      "label": "Sees patterns where there are none",
-      "detail": ""
+      "name": "Sees patterns where there are none",
+      "brief": ""
     },
     {
       "id": "overwhelmed-by-certain-smells",
-      "label": "Overwhelmed by certain smells",
-      "detail": ""
+      "name": "Overwhelmed by certain smells",
+      "brief": ""
     },
     {
       "id": "past-published-lie-haunts-them",
-      "label": "Past published lie haunts them",
-      "detail": ""
+      "name": "Past published lie haunts them",
+      "brief": ""
     },
     {
       "id": "relives-past-crimes-in-dreams",
-      "label": "Relives past crimes in dreams",
-      "detail": ""
+      "name": "Relives past crimes in dreams",
+      "brief": ""
     },
     {
       "id": "confuses-past-and-present-events",
-      "label": "Confuses past and present events",
-      "detail": ""
+      "name": "Confuses past and present events",
+      "brief": ""
     },
     {
       "id": "too-eager-to-believe-in-guilt",
-      "label": "Too eager to believe in guilt",
-      "detail": ""
+      "name": "Too eager to believe in guilt",
+      "brief": ""
     },
     {
       "id": "allergic-to-truth-serum",
-      "label": "Allergic to truth serum",
-      "detail": ""
+      "name": "Allergic to truth serum",
+      "brief": ""
     },
     {
       "id": "fails-to-ask-the-obvious",
-      "label": "Fails to ask the obvious",
-      "detail": ""
+      "name": "Fails to ask the obvious",
+      "brief": ""
     },
     {
       "id": "breaks-down-at-children-s-voices",
-      "label": "Breaks down at children's voices",
-      "detail": ""
+      "name": "Breaks down at children's voices",
+      "brief": ""
     },
     {
       "id": "despises-paperwork",
-      "label": "Despises paperwork",
-      "detail": ""
+      "name": "Despises paperwork",
+      "brief": ""
     },
     {
       "id": "feels-guilt-for-a-wrongful-arrest",
-      "label": "Feels guilt for a wrongful arrest",
-      "detail": ""
+      "name": "Feels guilt for a wrongful arrest",
+      "brief": ""
     },
     {
       "id": "memories-altered-by-hypnosis",
-      "label": "Memories altered by hypnosis",
-      "detail": ""
+      "name": "Memories altered by hypnosis",
+      "brief": ""
     },
     {
       "id": "compulsively-records-everything",
-      "label": "Compulsively records everything",
-      "detail": ""
+      "name": "Compulsively records everything",
+      "brief": ""
     },
     {
       "id": "can-t-refuse-a-challenge",
-      "label": "Can’t refuse a challenge",
-      "detail": ""
+      "name": "Can’t refuse a challenge",
+      "brief": ""
     },
     {
       "id": "hears-footsteps-no-one-else-does",
-      "label": "Hears footsteps no one else does",
-      "detail": ""
+      "name": "Hears footsteps no one else does",
+      "brief": ""
     },
     {
       "id": "terrified-of-being-wrong",
-      "label": "Terrified of being wrong",
-      "detail": ""
+      "name": "Terrified of being wrong",
+      "brief": ""
     },
     {
       "id": "carries-a-deadly-secret",
-      "label": "Carries a deadly secret",
-      "detail": ""
+      "name": "Carries a deadly secret",
+      "brief": ""
     }
   ],
   "gear": [
     {
       "id": "collapsible-spyglass",
-      "label": "Collapsible spyglass",
-      "detail": ""
+      "name": "Collapsible spyglass",
+      "brief": ""
     },
     {
       "id": "brass-capped-walking-cane-hollow",
-      "label": "Brass-capped walking cane (hollow)",
-      "detail": ""
+      "name": "Brass-capped walking cane (hollow)",
+      "brief": ""
     },
     {
       "id": "ink-stained-letter-from-a-corpse",
-      "label": "Ink-stained letter from a corpse",
-      "detail": ""
+      "name": "Ink-stained letter from a corpse",
+      "brief": ""
     },
     {
       "id": "mechanical-monocle-with-filter-lens",
-      "label": "Mechanical monocle with filter lens",
-      "detail": ""
+      "name": "Mechanical monocle with filter lens",
+      "brief": ""
     },
     {
       "id": "tin-of-opium-laced-cigarettes",
-      "label": "Tin of opium-laced cigarettes",
-      "detail": ""
+      "name": "Tin of opium-laced cigarettes",
+      "brief": ""
     },
     {
       "id": "fingerbone-lucky-charm",
-      "label": "Fingerbone lucky charm",
-      "detail": ""
+      "name": "Fingerbone lucky charm",
+      "brief": ""
     },
     {
       "id": "clockwork-evidence-drawer",
-      "label": "Clockwork evidence drawer",
-      "detail": ""
+      "name": "Clockwork evidence drawer",
+      "brief": ""
     },
     {
       "id": "tattered-map-of-london-s-tunnels",
-      "label": "Tattered map of London’s tunnels",
-      "detail": ""
+      "name": "Tattered map of London’s tunnels",
+      "brief": ""
     },
     {
       "id": "handbound-ledger-of-unsolved-crimes",
-      "label": "Handbound ledger of unsolved crimes",
-      "detail": ""
+      "name": "Handbound ledger of unsolved crimes",
+      "brief": ""
     },
     {
       "id": "custom-revolver-registered-to-no-one",
-      "label": "Custom revolver (registered to no one)",
-      "detail": ""
+      "name": "Custom revolver (registered to no one)",
+      "brief": ""
     },
     {
       "id": "casebook-passed-down-by-mentor",
-      "label": "Casebook passed down by mentor",
-      "detail": ""
+      "name": "Casebook passed down by mentor",
+      "brief": ""
     },
     {
       "id": "thin-bladed-surgical-knife",
-      "label": "Thin-bladed surgical knife",
-      "detail": ""
+      "name": "Thin-bladed surgical knife",
+      "brief": ""
     },
     {
       "id": "switchable-identity-papers",
-      "label": "Switchable identity papers",
-      "detail": ""
+      "name": "Switchable identity papers",
+      "brief": ""
     },
     {
       "id": "silk-lined-poison-detection-kit",
-      "label": "Silk-lined poison detection kit",
-      "detail": ""
+      "name": "Silk-lined poison detection kit",
+      "brief": ""
     },
     {
       "id": "pocketwatch-set-to-wrong-time",
-      "label": "Pocketwatch set to wrong time",
-      "detail": ""
+      "name": "Pocketwatch set to wrong time",
+      "brief": ""
     },
     {
       "id": "hollow-ring-with-sleeping-agent",
-      "label": "Hollow ring with sleeping agent",
-      "detail": ""
+      "name": "Hollow ring with sleeping agent",
+      "brief": ""
     },
     {
       "id": "silver-cufflinks-engraved-with-symbols",
-      "label": "Silver cufflinks engraved with symbols",
-      "detail": ""
+      "name": "Silver cufflinks engraved with symbols",
+      "brief": ""
     },
     {
       "id": "miniature-phonograph-recorder",
-      "label": "Miniature phonograph recorder",
-      "detail": ""
+      "name": "Miniature phonograph recorder",
+      "brief": ""
     },
     {
       "id": "letter-opener-concealing-blade",
-      "label": "Letter-opener concealing blade",
-      "detail": ""
+      "name": "Letter-opener concealing blade",
+      "brief": ""
     },
     {
       "id": "wax-sealed-vial-of-morphine",
-      "label": "Wax-sealed vial of morphine",
-      "detail": ""
+      "name": "Wax-sealed vial of morphine",
+      "brief": ""
     },
     {
       "id": "detective-s-coat-with-hidden-pockets",
-      "label": "Detective’s coat with hidden pockets",
-      "detail": ""
+      "name": "Detective’s coat with hidden pockets",
+      "brief": ""
     },
     {
       "id": "ink-that-only-appears-in-moonlight",
-      "label": "Ink that only appears in moonlight",
-      "detail": ""
+      "name": "Ink that only appears in moonlight",
+      "brief": ""
     },
     {
       "id": "calling-card-with-hidden-cipher",
-      "label": "Calling card with hidden cipher",
-      "detail": ""
+      "name": "Calling card with hidden cipher",
+      "brief": ""
     },
     {
       "id": "compact-field-chemistry-set",
-      "label": "Compact field chemistry set",
-      "detail": ""
+      "name": "Compact field chemistry set",
+      "brief": ""
     },
     {
       "id": "collapsible-periscope",
-      "label": "Collapsible periscope",
-      "detail": ""
+      "name": "Collapsible periscope",
+      "brief": ""
     },
     {
       "id": "chalk-for-corpse-marking",
-      "label": "Chalk for corpse marking",
-      "detail": ""
+      "name": "Chalk for corpse marking",
+      "brief": ""
     },
     {
       "id": "personal-set-of-rare-keys",
-      "label": "Personal set of rare keys",
-      "detail": ""
+      "name": "Personal set of rare keys",
+      "brief": ""
     },
     {
       "id": "cigarette-case-with-secret-compartment",
-      "label": "Cigarette case with secret compartment",
-      "detail": ""
+      "name": "Cigarette case with secret compartment",
+      "brief": ""
     },
     {
       "id": "tarnished-badge-of-a-defunct-precinct",
-      "label": "Tarnished badge of a defunct precinct",
-      "detail": ""
+      "name": "Tarnished badge of a defunct precinct",
+      "brief": ""
     },
     {
       "id": "candle-stub-that-never-melts",
-      "label": "Candle stub that never melts",
-      "detail": ""
+      "name": "Candle stub that never melts",
+      "brief": ""
     },
     {
       "id": "perfumed-gloves-scent-traceable",
-      "label": "Perfumed gloves (scent-traceable)",
-      "detail": ""
+      "name": "Perfumed gloves (scent-traceable)",
+      "brief": ""
     },
     {
       "id": "pocketbook-of-obscure-dialects",
-      "label": "Pocketbook of obscure dialects",
-      "detail": ""
+      "name": "Pocketbook of obscure dialects",
+      "brief": ""
     },
     {
       "id": "newspaper-clippings-of-a-suspect",
-      "label": "Newspaper clippings of a suspect",
-      "detail": ""
+      "name": "Newspaper clippings of a suspect",
+      "brief": ""
     },
     {
       "id": "eyeglass-etched-with-forensic-calibration",
-      "label": "Eyeglass etched with forensic calibration",
-      "detail": ""
+      "name": "Eyeglass etched with forensic calibration",
+      "brief": ""
     },
     {
       "id": "bloodstained-handkerchief-kept-for-luck",
-      "label": "Bloodstained handkerchief kept \"for luck\"",
-      "detail": ""
+      "name": "Bloodstained handkerchief kept \"for luck\"",
+      "brief": ""
     },
     {
       "id": "cryptography-machine-prototype",
-      "label": "Cryptography machine prototype",
-      "detail": ""
+      "name": "Cryptography machine prototype",
+      "brief": ""
     }
   ],
   "spends_luck": false,

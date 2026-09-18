@@ -35,7 +35,7 @@ DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
 
 def can_type(player: PlayerView, phase: Role | None) -> bool:
     decision = player.decision
-    return phase is None and (decision is None or decision.allows_text) and player.over is None
+    return phase is None and (decision is None or decision.allows_text) and player.ending is None
 
 
 def standing_proposal(
@@ -66,7 +66,7 @@ def chat(
                 "w-full text-center text-xs italic opacity-60"
             )
         else:
-            bubble(session, player.id, player.label, exchange.words, sent=True)
+            bubble(session, player.id, player.name, exchange.words, sent=True)
         for fact in cards(exchange.facts):
             card(fact)
         for line in exchange.lines:
@@ -90,12 +90,12 @@ def live_turn(session: GameService, view: PlayerView, elapsed: float) -> ui.labe
     turn = session.turn
     player = view.player
     if turn is not None:
-        bubble(session, player.id, player.label, turn.words, sent=True)
+        bubble(session, player.id, player.name, turn.words, sent=True)
         shown = cards(turn.facts)
         for fact in shown:
             card(fact, live=fact is shown[-1])
     elif session.intent:
-        bubble(session, player.id, player.label, session.intent, sent=True)
+        bubble(session, player.id, player.name, session.intent, sent=True)
     if session.phase is None:
         return None
     return inline_status(session.phase, elapsed)
