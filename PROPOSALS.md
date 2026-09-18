@@ -21,7 +21,7 @@ child, and copy-paste between the two hiring engines.
 
 ### 1. Fold the `rooms/` family into `tunnelgoons/`
 
-**Status:** refused by the maintainer (the rooms family stays). Option (b), dropping the one-instantiation generics and `Dweller` while keeping the package, is still open. **Raised by:** A, C, D, lead (4 of 6).
+**Status:** trial, option (b). The fold is refused: the rooms family stays. Only `Dweller` and the one-instantiation generics go. **Raised by:** A, C, D, lead (4 of 6).
 
 **Plain English.** There are two "families" between the abstract `Engine` and the three real
 engines. `scenes/` has two children (Loner, 24XX) and earns its place. `rooms/` has exactly one
@@ -57,7 +57,7 @@ has two `model_validator` hooks and an `entity()` `super()` call whose MRO order
 
 ### 2. One character class for Tunnel Goons, and `World[M]` instead of `World[P, M]`
 
-**Status:** open. **Raised by:** D (and implied by 1).
+**Status:** trial, option (a). **Raised by:** D (and implied by 1).
 
 **Plain English.** Tunnel Goons is the only engine with two person classes: `Goon` for the
 player and `Npc` for everyone else. They duplicate `rows()`, `level()`, `hp`, `required()` and
@@ -85,7 +85,7 @@ annotation simplifies.
 
 ### 3. One hire flow instead of two copies
 
-**Status:** open. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** trial, option (a). **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** Tunnel Goons and 24XX both let the player hire someone. The `hire` tool
 (docstring included), the `advance` override, the head and tail of `write_hire`, and the world
@@ -120,7 +120,7 @@ as a field).
 
 ### 4. One table for worldsmith operations; delete the unreachable branch
 
-**Status:** open. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** trial, option (a). The maintainer also asks that `unwritten` be renamed: it becomes `failure_fact` on `Operation`. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** Each engine says twice which world-writing operations it supports: once as
 `unwritten`, a dict of failure facts, and once as an `if request.operation == ...` chain in
@@ -155,7 +155,7 @@ test go.
 
 ### 5. One vocabulary for the worldsmith request, and four names that say what they do
 
-**Status:** open. **Raised by:** A, B, C, E, lead (5 of 6).
+**Status:** trial. The noun is `commission`. **Raised by:** A, B, C, E, lead (5 of 6).
 
 **Plain English.** The one flow that grows the world is called a commission, a request, an
 operation, a growth and a "telling" depending on the file. Four other names say the wrong
