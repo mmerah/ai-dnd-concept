@@ -43,6 +43,7 @@ from aidm.engines.loner3e.world import (
     pack_meanings,
     twist_pairing,
 )
+from aidm.engines.packs import unique_options
 from aidm.engines.scenes.engine import SceneEngine
 
 
@@ -69,10 +70,10 @@ class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
 
     def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
         played = self.packs.played(pack_id)
-        concepts = tuple(entry for pack in played for entry in pack.concepts)
-        skills = tuple(option for pack in played for option in pack.skills)
-        frailties = tuple(option for pack in played for option in pack.frailties)
-        gear = tuple(option for pack in played for option in pack.gear)
+        concepts = unique_options(entry for pack in played for entry in pack.concepts)
+        skills = unique_options(option for pack in played for option in pack.skills)
+        frailties = unique_options(option for pack in played for option in pack.frailties)
+        gear = unique_options(option for pack in played for option in pack.gear)
         return (
             CreationStep(
                 id="concept",

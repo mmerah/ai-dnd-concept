@@ -48,7 +48,7 @@ def _map_needs[N: Dweller](draft: MapProposal[N], *, start_known: bool) -> list[
             if start_known
             else "a starting place hidden from the player"
         )
-    if missing := sorted(set(places) - draft.reachable(draft.start)):
+    if missing := sorted(set(places) - draft.reachable(draft.start, past_locks=True)):
         needs.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
     return needs
 

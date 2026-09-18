@@ -15,6 +15,7 @@ class Roll(Attempt):
     difficulty: int | None = Field(
         default=None,
         ge=1,
+        le=20,
         description=(
             "Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `target_id` is set."
         ),
@@ -45,7 +46,6 @@ class LevelUp(Frozen):
         default=None,
         description="Health or Inventory: which one to raise by 1. Null asks the player.",
     )
-    actor_id: Slug | None = Field(default=None, description="Leave empty.")
 
     @model_validator(mode="after")
     def _both_or_neither(self) -> Self:

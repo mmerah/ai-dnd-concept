@@ -88,6 +88,13 @@ def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:
     assert MARA in world.present()
 
 
+def test_entering_a_dead_cast_member_is_refused() -> None:
+    mara = Person(id=MARA, name="Mara", brief="A guide", known=True, alive=False)
+    world = _world(_scene("a1", "A1"), cast={MARA: mara})
+    with pytest.raises(Refusal, match="is dead"):
+        _ = world.enter(MARA)
+
+
 def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None:
     world = _world(_scene("a1", "A1"))
     draft = NextProposal[Person](

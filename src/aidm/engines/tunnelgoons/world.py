@@ -77,7 +77,9 @@ class Goon(Dweller):
         return (("Health", str(self.hp)), *self.sheet.rows(carried=carried))
 
     def level(self, ability: Ability, boost: Boost) -> list[Fact]:
-        card = self.card_line(self.require_sheet().level_up(ability, boost, self.hp))
+        card = self.card_line(
+            self.require_sheet().level_up(ability, boost, self.hp), leads=self.id == PLAYER_ID
+        )
         return [self.fact(card, card=card)]
 
     def required(self) -> str:
@@ -143,7 +145,7 @@ def level_up_decision(actor: Goon) -> PendingDecision:
             id=f"{ability}-{boost}",
             name=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
             tool_name="level_up",
-            args={"ability": ability, "boost": boost, "actor_id": actor.id},
+            args={"ability": ability, "boost": boost},
         )
         for ability in ABILITIES
         for boost in ("health", "inventory")

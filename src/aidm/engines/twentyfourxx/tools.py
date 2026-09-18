@@ -129,7 +129,7 @@ class Roll(Staked, Attempt):
     )
     helped_by: Helper | None = Field(
         default=None,
-        description="The hired member who rolls their own die. Null when nobody helps.",
+        description="The hired member who helps, adding one d6. Null when nobody helps.",
     )
     hindered: str = Field(
         default="", description="Why the actor is hindered. Empty when nothing hinders them."

@@ -6,8 +6,11 @@ from support.table import LIBRARY, narrowed
 
 from aidm.core.creation import Picks
 from aidm.core.entities import Refusal, Slug
-from aidm.core.io import Library
+from aidm.core.io import ENCODING, Library
+from aidm.core.play import DecisionOption
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.pack import Loner3ePack
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
 from aidm.engines.packs import SRD_PACK
 
@@ -74,3 +77,23 @@ def _answered(pack_id: Slug, chosen: Picks) -> Picks:
     ):
         picks[step.id] = step.options[0].id if step.options else "Something written"
     return picks
+
+
+def test_a_written_pack_never_offers_a_row_the_srd_already_offers(tmp_path: Path) -> None:
+    shared = ENGINE.packs.srd().skills[0]
+    written = Loner3ePack(
+        name="Mine",
+        source="",
+        license="",
+        concepts=(DecisionOption(id="concept", name="Concept"),),
+        skills=(shared, DecisionOption(id="own-skill", name="Own Skill")),
+        frailties=(DecisionOption(id="frailty", name="Frailty"),),
+        gear=(DecisionOption(id="gear", name="Gear"),),
+    )
+    (tmp_path / "mine.json").write_text(written.model_dump_json(), encoding=ENCODING)
+    steps = Loner3eEngine(tmp_path).creation_steps("mine", {})
+
+    offered = [option.id for step in steps if step.id == "skill-1" for option in step.options]
+
+    assert len(offered) == len(set(offered))
+    assert "own-skill" in offered

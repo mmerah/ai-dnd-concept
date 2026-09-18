@@ -152,6 +152,21 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
     assert world.player.require_sheet().level == before + 1
 
 
+def test_level_up_passes_the_choice_on_to_a_hired_member() -> None:
+    draft = small_world().draft()
+    world = draft.world
+    world.npcs[MIRA].sheet = _sheeted(brute=1, skulker=1, erudite=1)
+    world.party.append(MIRA)
+
+    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
+    assert draft.pending is not None
+
+    _ = ENGINE.level_up(draft, LevelUp(ability="skulker", boost="inventory"), Random(0))
+
+    assert world.npcs[MIRA].require_sheet().level == 2
+    assert world.npcs[MIRA].require_sheet().abilities["skulker"] == 2
+
+
 def test_move_refuses_a_locked_way(world: TunnelGoonsWorld) -> None:
     world.visits.append(HALL)
     with pytest.raises(Refusal, match="locked"):

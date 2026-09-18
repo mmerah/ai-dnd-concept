@@ -2,7 +2,19 @@ from support.table import (
     change,
     refused,
 )
-from support.tunnelgoons import CELLAR, ENGINE, GATE, LANTERN, WARDEN, YARD, keep
+from support.tunnelgoons import (
+    CELLAR,
+    ENGINE,
+    GATE,
+    HALL,
+    LANTERN,
+    START,
+    VAULT,
+    WARDEN,
+    YARD,
+    keep,
+    small_world,
+)
 
 from aidm.core.facts import Fact, cards
 from aidm.engines.base import PLAYER_ID
@@ -35,6 +47,25 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused() -> N
     message = refused(ENGINE, draft, "kill", target_id=PLAYER_ID)
 
     assert "already dead" in message
+
+
+def test_frontier_skips_places_behind_a_locked_way() -> None:
+    world = small_world().world
+    world.visits.append(HALL)
+    for way in world.ways[START]:
+        way.locked = way.to == VAULT
+
+    assert world.frontier() == 0
+
+
+def test_killing_the_player_tells_the_pack_that_falls_loose() -> None:
+    draft = small_world().draft()
+
+    facts = change(ENGINE, draft, "kill", target_id=PLAYER_ID)
+
+    dropped = [fact for fact in facts if fact.card == "Pack dropped"]
+    assert len(dropped) == 1
+    assert dropped[0].told
 
 
 def _walked(begun_room: TunnelGoonsGame) -> TunnelGoonsGame:

@@ -8,7 +8,7 @@ from aidm.core.entities import Frozen, Mutable, Refusal, Slug, slug, tag_of
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows, filled
-from aidm.engines.base import NO_DICE, PLAYER_ID, Person, Thing, joined
+from aidm.engines.base import NO_DICE, Person, Thing, joined
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
@@ -125,12 +125,8 @@ class Crewmate(Person):
         return self.sheet.rows() if self.sheet is not None else ()
 
     def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
-        """A member's line carries the gear text; the player's GEAR section stands alone."""
-        if (
-            self.id != PLAYER_ID
-            and self.sheet is not None
-            and (gear := self.sheet.gear_text(ids=True))
-        ):
+        """A caller that hands rows renders the sheet itself, gear and all."""
+        if rows is None and self.sheet is not None and (gear := self.sheet.gear_text(ids=True)):
             detail = "; ".join(part for part in (detail, gear) if part)
         return super().line(rows=rows, detail=detail)
 
@@ -159,7 +155,9 @@ class Crewmate(Person):
             raise Refusal(f"{self.name} has only ₡{sheet.credits}, not ₡{cost}")
         sheet.credits -= cost
 
-    def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
+    def change_hindrances(
+        self, gained: Sequence[str], lost: Sequence[str], *, leads: bool
+    ) -> list[Fact]:
         sheet = self.require_sheet()
         sheet.hindrances = self.changed_tags("hindrance", sheet.hindrances, gained, lost)
         parts: list[str] = []
@@ -169,56 +167,59 @@ class Crewmate(Person):
             parts.append(f"Recovered: {', '.join(lost)}")
         card = " / ".join(parts)
         trace = f"{self.mention} — {card}"
-        return [self.fact(trace, card=self.card_line(card))]
+        return [self.fact(trace, card=self.card_line(card, leads=leads))]
 
-    def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
+    def gain_item(
+        self, name: str, *, bulky: bool, breaks: int, cost: int, leads: bool
+    ) -> list[Fact]:
         self.pay(cost)
         items = self.require_sheet().items
         items[slug(name, [*items, *SHIP_IDS])] = Gear(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
-        return [self.fact(trace, card=self.card_line(card))]
+        return [self.fact(trace, card=self.card_line(card, leads=leads))]
 
-    def repair_item(self, item: Gear, cost: int) -> list[Fact]:
+    def repair_item(self, item: Gear, cost: int, *, leads: bool) -> list[Fact]:
         if item.broken_times == 0:
             raise Refusal(f"{item.name} is not broken")
         self.pay(cost)
         item.broken_times = 0
         trace = f"{self.mention} repairs {item.name}"
-        return [self.fact(trace, card=self.card_line(f"Repaired {item.name}"))]
+        return [self.fact(trace, card=self.card_line(f"Repaired {item.name}", leads=leads))]
 
-    def spend(self, amount: int, why: str) -> list[Fact]:
+    def spend(self, amount: int, why: str, *, leads: bool) -> list[Fact]:
         self.pay(amount)
         trace = f"{self.mention} spends ₡{amount} — {why}"
-        return [self.fact(trace, card=self.card_line(f"₡{amount} spent — {why}"))]
+        return [self.fact(trace, card=self.card_line(f"₡{amount} spent — {why}", leads=leads))]
 
-    def hinder(self, name: str) -> list[Fact]:
+    def hinder(self, name: str, *, leads: bool) -> list[Fact]:
         sheet = self.require_sheet()
         if name in sheet.hindrances:
             return []
         sheet.hindrances.append(name)
         return [
             self.fact(
-                f"{self.mention} is hindered — {name}", card=self.card_line(f"Hindered: {name}")
+                f"{self.mention} is hindered — {name}",
+                card=self.card_line(f"Hindered: {name}", leads=leads),
             )
         ]
 
-    def raise_skill(self, skill: str) -> list[Fact]:
+    def raise_skill(self, skill: str, *, leads: bool) -> list[Fact]:
         sheet = self.require_sheet()
         if (new_die := raised(sheet.skills.get(skill))) is None:
             raise Refusal(f"{self.name}'s {skill} is already at d12. Raise another skill for them.")
         sheet.skills[skill] = new_die
         trace = f"{self.mention} — {skill} rises to d{new_die}"
-        return [self.fact(trace, card=self.card_line(f"Job done: {skill} d{new_die}"))]
+        return [self.fact(trace, card=self.card_line(f"Job done: {skill} d{new_die}", leads=leads))]
 
-    def earn(self, credits: int, event: DiceEvent) -> list[Fact]:
+    def earn(self, credits: int, event: DiceEvent, *, leads: bool) -> list[Fact]:
         sheet = self.require_sheet()
         sheet.credits += credits
         return [
             self.fact(
                 f"{self.mention} earns ₡{credits} → ₡{sheet.credits}",
-                card=self.card_line(f"+₡{credits} → ₡{sheet.credits}"),
+                card=self.card_line(f"+₡{credits} → ₡{sheet.credits}", leads=leads),
                 dice=(event,),
             )
         ]
@@ -276,9 +277,10 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         if item_id is not None:
             item = self.require_gear(actor, item_id)
             return self._break(actor, item, hindrance)
+        leads = actor is self.player
         if disaster:
-            return self.kill(actor.id) if deadly else actor.hinder(risk)
-        return actor.hinder(MAIMED)
+            return self.kill(actor.id) if deadly else actor.hinder(risk, leads=leads)
+        return actor.hinder(MAIMED, leads=leads)
 
     def check_defenses(self, claims: Sequence[tuple[Crewmate, Slug, str]]) -> None:
         resolved = [
@@ -300,18 +302,19 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
                 raise Refusal(f"{actor.name} already carries the hindrance {hindrance!r}")
 
     def _break(self, actor: Crewmate, item: Gear, hindrance: str) -> list[Fact]:
+        leads = actor is self.player
         if item.harmless:
             if hindrance:
                 raise Refusal(BREAKS_HARMLESSLY.format(name=item.name))
             item.broken_times += 1
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
-            return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks"))]
+            return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks", leads=leads))]
         if not hindrance:
             raise Refusal("name the hindrance that the hit becomes")
         sheet = actor.require_sheet()
         sheet.hindrances = actor.changed_tags("hindrance", sheet.hindrances, (hindrance,), ())
         item.broken_times += 1
-        card = actor.card_line(f"{item.name} breaks — {hindrance}")
+        card = actor.card_line(f"{item.name} breaks — {hindrance}", leads=leads)
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact(trace, card=card)]
 
