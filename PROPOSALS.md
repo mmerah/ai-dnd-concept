@@ -310,7 +310,7 @@ byte-identical so the `master.txt` goldens do not move. **Risk.** Low.
 
 ### 11. `GameService` tidy: one way to say "a role is working", one way to land a step
 
-**Status:** open. **Raised by:** B, C.
+**Status:** trial, option (a). **Raised by:** B, C.
 
 **Plain English.** The page shows "Narrator is working" by reading a `phase` field the runtime
 sets by hand in four methods and clears in three `finally` blocks. Four things answer "is this
@@ -334,7 +334,7 @@ has 29 tests over these paths and some set `service.phase` directly.
 
 ### 12. Media and speech in one module, one `Presenter`
 
-**Status:** open. **Raised by:** B, C, lead (3 of 6).
+**Status:** trial, option (a). **Raised by:** B, C, lead (3 of 6).
 
 **Plain English.** `Illustrator` (art) and `Reader` (speech) are the same shape twice: a config,
 a provider, a cache directory under the save, a `Claims` lock, an `enabled` guard, an `open()`
@@ -360,7 +360,7 @@ test import the classes by path or touch `service.media`.
 
 ### 13. The tool mark: less implicit, no protocol with one implementer
 
-**Status:** open. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** trial, option (a), with one change asked by the maintainer: `TwentyfourxxEngine.kill` gets a visible `@tool` (repeating the one-sentence docstring), and `tools_of` refuses an unmarked override of a marked tool, so no published tool is ever invisible. The maintainer also asked whether a library (pydantic-ai slim, FastMCP) could replace `core/tools.py`; answer: only the 50-line mark, not the schema tidy that the prompts also read, and at the cost of a framework that wants the run loop. Not worth it. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** The `@tool` mark is the codebase's one piece of metaprogramming and every
 reviewer says the idea is right. Three things around it are not: `Tools` is a protocol in `core`
@@ -388,7 +388,7 @@ stubs to build a real `Turn`.
 
 ### 14. UI reads the view, not the save; small UI tidies
 
-**Status:** open. **Raised by:** C.
+**Status:** trial, all parts. **Raised by:** C.
 
 **Plain English.** The transcript takes the whole `GameService` and reaches past `PlayerView`
 into the save file for facts the view already carries. Two pages walk `runtime.engines[...]`
@@ -415,7 +415,7 @@ things.
 
 ### 15. Small renames, in one pass
 
-**Status:** open. **Raised by:** A, B, D, E, lead.
+**Status:** trial, all parts, plus `hostiles` to `monsters` from proposal 7. Constraint from the maintainer: the two families keep the same four files as each other, and the three engines keep the same four files as each other (`engine.py`, `world.py`, `pack.py`, `tools.py`). **Raised by:** A, B, D, E, lead.
 
 **Plain English.** A batch of one-minute fixes, each removing a stumble.
 
