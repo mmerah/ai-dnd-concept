@@ -33,7 +33,7 @@ The master reads PLAYER ACTION from its prompt. Lines starting with `!` are scri
 | `!roll what="Try the door" actor_id=player question="Does it give?"` | calls that tool (values parse as JSON, else strings; quote lists: `item_ids='["torch"]'`) |
 | `!none` | no tool call |
 | `!crash` / `!refuse` | the master fails with `OSError` / `Refusal` |
-| `!fail narrator`, `!bad worldsmith`, `!slow narrator` | the next spawn of that role fails, answers garbage once, or stalls 6 s |
+| `!fail narrator`, `!bad worldsmith`, `!slow narrator` | that role's next ask fails (its retry too), answers garbage once so the retry lands, or stalls 6 s |
 
 Plain words with no script get one roll. The narrator echoes its prompt as `[narration]` and
 `[happened]` lines, so a screenshot shows what the page was told; `[say <id> "words"]` adds a

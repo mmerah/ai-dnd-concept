@@ -114,10 +114,11 @@ Decisions off-plan:
   `play` task, which the `_run` parametrization has no branch for.
 - `tests/ui/test_app.py` and `test_create.py` moved onto the `page`/`notified` fixtures too.
 - `qa/agents.py` read `runtime.turn` after `Gate` landed; basedpyright does not include `qa/`,
-  and the QA harness (`qa/run_all.sh`) found it. What it still reports, the two loner findings
-  ("unwritten card missing", "speaker name missing on the bubble") and the `create` scenario's
-  timeout on a scenario written from an upload (the scripted worldsmith reads an empty schema
-  section), reproduces identically on the phase 2 commit and is outside this phase.
+  and the QA harness (`qa/run_all.sh`) found it. The three findings it still reported were
+  harness bugs older than this phase, fixed in the follow-up commit: the scripted roles did not
+  read the app's retry prompt (a correction on a resumed session), a `!fail` fault died on the
+  retry instead of failing the ask, the scripted worldsmith wrote a region's `recap` on an
+  opening map, and one loner check matched the player's own bubble.
 
 Refuted review findings:
 
