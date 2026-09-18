@@ -183,6 +183,17 @@ def test_both_participants_defend_with_their_own_separate_items(draft: Twentyfou
     assert any(fact.card == "Kestrel: Vest breaks — ringing ears" for fact in facts)
 
 
+def test_a_hired_helper_adds_one_d6_whatever_their_own_die() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 12}).draft()
+
+    facts = _rolled(
+        draft,
+        Roll(what="Slip past", skill="Stealth", helped_by=Helper(actor_id=KESTREL)),
+    )
+
+    assert "helped by Kestrel (d6)" in facts[1].trace
+
+
 def test_helper_with_risk_takes_their_own_consequence_on_a_bad_roll() -> None:
     draft = hired(small_world(), KESTREL, skills={"Stealth": 10}).draft()
     facts = _rolled(

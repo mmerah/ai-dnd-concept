@@ -172,8 +172,9 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
         total = rolled.total + sheet.abilities[args.ability] + len(items) - penalty
         success = total >= difficulty
         outcome = "success" if success else "failure"
+        led = actor.card_line(args.ability.capitalize(), leads=actor is world.player)
         line = (
-            f"{args.what} — {actor.card_line(args.ability.capitalize())}"
+            f"{args.what} — {led}"
             + (f" with {', '.join(item.name for item in items)}" if items else "")
             + (f" against {npc.name}" if npc is not None else "")
             + f", {total} vs DS {difficulty} → {outcome}"
@@ -199,9 +200,10 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
         """Call this one time, when the whole adventure ends. The engine gives the choice to the
         player first, then to each living hired member in turn."""
         world = draft.world
-        actor = world.require_actor(args.actor_id)
-        if actor.require_sheet().level > 1:
-            raise Refusal(f"{actor.name} has already levelled up")
+        player = world.player
+        actor = player if player.require_sheet().level == 1 else world.next_to_level(player)
+        if actor is None:
+            raise Refusal("the player and every hired member have already levelled up")
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
         if args.ability is None or args.boost is None:
             draft.pending = level_up_decision(actor)

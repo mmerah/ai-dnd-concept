@@ -248,6 +248,7 @@
           "type": "array"
         },
         "difficulty": {
+          "maximum": 20,
           "minimum": 1,
           "type": [
             "integer",
@@ -315,14 +316,6 @@
           ],
           "default": null,
           "description": "Health or Inventory: which one to raise by 1. Null asks the player."
-        },
-        "actor_id": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
-          "description": "Leave empty."
         }
       },
       "type": "object"

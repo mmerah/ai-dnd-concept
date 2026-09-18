@@ -14,8 +14,8 @@ thing that slows the actor, for example an injury or a fear.
 Call `roll` when the result of an action is important. Set `skill` when a skill applies.
 
 Set `helped` when the conditions help, or when a party member who is not hired helps. The engine
-adds one d6. Set `helped_by` when a hired member helps. That member rolls their own die for the
-same skill. Set `hindered` when something slows the actor. The die then becomes a d4.
+adds one d6. Set `helped_by` when a hired member helps. That member adds one d6 too. Set
+`hindered` when something slows the actor. The die then becomes a d4.
 
 ## Reading a roll
 

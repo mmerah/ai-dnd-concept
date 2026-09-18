@@ -195,6 +195,8 @@ class SceneWorld[C: Person](World[C]):
         entity = self.require(entity_id)
         if entity.id in self.scene.here:
             raise Refusal(f"{entity.name} is already here")
+        if not entity.alive:
+            raise Refusal(f"{entity.name} is dead")
         self.scene.here.append(entity.id)
         trace = f"{entity.mention} arrives"
         return [
@@ -206,6 +208,8 @@ class SceneWorld[C: Person](World[C]):
         if entity_id == self.player.id:
             raise Refusal("the player is in every scene; move the story on instead")
         entity = self.require_here(entity_id)
+        if not entity.alive:
+            raise Refusal(f"{entity.name} is dead")
         if entity.id in self.party:
             raise Refusal(f"{entity.name} travels with the player and leaves through `leave_party`")
         self.scene.here.remove(entity.id)

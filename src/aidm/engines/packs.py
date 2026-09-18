@@ -286,7 +286,10 @@ class PackAuthor[K: Pack]:
             except Refusal as refused:
                 raise Refusal(f"{field_id}: {refused}") from refused
         # Through JSON, not `parse`: strict mode reads a tuple field from a JSON array alone.
-        return parse_json(self.pack_model, json.dumps(dumped))
+        edited = parse_json(self.pack_model, json.dumps(dumped))
+        body = {field_id: dumped[field_id] for field_id in self.body_model.model_fields}
+        _ = parse_json(self.body_model, json.dumps(body))
+        return edited
 
 
 def render_worldsmith(
@@ -323,6 +326,14 @@ def with_ids(rows: Iterable[Named], taken: list[Slug]) -> tuple[DecisionOption, 
         made.append(DecisionOption(id=slug(entry.name, taken), name=entry.name, brief=entry.brief))
         taken.append(made[-1].id)
     return tuple(made)
+
+
+def unique_options[T: DecisionOption](rows: Iterable[T]) -> tuple[T, ...]:
+    """Packs play together, so a written row repeating an SRD id is dropped, not offered twice."""
+    offered: dict[Slug, T] = {}
+    for row in rows:
+        offered.setdefault(row.id, row)
+    return tuple(offered.values())
 
 
 def bullets(title: str, lines: Iterable[str]) -> Sections:

@@ -35,6 +35,7 @@ from aidm.engines.hiring import (
     hire_target,
     signed_on,
 )
+from aidm.engines.packs import unique_options
 from aidm.engines.scenes.engine import MOVE_ON, SceneEngine
 from aidm.engines.tools import Kill
 from aidm.engines.twentyfourxx.pack import (
@@ -268,7 +269,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
             *section_if("WHAT THIS SCENE IS ABOUT", scene.focus),
-            ("YOU PLAY FOR", world.player.line()),
+            ("YOU PLAY FOR", world.player.line(rows=world.player.rows())),
             ("GEAR", _item_lines(world.player.require_sheet().items)),
             *section_if("THE JOB", world.job),
             ("THE SHIP", _item_lines(world.ship)),
@@ -320,14 +321,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         )
 
     def _match_skill(self, known: Mapping[str, SkillDie], wanted: str) -> str | None:
-        folded = wanted.casefold()
-        for key in known:
-            if key.casefold() == folded:
-                return key
-        for option in self.packs.srd().skills:
-            if option.name.casefold() == folded:
-                return option.name
-        return None
+        folded = _folded(wanted)
+        names = (*known, *(option.name for option in self.packs.srd().skills))
+        return next((name for name in names if _folded(name) == folded), None)
 
     @tool
     def change_hindrances(
@@ -336,15 +332,21 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         """The actor gains hindrances, loses hindrances, or does both."""
         world = draft.world
         world.check_unnamed(*args.gained)
-        return world.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
+        actor = world.require_actor(args.actor_id)
+        return actor.change_hindrances(args.gained, args.lost, leads=actor is world.player)
 
     @tool
     def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
         """The actor gains an item and pays for it."""
         world = draft.world
         world.check_unnamed(args.name)
-        return world.require_actor(args.actor_id).gain_item(
-            args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
+        actor = world.require_actor(args.actor_id)
+        return actor.gain_item(
+            args.name,
+            bulky=args.bulky,
+            breaks=args.breaks,
+            cost=args.cost,
+            leads=actor is world.player,
         )
 
     @tool
@@ -358,14 +360,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         """The actor repairs a broken item."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
-        return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
+        return actor.repair_item(
+            world.require_gear(actor, args.item_id), args.cost, leads=actor is world.player
+        )
 
     @tool
     def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
         """The actor pays credits for a thing that is not an item and not a repair."""
         world = draft.world
         world.check_unnamed(args.why)
-        return world.require_actor(args.actor_id).spend(args.amount, args.why)
+        actor = world.require_actor(args.actor_id)
+        return actor.spend(args.amount, args.why, leads=actor is world.player)
 
     @tool
     def take_lead(self, draft: TwentyfourxxGame, args: TakeLead, _rng: Random) -> list[Fact]:
@@ -394,8 +399,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     def _offered(self, pack_id: Slug) -> tuple[tuple[Specialty, ...], tuple[Origin, ...]]:
         played = self.packs.played(pack_id)
         return (
-            tuple(option for pack in played for option in pack.specialties),
-            tuple(option for pack in played for option in pack.origins),
+            unique_options(option for pack in played for option in pack.specialties),
+            unique_options(option for pack in played for option in pack.origins),
         )
 
     def _succession(self, draft: TwentyfourxxGame) -> None:
@@ -458,7 +463,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         )
         result = _banded(rolled.kept, "disaster", "setback", "success")
 
-        line = f"{args.what} — {actor.card_line(sentence(pool.label))} d{pool.die}"
+        led = actor.card_line(sentence(pool.label), leads=actor is world.player)
+        line = f"{args.what} — {led} d{pool.die}"
         if args.helped:
             line += f", helped ({args.helped})"
         line += pool.helped_by
@@ -511,12 +517,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         helped_by = ""
         if helping is not None:
             who, terms = helping
-            if terms.hindered:
-                helper_die = HINDERED_DIE
-                hindered_note = f", hindered ({terms.hindered})"
-            else:
-                helper_die = who.require_sheet().die(label)
-                hindered_note = ""
+            helper_die = HINDERED_DIE if terms.hindered else HELP_DIE
+            hindered_note = f", hindered ({terms.hindered})" if terms.hindered else ""
             faces.append(helper_die)
             helped_by = f", helped by {who.name} (d{helper_die}{hindered_note})"
 
@@ -581,11 +583,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
             actor = world.require_actor(raise_.actor_id)
             sheet = actor.require_sheet()
             skill = self._match_skill(sheet.skills, raise_.skill) or raise_.skill
-            facts.extend(actor.raise_skill(skill))
+            leads = actor is world.player
+            facts.extend(actor.raise_skill(skill, leads=leads))
 
             rolled = roll((6,), f"credits earned by {actor.name}", rng)
             facts.append(rolled.fact)
-            facts.extend(actor.earn(rolled.face, rolled.event))
+            facts.extend(actor.earn(rolled.face, rolled.event, leads=leads))
         world.close_job()
         return facts
 
@@ -609,6 +612,10 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
 
 def _staked(risk: str, *, deadly: bool) -> str:
     return f"{risk} (deadly)" if deadly else risk
+
+
+def _folded(name: str) -> str:
+    return " ".join(name.split()).casefold()
 
 
 def _banded(face: int, low: str, mid: str, high: str) -> str:

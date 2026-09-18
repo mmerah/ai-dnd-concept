@@ -102,15 +102,16 @@ class Dungeon[N: Dweller](Mutable):
         for holder in (place_id, *(npc.id for npc in npcs)):
             yield from self.carried(holder)
 
-    def reachable(self, start: Slug) -> set[Slug]:
+    def reachable(self, start: Slug, *, past_locks: bool = False) -> set[Slug]:
         reached = {start}
         pending = [start]
         while pending:
             current = pending.pop()
             for way in self.ways.get(current, ()):
-                if way.to not in reached:
-                    reached.add(way.to)
-                    pending.append(way.to)
+                if way.to in reached or (way.locked and not past_locks):
+                    continue
+                reached.add(way.to)
+                pending.append(way.to)
         return reached
 
     def add_way(self, from_id: Slug, to_id: Slug, *, known: bool) -> None:
@@ -384,10 +385,11 @@ class RoomWorld[N: Dweller](Dungeon[N], World[N]):
         dropped = list(self.carried(actor.id))
         for item in dropped:
             item.on = self.current.id
+        leads = actor is self.player
         if dropped:
             fell = ", ".join(item.mention for item in dropped) + " fell loose here"
-            facts.append(Fact(trace=fell))
-        card = "You are dead" if actor.id == self.player.id else f"{actor.name} is dead"
+            facts.append(actor.fact(fell, card=actor.card_line("Pack dropped", leads=leads)))
+        card = "You are dead" if leads else f"{actor.name} is dead"
         facts.append(actor.fact(f"{actor.mention} is dead", card=card))
         return facts
 
