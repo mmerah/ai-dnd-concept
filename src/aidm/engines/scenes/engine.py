@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 from random import Random
-from typing import Any
+from typing import Any, ClassVar
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
@@ -45,7 +45,7 @@ from aidm.engines.scenes.worldsmith import (
     TURNING,
     check_scene,
 )
-from aidm.engines.seam import Engine, Request, Written
+from aidm.engines.seam import WRITES_NO, Engine, Written
 
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
@@ -66,6 +66,10 @@ COMPLICATION_UNWRITTEN = Fact(
 
 class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
     family_dir = Path(__file__).parent
+    unwritten: ClassVar[dict[Slug, Fact]] = {
+        DEPARTURE: WAY_UNWRITTEN,
+        COMPLICATION: COMPLICATION_UNWRITTEN,
+    }
     opening_sections = (
         ("SCENES SO FAR", "(no scenes yet — write the opening)"),
         ("THE WHOLE CAST", "(no cast yet — write the people and things this scene needs)"),
@@ -223,12 +227,14 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
-    def worldsmith_requests(self) -> dict[Slug, Request[Game[W]]]:
-        return {
-            **super().worldsmith_requests(),
-            DEPARTURE: Request(WAY_UNWRITTEN, self.depart),
-            COMPLICATION: Request(COMPLICATION_UNWRITTEN, self.complicate),
-        }
+    async def advance(
+        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
+        if request.operation == DEPARTURE:
+            return await self.depart(draft, request, worldsmith)
+        if request.operation == COMPLICATION:
+            return await self.complicate(draft, request, worldsmith)
+        raise ValueError(WRITES_NO.format(engine=self.id, operation=request.operation))
 
     async def depart(
         self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer

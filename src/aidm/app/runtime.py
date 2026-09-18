@@ -231,7 +231,7 @@ class GameService:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.generation = None
-            unwritten = self.engine.requests[request.operation].unwritten
+            unwritten = self.engine.unwritten[request.operation]
             landed = self.engine.close(draft, (), (unwritten,), words=words, mark=mark)
             grown = False
         finally:

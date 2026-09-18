@@ -13,6 +13,9 @@ from aidm.core.views import Chattiness, Panel, PanelRow, Rows, Subject
 PLAYER_ID: Slug = "player"
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
+NO_DICE = "{name} carries no dice"
+NOT_AN_ACTOR = "{name} is not the player or a hired party member"
+ALREADY_SHEETED = "{name} already carries a sheet"
 
 
 class Gauge(Mutable):
@@ -126,51 +129,6 @@ class Person(Thing):
             raise Refusal(f"{self.name} carries no {kind} {missing[0]!r}")
         return [tag for tag in (*current, *gained) if tag not in lost]
 
-    @property
-    def hired(self) -> bool:
-        return False
-
-    @property
-    def hireable(self) -> bool:
-        """Whether a sheet could still be written for them."""
-        return False
-
-
-class Sheet(Mutable):
-    def rows(self) -> Rows:
-        return ()
-
-
-class Sheeted[S: Sheet](Person):
-    sheet: S | None = Field(default=None, description="Leave empty.")
-
-    def require_sheet(self) -> S:
-        if self.sheet is None:
-            raise Refusal(f"{self.name} carries no dice")
-        return self.sheet
-
-    def rows(self) -> Rows:
-        return self.sheet.rows() if self.sheet is not None else ()
-
-    def carried(self) -> str:
-        return ""
-
-    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
-        if self.id != PLAYER_ID and (carried := self.carried()):
-            detail = "; ".join(part for part in (detail, carried) if part)
-        return super().line(rows=rows, detail=detail)
-
-    def required(self) -> str:
-        return joined(super().required(), "no sheet" if self.sheet is not None else "")
-
-    @property
-    def hired(self) -> bool:
-        return self.sheet is not None
-
-    @property
-    def hireable(self) -> bool:
-        return self.sheet is None
-
 
 class World[P: Person, M: Person](Mutable):
     tempo: ClassVar[int]  # counted turns between two firings of the meanwhile clock
@@ -179,12 +137,6 @@ class World[P: Person, M: Person](Mutable):
     party: list[Slug] = Field(default_factory=list)
     turns_played: int = Field(default=0, ge=0)  # counted turns since the last fire
     meanwhile_due: bool = False  # the clock has fired and nothing has spent it yet
-
-    @model_validator(mode="after")
-    def _player_carries_a_sheet(self) -> Self:
-        if self.player.hireable:
-            raise ValueError("the player carries no sheet")
-        return self
 
     @model_validator(mode="after")
     def _party_travels(self) -> Self:
@@ -238,20 +190,6 @@ class World[P: Person, M: Person](Mutable):
 
     def join_party(self, entity_id: Slug) -> list[Fact]:
         return self.join(self.require_member_here(entity_id))
-
-    def require_actor(self, actor_id: Slug | None) -> M | P:
-        if actor_id is None or actor_id == self.player.id:
-            return self.player
-        member = self.require_member_here(actor_id)
-        if member.hired and member.id in self.party:
-            return member
-        raise Refusal(f"{member.name} is not the player or a hired party member")
-
-    def require_hireable(self, entity_id: Slug) -> M:
-        member = self.require_member_here(entity_id)
-        if member.hired:
-            raise Refusal(f"{member.name} already carries a sheet")
-        return member
 
     def join(self, member: Person) -> list[Fact]:
         if member.id in self.party:

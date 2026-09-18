@@ -6,7 +6,7 @@ from support.table import TUNNELGOONS, open_table, play_turn, tool_call
 
 from aidm.core.play import Answer
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
+from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame, level_up_decision
 
 GRIX = "grix"
 
@@ -141,7 +141,7 @@ async def test_the_clock_does_not_count_a_turn_the_master_never_played(tmp_path:
     world.npcs[GRIX].sheet = GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1})
     world.party.append(GRIX)
     suspended = table.state.draft()
-    suspended.pending = suspended.world.player.level_decision()
+    suspended.pending = level_up_decision(suspended.world.player)
     table.service.save(suspended.commit())
 
     state = await play_turn(table, Answer(option_id="brute-health"))

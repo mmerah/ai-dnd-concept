@@ -486,13 +486,6 @@ def test_require_here_alive_refuses_dead_cast_member(case: SceneCase) -> None:
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_require_actor_none_is_the_player(case: SceneCase) -> None:
-    world = case.game().world
-    assert world.require_actor(None) is world.player
-    assert world.require_actor(PLAYER_ID) is world.player
-
-
-@pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_require_returns_the_player_for_player_id(case: SceneCase) -> None:
     world = case.game().world
     assert world.require(PLAYER_ID) is world.player
@@ -504,17 +497,22 @@ def test_here_yields_the_player_first(case: SceneCase) -> None:
     assert next(world.here()) is world.player
 
 
+def test_require_actor_none_is_the_player() -> None:
+    world = twentyfourxx_world().world
+    assert world.require_actor(None) is world.player
+    assert world.require_actor(PLAYER_ID) is world.player
+
+
 def test_require_actor_accepts_a_living_sheeted_party_member() -> None:
     world = twentyfourxx_hired(twentyfourxx_world(), KESTREL, skills={"Shooting": 8}).world
     assert world.require_actor(KESTREL) is world.cast[KESTREL]
 
 
-@pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_require_actor_refuses_an_unsheeted_member(case: SceneCase) -> None:
-    world = case.game().world
-    world.party = [case.met]
+def test_require_actor_refuses_an_unsheeted_member() -> None:
+    world = twentyfourxx_world().world
+    world.party = [KESTREL]
     with pytest.raises(Refusal, match="not the player or a hired party member"):
-        world.require_actor(case.met)
+        world.require_actor(KESTREL)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

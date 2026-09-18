@@ -46,3 +46,54 @@ Known and accepted:
   The shipped scenarios all play `srd`, which is why the goldens did not move.
 - `qa/agents.py` has one `basedpyright` error when `qa` is checked explicitly; `pyproject.toml`
   includes `src` and `tests` only, and the error predates this phase.
+
+## Phase 2: the hire flow, and one class per thing
+
+Counts, `find <dir> -name '*.py' | xargs cat | wc -l`:
+
+| dir   | before | after | change |
+| ----- | -----: | ----: | -----: |
+| src   |  10376 | 10462 |    +86 |
+| tests |  11913 | 11964 |    +51 |
+| qa    |   2020 |  2020 |      0 |
+
+Both parts landed as planned. The two `master_tools.json` goldens moved by `hire` alone (after
+`meanwhile` / after `next_scene`). Reviewed by two independent Opus reviewers (no `codex` on the
+machine); every finding was fixed but one, below. `src` is above the +40 estimate because the
+strings the reviews sent to one home became constants and reflowed six import blocks; `tests`
+grew where the plan expected a cut because the drift test over `unwritten` and the two `Npc`
+tests outweigh the two `Sheeted` tests deleted.
+
+Decisions taken off-plan:
+
+- `Engine.unwritten` is a `ClassVar`: it is not generic on `W`, and ruff's `RUF012` refuses a
+  mutable class default without one. `SceneEngine`'s `advance` is an `if` chain, not a `match`:
+  `DEPARTURE` and `COMPLICATION` are module constants, and a `match` over them needs a guard per
+  arm.
+- Hire strings keep one home, `engines/tools.py`: `HIRE_PENDING`, `NO_HIRE_TARGET`, `SIGNS_ON`
+  beside `HIRE_TOOL`, and `NO_DICE`, `NOT_AN_ACTOR`, `ALREADY_SHEETED` in `engines/base.py`
+  beside `UNKNOWN_ID`. The two `hire`/`write_hire` copies and the two worlds' `require_actor`/
+  `require_hireable` format them. `WRITES_NO` in `seam.py` is the one text `validate`'s refusal
+  and the two `advance` fall-throughs share.
+- Tunnel Goons: `sheet_of(actor: Goon | Npc)` and `level_up_decision(actor: Goon | Npc)` are free
+  functions in `tunnelgoons/world.py`, not world methods: neither reads the world. The level-up
+  body is `GoonSheet.level_up(ability, boost, hp) -> str`, the sheet owning the fields it bumps;
+  `Goon.level` and `Npc.level` are two lines each over it. `Goon.level_decision` and
+  `Npc.level_decision` went: the engine calls the free function.
+- A third golden moved: `tests/core/fixtures/schemas/tunnelgoons/worldsmith_answer.json`, for
+  the `Npc` docstring the plan prescribes and `hp` now declared before `sheet`, the order `Goon`
+  has and the plan's step 4 lists. Intended drift, checked by eye.
+- `tests/twentyfourxx/test_world.py::test_carried_spells_item_notes` became a test of
+  `Crewmate.line()`, its one reader once `carried()` was inlined.
+
+Review findings refuted:
+
+- "Declare `sheet` before `hp` on `Npc` so the worldsmith golden does not move": the golden moves
+  for the docstring regardless, and `hp` before `sheet` is `Goon`'s order and the plan's.
+
+Known and accepted:
+
+- The phase's "Done when" grep for `hireable` matches `require_hireable`, which the phase itself
+  puts on the two hiring worlds; the grep is read minus that name.
+- `Goon` has no `required()` beyond `Person`'s: `required_unmet` reads cast pools, never the
+  player.

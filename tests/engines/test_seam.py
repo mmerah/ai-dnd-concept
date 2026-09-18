@@ -1,15 +1,29 @@
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from pydantic import BaseModel
 from support.fifth import FifthEngine, FifthGame, FifthState, engine_at, installed
 from support.sixth import SixthEngine
 from support.sixth import scenario as sixth_scenario
-from support.table import ENGINE_IDS, game
+from support.table import ENGINE_IDS, TUNNELGOONS, TWENTYFOURXX, game
+from support.tunnelgoons import MIRA
+from support.tunnelgoons import small_world as tunnelgoons_small_world
+from support.twentyfourxx import KESTREL
+from support.twentyfourxx import small_world as twentyfourxx_small_world
 
-from aidm.core.entities import EngineId, Refusal
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import ENCODING
+from aidm.core.model import AnyGame, Check, Generation
 from aidm.core.play import DecisionOption
+from aidm.engines.tools import HIRE
+
+# A hire needs a member `game()`'s own scenario never names, so a fixture world stands in.
+HIRE_GAMES: dict[EngineId, tuple[Callable[[], AnyGame], Slug]] = {
+    TUNNELGOONS: (tunnelgoons_small_world, MIRA),
+    TWENTYFOURXX: (twentyfourxx_small_world, KESTREL),
+}
 
 
 def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
@@ -123,3 +137,28 @@ def test_begin_refuses_a_scenario_naming_an_uninstalled_pack(room_engine: SixthE
 
     with pytest.raises(Refusal, match="is not installed"):
         room_engine.begin("the-keep", stranded, character)
+
+
+async def _stubbed[M: BaseModel](_prompt: str, _model: type[M], _check: Check[M]) -> M:
+    raise Refusal("stubbed")
+
+
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+async def test_advance_matches_every_operation_the_engine_declares_unwritten(
+    engine_id: EngineId,
+) -> None:
+    """`unwritten` and `advance`'s `match` stay in step: a drift here surfaces a `ValueError`."""
+    engine, state = game(engine_id)
+
+    for operation in engine.unwritten:
+        if operation == HIRE:
+            small_world, target = HIRE_GAMES[engine_id]
+            draft = small_world().draft()
+        else:
+            draft, target = state.draft(), None
+        request = Generation(
+            operation=operation, detail="a request the stub never reads", target=target
+        )
+
+        with pytest.raises(Refusal, match="stubbed"):
+            await engine.advance(draft, request, _stubbed)

@@ -1,14 +1,22 @@
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows, filled
-from aidm.engines.base import Sheet, Sheeted, Thing
+from aidm.engines.base import (
+    ALREADY_SHEETED,
+    NO_DICE,
+    NOT_AN_ACTOR,
+    PLAYER_ID,
+    Person,
+    Thing,
+    joined,
+)
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
@@ -67,7 +75,7 @@ class Gear(Mutable):
         return ", ".join(parts)
 
 
-class CrewSheet(Sheet):
+class CrewSheet(Mutable):
     """The dice a crew member rolls."""
 
     items: dict[Slug, Gear] = Field(default_factory=dict)
@@ -112,7 +120,34 @@ class CrewSheet(Sheet):
         return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
 
 
-class Crewmate(Sheeted[CrewSheet]):
+class Crewmate(Person):
+    sheet: CrewSheet | None = Field(default=None, description="Leave empty.")
+
+    @property
+    def hired(self) -> bool:
+        return self.sheet is not None
+
+    def require_sheet(self) -> CrewSheet:
+        if self.sheet is None:
+            raise Refusal(NO_DICE.format(name=self.name))
+        return self.sheet
+
+    def rows(self) -> Rows:
+        return self.sheet.rows() if self.sheet is not None else ()
+
+    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
+        """A member's line carries the gear text; the player's GEAR section stands alone."""
+        if (
+            self.id != PLAYER_ID
+            and self.sheet is not None
+            and (gear := self.sheet.gear_text(ids=True))
+        ):
+            detail = "; ".join(part for part in (detail, gear) if part)
+        return super().line(rows=rows, detail=detail)
+
+    def required(self) -> str:
+        return joined(super().required(), "no sheet" if self.sheet is not None else "")
+
     def sign_on(
         self,
         specialty: str,
@@ -203,9 +238,6 @@ class Crewmate(Sheeted[CrewSheet]):
             )
         ]
 
-    def carried(self) -> str:
-        return "" if self.sheet is None else self.sheet.gear_text(ids=True)
-
 
 class TwentyfourxxWorld(SceneWorld[Crewmate]):
     job: str = ""
@@ -215,6 +247,27 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             for key, name in zip(SHIP_IDS, SHIP_FUNCTIONS, strict=True)
         }
     )
+
+    @model_validator(mode="after")
+    def _player_carries_a_sheet(self) -> Self:
+        if self.player.sheet is None:
+            raise ValueError("the player carries no sheet")
+        return self
+
+    def require_actor(self, actor_id: Slug | None) -> Crewmate:
+        """The player, or a hired member here in the party."""
+        if actor_id is None or actor_id == self.player.id:
+            return self.player
+        member = self.require_member_here(actor_id)
+        if member.hired and member.id in self.party:
+            return member
+        raise Refusal(NOT_AN_ACTOR.format(name=member.name))
+
+    def require_hireable(self, entity_id: Slug) -> Crewmate:
+        member = self.require_member_here(entity_id)
+        if member.hired:
+            raise Refusal(ALREADY_SHEETED.format(name=member.name))
+        return member
 
     def sheet_rows(self) -> Rows:
         """The narrator and the page read the kit here; the master has its GEAR section."""

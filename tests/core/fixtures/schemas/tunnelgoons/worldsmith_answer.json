@@ -69,7 +69,7 @@
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
           "additionalProperties": false,
-          "description": "A non-player character, friend or foe.",
+          "description": "A non-player character, friend or foe; carries dice only once hired.",
           "properties": {
             "id": {
               "type": "string"
@@ -100,6 +100,22 @@
             },
             "place": {
               "type": "string"
+            },
+            "hp": {
+              "additionalProperties": false,
+              "properties": {
+                "current": {
+                  "type": "integer"
+                },
+                "maximum": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "current",
+                "maximum"
+              ],
+              "type": "object"
             },
             "sheet": {
               "additionalProperties": false,
@@ -138,22 +154,6 @@
                 "null"
               ],
               "default": null
-            },
-            "hp": {
-              "additionalProperties": false,
-              "properties": {
-                "current": {
-                  "type": "integer"
-                },
-                "maximum": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "current",
-                "maximum"
-              ],
-              "type": "object"
             }
           },
           "required": [
