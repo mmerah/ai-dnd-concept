@@ -12,7 +12,7 @@ from aidm.core.entities import Refusal
 from aidm.core.play import Answer, Interjection, Narration
 from aidm.core.tools import Tools, schema_text
 from aidm.core.views import Companion, NarratorView, Rows, Subject
-from aidm.engines.loner3e.world import Loner3eCast
+from aidm.engines.loner3e.world import Loner3eEntity
 from aidm.turn.run import Turn
 
 
@@ -64,7 +64,7 @@ def test_render_interjection_asks_for_the_interjection_shape_not_the_narrations(
 
 def test_companions_returns_the_partys_members_with_their_rows() -> None:
     engine, state = initialized()
-    member = Loner3eCast(
+    member = Loner3eEntity(
         id="vessa-rune",
         name="Vessa Rune",
         brief="A sharp-eyed pilot.",

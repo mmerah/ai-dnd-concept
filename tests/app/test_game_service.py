@@ -26,13 +26,13 @@ from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, Busy, GameService, LaunchTarge
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
-from aidm.core.model import AnyGame, Generation, ScenarioMeta, WorldsmithAnswer
+from aidm.core.model import AnyGame, Commission, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.engine import Written
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.seam import Written
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
@@ -59,17 +59,17 @@ class _LandFailsAfterAdvance(Loner3eEngine):
         self._advanced = False
 
     async def advance(
-        self, draft: Loner3eGame, request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Loner3eGame, request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         written = await super().advance(draft, request, worldsmith)
         self._advanced = True
         return written
 
-    def land(self, draft: Loner3eGame) -> Loner3eGame:
+    def accept(self, draft: Loner3eGame) -> Loner3eGame:
         if self._advanced:
             self._advanced = False
             raise Refusal("the world could not be written down")
-        return super().land(draft)
+        return super().accept(draft)
 
 
 async def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
@@ -229,7 +229,7 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     assert state.world.scene.place == place
     assert all(entity_id in state.world.cast for entity_id in here_before)
     assert [role for role, _ in table.spawner.prompts] == ["master", "worldsmith", "narrator"]
-    assert state.generation is None
+    assert state.commission is None
 
 
 async def test_a_write_requested_after_something_told_ends_the_narration_there(
@@ -287,7 +287,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
     assert exchange.facts[0].card == (
         "Nothing new came down on this place after all. You are still where you were."
     )
-    assert state.generation is None
+    assert state.commission is None
     assert state.world.scene.title == title
 
 
@@ -302,7 +302,7 @@ async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> Non
 
     exchange = state.exchanges()[-1]
     assert exchange.facts[0].card == "The hire could not be written; nobody signed on."
-    assert state.generation is None
+    assert state.commission is None
 
 
 async def test_a_failed_write_during_grow_propagates_without_discarding_the_scene(
@@ -344,7 +344,7 @@ async def test_a_write_that_lands_invalid_falls_back_to_the_unwritten_fact(tmp_p
     assert exchange.facts[0].card == (
         "Nothing new came down on this place after all. You are still where you were."
     )
-    assert state.generation is None
+    assert state.commission is None
 
 
 async def test_a_complication_after_an_offer_clears_it_only_once_installed(
@@ -377,22 +377,22 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
     assert table.service.engine.over(state) is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
     assert len(state.world.scenes) == 1
-    assert state.generation is None
-    assert table.saved().generation is None
+    assert state.commission is None
+    assert table.saved().commission is None
 
 
 def test_a_save_never_carries_a_request(tmp_path: Path) -> None:
     game = session(tmp_path)
     draft = game.state.draft()
-    draft.generation = Generation(operation="complication", detail="A crew breaks in.")
+    draft.commission = Commission(operation="complication", detail="A crew breaks in.")
     FileStore(tmp_path).write(TARGET.slug, draft)
 
-    assert "generation" not in json.loads(FileStore(tmp_path).read(TARGET.slug) or "")
+    assert "commission" not in json.loads(FileStore(tmp_path).read(TARGET.slug) or "")
 
 
-def _party_of_one(service: GameService) -> Loner3eCast:
+def _party_of_one(service: GameService) -> Loner3eEntity:
     """One chatty companion, met and travelling: she passes the d10 on three faces in ten."""
-    member = Loner3eCast(
+    member = Loner3eEntity(
         id="vessa-rune",
         name="Vessa Rune",
         brief="A sharp-eyed pilot.",

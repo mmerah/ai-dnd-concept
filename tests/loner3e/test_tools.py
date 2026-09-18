@@ -6,11 +6,11 @@ from support.table import change, refused
 from aidm.core.facts import cards
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import Roll
-from aidm.engines.loner3e.world import Loner3eCast, outcome_for
+from aidm.engines.loner3e.world import Loner3eEntity, outcome_for
 
 FOE = "mara"
-HIDDEN = Loner3eCast(id="watcher", name="The Watcher", brief="unseen so far", known=False)
-REVEALED = Loner3eCast(id="warden", name="The Warden", brief="already met", known=True)
+HIDDEN = Loner3eEntity(id="watcher", name="The Watcher", brief="unseen so far", known=False)
+REVEALED = Loner3eEntity(id="warden", name="The Warden", brief="already met", known=True)
 
 
 def _seal(**args: object) -> Roll:

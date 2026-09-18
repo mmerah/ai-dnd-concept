@@ -16,15 +16,15 @@ from aidm.core.io import decode, read_cached_text, read_model
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
+    Commission,
     EngineHeader,
     Game,
-    Generation,
     ScenarioMeta,
     WorldsmithAnswer,
 )
 from aidm.core.play import Chapter, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.prompt import Sections, sections
-from aidm.core.tools import MasterTool, master_tool, schema_text
+from aidm.core.tools import MasterTool, schema_text, tool, tools_of
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import PLAYER_ID, Person, World
 from aidm.engines.packs import (
@@ -37,16 +37,7 @@ from aidm.engines.packs import (
     PackSet,
     read_packs,
 )
-from aidm.engines.tools import (
-    JOIN_PARTY,
-    KILL,
-    LEAVE_PARTY,
-    REVEAL,
-    JoinParty,
-    Kill,
-    LeaveParty,
-    Reveal,
-)
+from aidm.engines.tools import JoinParty, Kill, LeaveParty, Reveal
 
 SOURCELESS = "(none — write from what is below)"
 SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
@@ -82,7 +73,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
     packs: PackSet[K]
     instructions: str
     look: Look
-    tools: dict[str, MasterTool[Game[W]]]
+    tools: dict[str, MasterTool]
 
     def __init__(self, written: Path) -> None:
         self.packs = read_packs(self.id, self.directory / "packs", written, self.pack)
@@ -92,32 +83,28 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
             f"{read_cached_text(self.family_dir / 'rules.md')}"
         )
         self.look = read_model(self.directory / "look.json", Look)
-        tools = self.master_tools()
-        names = [tool.name for tool in tools]
-        if len(set(names)) != len(names):
-            raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
         if self.world.tempo < 2:
             raise ValueError(f"the {self.id!r} engine ticks every {self.world.tempo} turns")
-        self.tools = {tool.name: tool for tool in tools}
+        self.tools = tools_of(self)
 
-    def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
-        """Each layer adds its own after `super()`'s: the seam, then the family, then the engine."""
-        return (
-            master_tool(
-                "reveal", REVEAL, Reveal, lambda d, a, _: d.world.reveal_hidden(a.target_id)
-            ),
-            master_tool("kill", KILL, Kill, self.kill),
-            master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
-            master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
-        )
+    @tool
+    def reveal(self, draft: Game[W], args: Reveal, _rng: Random) -> list[Fact]:
+        """A hidden entity here becomes known to the player."""
+        return draft.world.reveal_hidden(args.target_id)
 
+    @tool
     def kill(self, draft: Game[W], args: Kill, _rng: Random) -> list[Fact]:
+        """Someone here dies."""
         return draft.world.kill(args.target_id)
 
+    @tool
     def join_party(self, draft: Game[W], args: JoinParty, _rng: Random) -> list[Fact]:
+        """A character here starts travelling with the player."""
         return draft.world.join_party(args.target_id)
 
+    @tool
     def leave_party(self, draft: Game[W], args: LeaveParty, _rng: Random) -> list[Fact]:
+        """A party member stops travelling with the player."""
         return draft.world.leave_party(args.target_id)
 
     def install_pack(self, pack_id: Slug, pack: K) -> None:
@@ -208,34 +195,38 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         if (header := parse(EngineHeader, decode(raw))).engine != self.id:
             raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
         state = parse_json(Game[self.world], raw)
-        if state.generation is not None:
-            raise Refusal("the save carries a pending generation request")
+        if state.commission is not None:
+            raise Refusal("the save carries a pending commission")
         self.validate(state)
         self.packs.require(state.pack_id)
         return state
 
-    def tool(self, name: str) -> MasterTool[Game[W]]:
+    def require_tool(self, name: str) -> MasterTool:
         found = self.tools.get(name)
         if found is None:
             raise Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")
         return found
 
     def answer(self, draft: Game[W], chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        return self.tool(chosen.name).call(draft, chosen.args, rng)
+        return self.require_tool(chosen.name).call(draft, chosen.args, rng)
 
     def render_request(
         self, draft: Game[W], *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
-        family = self.family_sections(draft)
         return self.render_worldsmith(
-            draft.source, draft.scenario.scope, family, intent, guidance, answer
+            draft.source,
+            draft.scenario.scope,
+            self.worldsmith_sections(draft),
+            intent,
+            guidance,
+            answer,
         )
 
     def render_worldsmith(
         self,
         source: str,
         scope: str,
-        family: Sections,
+        world_sections: Sections,
         intent: str,
         guidance: str,
         answer: type[BaseModel],
@@ -245,7 +236,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
                 ("YOUR ROLE", read_cached_text(self.family_dir / "worldsmith.md")),
                 ("SOURCE MATERIAL", source or SOURCELESS),
                 ("THE SCOPE OF PLAY", scope or SCOPELESS),
-                *family,
+                *world_sections,
                 ("WHAT COMES NEXT", intent),
                 ("ENGINE GUIDANCE", guidance),
                 ("ANSWER WITH", schema_text(answer)),
@@ -291,7 +282,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
             proposal=proposal,
         )
         draft.log[-1].exchanges.append(exchange)
-        return self.land(draft)
+        return self.accept(draft)
 
     def open_chapter(self, draft: Game[W]) -> None:
         """The title and focus the narrator sees are the ones the history keeps."""
@@ -300,7 +291,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         view = self.narrator_view(draft)
         draft.log.append(Chapter(title=view.title, focus=view.focus))
 
-    def land(self, draft: Game[W]) -> Game[W]:
+    def accept(self, draft: Game[W]) -> Game[W]:
         self.validate(draft)
         return draft.commit()
 
@@ -335,7 +326,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
             },
         )
         self.open_chapter(state)
-        return self.land(state)
+        return self.accept(state)
 
     def player_as[S: Person](self, character: AnyCharacter, sheet: type[S]) -> S:
         """The one check every engine's `player_of` makes: the player's sheet, of this kind."""
@@ -356,7 +347,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
         if not state.log:
             raise Refusal(f"a {self.id!r} game has no chapter open")
-        request = state.generation
+        request = state.commission
         if request is not None and request.operation not in self.unwritten:
             raise Refusal(WRITES_NO.format(engine=self.id, operation=request.operation))
 
@@ -373,7 +364,7 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
     @abstractmethod
     def master_sections(self, state: Game[W]) -> Sections: ...
     @abstractmethod
-    def family_sections(self, draft: Game[W], /) -> Sections: ...
+    def worldsmith_sections(self, draft: Game[W], /) -> Sections: ...
     @abstractmethod
     def narrator_view(self, state: Game[W]) -> NarratorView: ...
     @abstractmethod
@@ -393,5 +384,5 @@ class Engine[W: World[Any, Any], K: Pack](ABC):
 
     @abstractmethod
     async def advance(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written: ...

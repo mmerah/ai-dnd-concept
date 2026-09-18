@@ -38,7 +38,7 @@ class Outcome(Frozen):
         return TOLD[self.id]
 
 
-class Loner3eCast(Person):
+class Loner3eEntity(Person):
     """A character: a person, an object, a vehicle or a curse alike."""
 
     concept: str = ""
@@ -128,7 +128,7 @@ class Loner3eCast(Person):
         return facts
 
 
-class Loner3eWorld(SceneWorld[Loner3eCast]):
+class Loner3eWorld(SceneWorld[Loner3eEntity]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=TIES_PER_TWIST))
 
@@ -139,7 +139,7 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
             return True
         return False
 
-    def conflict_prompt(self, actor: Loner3eCast, opponent: Loner3eCast) -> str:
+    def conflict_prompt(self, actor: Loner3eEntity, opponent: Loner3eEntity) -> str:
         foe = actor if opponent.id == self.player.id else opponent
         return (
             f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
@@ -147,7 +147,7 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
         )
 
     def strike(
-        self, actor: Loner3eCast, opponent: Loner3eCast, outcome: Outcome
+        self, actor: Loner3eEntity, opponent: Loner3eEntity, outcome: Outcome
     ) -> tuple[list[Fact], str]:
         harm = outcome.harm
         hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
@@ -161,7 +161,7 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
         facts.extend(striker.refill("the conflict is over"))
         return facts, hit.name
 
-    def check_conflict(self, actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
+    def check_conflict(self, actor: Loner3eEntity, opponent: Loner3eEntity | None) -> None:
         if opponent is None:
             return
         if opponent.id == actor.id:
@@ -177,9 +177,9 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
 
 Loner3eGame = Game[Loner3eWorld]
 
-Loner3eScenario = Scenario[SceneProposal[Loner3eCast]]
+Loner3eScenario = Scenario[SceneProposal[Loner3eEntity]]
 
-Loner3eCharacter = Character[Loner3eCast]
+Loner3eCharacter = Character[Loner3eEntity]
 
 
 def outcome_for(chance: int, risk: int) -> Outcome:

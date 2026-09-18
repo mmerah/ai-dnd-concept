@@ -3,8 +3,8 @@ from support.table import TWENTYFOURXX, game, narrowed
 from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
 from aidm.core.views import PanelRow
+from aidm.engines.engine import AnyEngine
 from aidm.engines.packs import SRD_PACK
-from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import Gear, TwentyfourxxGame
 
 COMM = "comm"

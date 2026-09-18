@@ -10,10 +10,10 @@ from aidm.core.entities import Frozen, Refusal
 from aidm.core.facts import Fact
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
-from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.tools import NoArgs, tool, tools_of
+from aidm.engines.engine import AnyEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.engines.seam import AnyEngine
 from aidm.turn.run import PAUSED_TO_ASK, RULES_WAIT, Turn
 
 
@@ -25,28 +25,31 @@ def _turned(item: str) -> tuple[Fact, ...]:
     return (Fact(trace=f"{item} broke to turn the hit", told=True),)
 
 
-TURN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
-    "turn_the_hit",
-    "Break something to turn the hit.",
-    Broken,
-    lambda _draft, args, _rng: _turned(args.item),
-)
+class Deciding:
+    """The three tools a suspending decision runs, marked on one class instead of an engine."""
+
+    def __init__(self, *, told: bool) -> None:
+        self.told = told
+
+    @tool
+    def strike(self, draft: AnyGame, _args: NoArgs, _rng: Random) -> tuple[Fact, ...]:
+        """Take a hit the player may turn by breaking something of theirs."""
+        _loner(draft).pending = DECISION
+        return (Fact(trace="the blow reaches the player", told=self.told),)
+
+    @tool
+    def turn_the_hit(self, _draft: AnyGame, args: Broken, _rng: Random) -> tuple[Fact, ...]:
+        """Break something to turn the hit."""
+        return _turned(args.item)
+
+    @tool
+    def chain_the_hit(self, draft: AnyGame, args: Broken, _rng: Random) -> tuple[Fact, ...]:
+        """Break something and leave the rules waiting on the same decision again."""
+        _loner(draft).pending = DECISION
+        return _turned(args.item)
 
 
-def _chained(draft: AnyGame, item: str) -> tuple[Fact, ...]:
-    _loner(draft).pending = DECISION
-    return _turned(item)
-
-
-CHAIN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
-    "chain_the_hit",
-    "Break something and leave the rules waiting on the same decision again.",
-    Broken,
-    lambda draft, args, _rng: _chained(draft, args.item),
-)
-
-
-def _decision(resolver: MasterTool[Loner3eGame]) -> PendingDecision:
+def _decision(resolver_name: str) -> PendingDecision:
     return PendingDecision(
         kind="defence",
         prompt="The blow lands unless something of yours breaks. What gives?",
@@ -55,7 +58,7 @@ def _decision(resolver: MasterTool[Loner3eGame]) -> PendingDecision:
                 id="lantern",
                 label="Break the lantern",
                 detail="Its glass shatters.",
-                name=resolver.name,
+                name=resolver_name,
                 args={"item": "lantern"},
             ),
         ),
@@ -63,28 +66,13 @@ def _decision(resolver: MasterTool[Loner3eGame]) -> PendingDecision:
     )
 
 
-DECISION = _decision(TURN_THE_HIT)
-CHAINING = _decision(CHAIN_THE_HIT)
-
-
-def _hit(draft: AnyGame, *, told: bool) -> tuple[Fact, ...]:
-    _loner(draft).pending = DECISION
-    return (Fact(trace="the blow reaches the player", told=told),)
-
-
-def _strike_tool(*, told: bool) -> MasterTool[Loner3eGame]:
-    return master_tool(
-        "strike",
-        "Take a hit the player may turn by breaking something of theirs.",
-        NoArgs,
-        lambda draft, _args, _rng: _hit(draft, told=told),
-    )
+DECISION = _decision("turn_the_hit")
+CHAINING = _decision("chain_the_hit")
 
 
 def _engine(*, told: bool = True) -> AnyEngine:
     engine = Loner3eEngine(NO_PACKS)
-    tools = (_strike_tool(told=told), TURN_THE_HIT, CHAIN_THE_HIT)
-    engine.tools = {tool.name: tool for tool in tools}
+    engine.tools = tools_of(Deciding(told=told))
     return engine
 
 
@@ -190,7 +178,7 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
 
 def _option(**changes: object) -> PendingOption:
     return PendingOption.model_validate(
-        {"id": "lantern", "label": "Break the lantern", "name": TURN_THE_HIT.name} | changes
+        {"id": "lantern", "label": "Break the lantern", "name": "turn_the_hit"} | changes
     )
 
 

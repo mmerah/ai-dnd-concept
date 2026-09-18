@@ -13,16 +13,11 @@ from aidm.core.facts import Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.tools import tool
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
-    CHANGE_TAGS,
     DEFEAT_NOTE,
-    DRIVE,
-    RESTORE_LUCK,
-    ROLL,
-    SPEND_LUCK,
     TWIST_NOTE,
     ChangeTags,
     Drive,
@@ -32,8 +27,8 @@ from aidm.engines.loner3e.tools import (
 )
 from aidm.engines.loner3e.world import (
     DIE_FACE,
-    Loner3eCast,
     Loner3eCharacter,
+    Loner3eEntity,
     Loner3eGame,
     Loner3eScenario,
     Loner3eWorld,
@@ -51,7 +46,7 @@ from aidm.engines.loner3e.worldsmith import (
 from aidm.engines.scenes.engine import SceneEngine
 
 
-class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
+class Loner3eEngine(SceneEngine[Loner3eEntity, Loner3eWorld, Loner3ePack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     authoring = AUTHORING
@@ -63,7 +58,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
     head = Loner3eHead
     body = Loner3eBody
     world = Loner3eWorld
-    member = Loner3eCast
+    member = Loner3eEntity
 
     def __init__(self, written: Path) -> None:
         super().__init__(written)
@@ -71,16 +66,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         if srd.twist_subjects is None or srd.twist_actions is None:
             raise ValueError("the SRD table set has no twist columns")
         self.twists: Rows = tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
-
-    def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
-        return (
-            *super().master_tools(),
-            master_tool("change_tags", CHANGE_TAGS, ChangeTags, self.change_tags),
-            master_tool("drive", DRIVE, Drive, self.drive),
-            master_tool("restore_luck", RESTORE_LUCK, RestoreLuck, self.restore_luck),
-            master_tool("roll", ROLL, Roll, self.roll),
-            master_tool("spend_luck", SPEND_LUCK, SpendLuck, self.spend_luck),
-        )
 
     def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
         played = self.packs.played(pack_id)
@@ -121,7 +106,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         def taken(step_id: Slug) -> str:
             return chosen_option(by_id[step_id].options, picked(picks, step_id)).label
 
-        sheet = Loner3eCast(
+        sheet = Loner3eEntity(
             id=PLAYER_ID,
             name=name,
             brief=brief,
@@ -137,8 +122,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         )
         return self.sheet_character(name, sheet)
 
-    def player_of(self, character: AnyCharacter) -> Loner3eCast:
-        return self.player_as(character, Loner3eCast)
+    def player_of(self, character: AnyCharacter) -> Loner3eEntity:
+        return self.player_as(character, Loner3eEntity)
 
     def master_sections(self, state: Loner3eGame) -> Sections:
         packs = self.packs.played(state.pack_id)
@@ -161,32 +146,33 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
             *glossary,
         )
 
+    @tool
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
+        """A character here gains tags, loses tags, or both."""
         world = draft.world
         world.check_unnamed(*args.gained)
         actor = world.require_living_here(args.actor_id)
         return actor.change_tags(args.kind, args.gained, args.lost)
 
+    @tool
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
+        """A living character's goal, motive or nemesis changes."""
         world = draft.world
         world.check_unnamed(args.goal, args.motive, args.nemesis)
         actor = world.require_living_here(args.actor_id)
         return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
 
+    @tool
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
+        """A character's luck refills and any defeat is behind them."""
         actor = draft.world.require_living_here(args.actor_id)
         # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
         return actor.recover("the conflict is behind them")
 
-    def spend_luck(self, draft: Loner3eGame, args: SpendLuck, _rng: Random) -> list[Fact]:
-        if not self.packs.require(draft.pack_id).spends_luck:
-            raise Refusal("this pack does not spend luck")
-        world = draft.world
-        world.check_unnamed(args.why)
-        actor = world.require_living_here(args.actor_id)
-        return actor.spend_luck(args.amount, args.why)
-
+    @tool
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
+        """Call this for one closed dramatic question. The engine rolls Chance against Risk, reads
+        the answer, and moves luck in a conflict."""
         world = draft.world
         world.check_unnamed(args.what, args.edge)
         actor = world.require_living_here(args.actor_id)
@@ -230,7 +216,18 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
             *twist_facts,
         ]
 
-    def _twist(self, draft: Loner3eGame, actor: Loner3eCast, rng: Random) -> list[Fact]:
+    @tool
+    def spend_luck(self, draft: Loner3eGame, args: SpendLuck, _rng: Random) -> list[Fact]:
+        """A character here spends luck on a cost the selected pack's SPECIAL RULES name, such as a
+        spell."""
+        if not self.packs.require(draft.pack_id).spends_luck:
+            raise Refusal("this pack does not spend luck")
+        world = draft.world
+        world.check_unnamed(args.why)
+        actor = world.require_living_here(args.actor_id)
+        return actor.spend_luck(args.amount, args.why)
+
+    def _twist(self, draft: Loner3eGame, actor: Loner3eEntity, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
         rolled = roll((DIE_FACE, DIE_FACE), "twist — subject, action", rng, label="Twist")
         subject_face, action_face = rolled.event.rolled
@@ -245,7 +242,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
         return [rolled.fact, due]
 
 
-def _oracle_line(args: Roll, opponent: Loner3eCast | None, outcome: Outcome) -> str:
+def _oracle_line(args: Roll, opponent: Loner3eEntity | None, outcome: Outcome) -> str:
     footing = args.position + (f" ({args.edge})" if args.edge else "")
     against = f" against {opponent.name}" if opponent is not None else ""
     return f"{args.what}{against} — oracle, {footing}: {outcome.wording}"

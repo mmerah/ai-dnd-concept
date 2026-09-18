@@ -12,16 +12,16 @@ from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.play import Interjection, Line, SpokenLine
 from aidm.core.views import NarratorView, Subject
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.world import Loner3eCast
+from aidm.engines.loner3e.world import Loner3eEntity
 
-SECRET = Loner3eCast(
+SECRET = Loner3eEntity(
     id="hidden-actor",
     name="The Secret",
     brief="Unrevealed canon.",
     concept="A Watcher",
 )
 
-OBJECT = Loner3eCast(
+OBJECT = Loner3eEntity(
     id="a-locked-chest",
     name="A Locked Chest",
     brief="Iron-bound, and shut fast.",

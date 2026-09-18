@@ -15,7 +15,7 @@ from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
 from aidm.core.prompt import Sections, lines_of, recent_history, section_if, sections
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Subject
-from aidm.engines.seam import AnyEngine
+from aidm.engines.engine import AnyEngine
 from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ OPENING_NARRATION = (
 async def master(spawner: Spawner, turn: Turn) -> None:
     """A crashed game master still played the turn, if it applied anything legal first."""
     try:
-        await spawner.run("master", turn.picture(), None, turn)
+        await spawner.run("master", turn.master_prompt(), None, turn)
     except Refusal as failed:
         if not turn.landed:
             raise
@@ -59,7 +59,7 @@ async def narrate(
     evidence = traced(facts, told_only=True)
     if (pending := draft.pending) is not None:
         evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
-    if draft.generation is not None:
+    if draft.commission is not None:
         evidence += f"\n- {REQUESTED}"
     narration = await ask(
         spawner,

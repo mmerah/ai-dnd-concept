@@ -4,7 +4,7 @@ from support.table import ENGINES_BUILT, LONER3E, game, narrowed
 from aidm.app.spawn import PROMPT_MAX_BYTES
 from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 
 PACKS_DIR = ENGINES_BUILT[LONER3E].directory / "packs"
 SOURCE_BYTES = 48_000
@@ -27,7 +27,7 @@ def test_a_heavy_game_still_fits_the_command_line() -> None:
     state = draft.commit()
 
     for index in range(CAST_SIZE):
-        member = Loner3eCast(id=f"cast-{index}", name=f"Member {index}", brief="", known=True)
+        member = Loner3eEntity(id=f"cast-{index}", name=f"Member {index}", brief="", known=True)
         state = with_entity(state, member)
 
     engine.validate(state)

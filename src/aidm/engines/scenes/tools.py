@@ -5,13 +5,6 @@ from pydantic import Field, model_validator
 from aidm.core.entities import Frozen, Slug
 from aidm.core.facts import Fact
 
-NEXT_SCENE = (
-    "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead "
-    "once the player has left this place. Set `complication` instead to bring a new situation "
-    "down on this place."
-)
-ENTER = "A cast member comes into the scene."
-LEAVE = "A cast member goes out of the scene."
 MOVING_ON = (
     "The player takes the way on this scene offered. PLAYER ACTION is where they mean to go. "
     "Play their leaving if nothing stops them. Then call `next_scene` with `pursuit` in their "

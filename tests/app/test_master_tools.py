@@ -23,7 +23,7 @@ from aidm.core.model import AnyScenario, Check, ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.world import Loner3eCast
+from aidm.engines.loner3e.world import Loner3eEntity
 from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN
 from aidm.engines.scenes.world import SceneProposal
 from aidm.engines.tools import ACTOR
@@ -238,7 +238,7 @@ async def test_a_turn_that_suspends_tells_the_narrator_where_play_pauses(tmp_pat
 
 async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    thin = SceneProposal[Loner3eCast].model_validate_json(_bare_scene(present=["nobody-here"]))
+    thin = SceneProposal[Loner3eEntity].model_validate_json(_bare_scene(present=["nobody-here"]))
 
     async def answer[M: BaseModel](_prompt: str, model: type[M], check: Check[M]) -> M:
         answer = model.model_validate_json(thin.model_dump_json())
@@ -267,7 +267,7 @@ async def test_a_leaving_the_narrator_never_told_still_lets_the_crossing_write(
 
     state = await play_turn(table, PURSUIT, LEFT, narration="")
 
-    assert state.generation is None
+    assert state.commission is None
     assert any(role == "worldsmith" for role, _ in table.spawner.prompts)
     assert [exchange.lines for exchange in state.exchanges()] == [(), ()]
 
@@ -368,7 +368,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     assert unwritten.facts[0] == WAY_UNWRITTEN
     assert state.world.scene.title == "The Abbot's Study"
     assert state.world.scene.offered
-    assert state.generation is None
+    assert state.commission is None
 
 
 async def test_the_scene_bar_refuses_a_scene_naming_nobody(
@@ -425,7 +425,7 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
     assert f"The arc as last written:\n{ARC}\nRevise" in prompt
-    schema = SceneProposal[Loner3eCast].model_json_schema()
+    schema = SceneProposal[Loner3eEntity].model_json_schema()
     assert json.dumps(schema["properties"]["place"]["title"]) not in prompt
 
 

@@ -162,3 +162,45 @@ Known and accepted:
 - `RoomEngine` is a base with one subclass, against "no abstraction until two things need it":
   the room loop keeps its own file and class so the two families read alike, by the
   maintainer's call.
+
+## Phase 4: tools and words
+
+Counts, `find <dir> -name '*.py' | xargs cat | wc -l`:
+
+| dir   | before | after | change |
+| ----- | -----: | ----: | -----: |
+| src   |  10477 | 10432 |    −45 |
+| tests |  11816 | 11882 |    +66 |
+| qa    |   2020 |  2020 |      0 |
+
+Both parts landed as planned; no golden moved. Reviewed by two independent Opus reviewers (no
+`codex` on the machine); every finding was fixed, none refuted. `src` is short of the −60
+estimate because a docstring wraps where a constant packed its lines; `tests` grew past the +40
+estimate by the five `tools_of` tests.
+
+Decisions taken off-plan:
+
+- A tool's description is its docstring collapsed to one line (`" ".join(cleandoc(doc).split())`),
+  not `cleandoc` alone: the master reads a description, not the source's 100-column wrapping, so
+  the three `master_tools.json` goldens are byte-identical to before.
+- Every declaration check runs where the method is marked, at class definition: `@tool` refuses a
+  missing docstring, a third parameter that is no model, and an undescribed field, and records
+  the args model in a private `_MARKED` dict. `tools_of` only binds and orders. The plan had
+  `tools_of` re-derive the model on every engine construction.
+- `_marked` reads a class namespace through `isinstance(value, FunctionType)`, the one thing
+  `@tool` can mark, so an unhashable class attribute (`unwritten`, a dict) is skipped by type,
+  not by a `callable` proxy.
+- `turn/run.py`'s `MASTER_PROMPT` path constant is `MASTER_ROLE`: the method beside it is now
+  `master_prompt()`, the whole rendered prompt, and one module does not hold two things under one
+  name.
+- The word "seam" is retired with the file: `tests/engines/test_seam.py` is `test_engine.py`, and
+  the README says `Engine` is the abstract class every engine subclasses.
+- Part A ran on opus: typing `tools_of` under strict basedpyright with no `cast`, no
+  `# type: ignore` and no `Any` annotation was a shape to decide, not one the plan named.
+
+Known and accepted:
+
+- The phase's "Done when" grep for `master_tool` matches the golden's filename
+  (`master_tools.json`) and the name of the MCP test; both are names the phase keeps.
+- The `hire` docstring exists twice, on `TunnelGoonsEngine.hire` and `TwentyfourxxEngine.hire`,
+  as the plan accepts.
