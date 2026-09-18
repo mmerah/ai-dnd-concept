@@ -21,7 +21,7 @@ child, and copy-paste between the two hiring engines.
 
 ### 1. Fold the `rooms/` family into `tunnelgoons/`
 
-**Status:** open. **Raised by:** A, C, D, lead (4 of 6).
+**Status:** refused by the maintainer (the rooms family stays). Option (b), dropping the one-instantiation generics and `Dweller` while keeping the package, is still open. **Raised by:** A, C, D, lead (4 of 6).
 
 **Plain English.** There are two "families" between the abstract `Engine` and the three real
 engines. `scenes/` has two children (Loner, 24XX) and earns its place. `rooms/` has exactly one
