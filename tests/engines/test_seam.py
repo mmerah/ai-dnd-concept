@@ -4,10 +4,18 @@ from pathlib import Path
 
 import pytest
 from pydantic import BaseModel
-from support.fifth import FifthEngine, FifthGame, FifthState, engine_at, installed
-from support.sixth import SixthEngine
-from support.sixth import scenario as sixth_scenario
-from support.table import ENGINE_IDS, TUNNELGOONS, TWENTYFOURXX, game
+from support.engine_dir import install_engine_dir
+from support.table import (
+    ENGINE_IDS,
+    ENGINES_BUILT,
+    LIBRARY,
+    LONER3E,
+    SCENARIO_MODELS,
+    TUNNELGOONS,
+    TWENTYFOURXX,
+    game,
+    scenario_for,
+)
 from support.tunnelgoons import MIRA
 from support.tunnelgoons import small_world as tunnelgoons_small_world
 from support.twentyfourxx import KESTREL
@@ -15,9 +23,12 @@ from support.twentyfourxx import small_world as twentyfourxx_small_world
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyGame, Check, Generation
-from aidm.core.play import DecisionOption
+from aidm.core.model import AnyGame, Character, Check, Generation
+from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.loner3e.world import Loner3eWorld
 from aidm.engines.tools import HIRE
+from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
+from aidm.engines.tunnelgoons.world import TunnelGoonsWorld
 
 # A hire needs a member `game()`'s own scenario never names, so a fixture world stands in.
 HIRE_GAMES: dict[EngineId, tuple[Callable[[], AnyGame], Slug]] = {
@@ -26,69 +37,79 @@ HIRE_GAMES: dict[EngineId, tuple[Callable[[], AnyGame], Slug]] = {
 }
 
 
+def _engine_at(tmp_path: Path) -> type[TunnelGoonsEngine]:
+    """A shipped engine read out of a directory a test writes, so construction is the subject."""
+
+    class Installed(TunnelGoonsEngine):
+        directory = tmp_path
+
+    return Installed
+
+
 def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
-    class Impatient(FifthState):
+    class Impatient(TunnelGoonsWorld):
         tempo = 1
 
-    class TooFast(type(installed(tmp_path))):
+    class TooFast(_engine_at(tmp_path)):
         world = Impatient
+
+    install_engine_dir(tmp_path)
 
     with pytest.raises(ValueError, match="ticks every"):
         TooFast(tmp_path / "written")
 
 
-def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(
-    scene_engine: FifthEngine, begun_scene: FifthGame
-) -> None:
-    draft = begun_scene.draft()
+def test_the_clock_arms_on_reaching_the_tempo_and_starts_over() -> None:
+    engine, state = game(LONER3E)
+    draft = state.draft()
 
-    for _ in range(FifthState.tempo - 1):
-        scene_engine.tick(draft, counted=True)
+    for _ in range(Loner3eWorld.tempo - 1):
+        engine.tick(draft, counted=True)
     assert (draft.world.turns_played, draft.world.meanwhile_due) == (
-        FifthState.tempo - 1,
+        Loner3eWorld.tempo - 1,
         False,
     )
 
-    scene_engine.tick(draft, counted=True)
+    engine.tick(draft, counted=True)
 
     assert (draft.world.turns_played, draft.world.meanwhile_due) == (0, True)
 
 
 def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
-    engine_type = type(installed(tmp_path))
+    install_engine_dir(tmp_path)
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
     with pytest.raises(ValueError, match="ships no 'srd' pack"):
-        engine_type(tmp_path / "written")
+        _engine_at(tmp_path)(tmp_path / "written")
 
 
 def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
-    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    (tmp_path / "packs").mkdir()
+    install_engine_dir(tmp_path)
     (tmp_path / "packs" / "srd.json").write_text(
         '{"name": "The SRD", "name": "Twice"}', encoding=ENCODING
     )
     with pytest.raises(Refusal, match="duplicate keys"):
-        engine_at(tmp_path)(tmp_path / "written")
+        _engine_at(tmp_path)(tmp_path / "written")
 
 
-def test_a_fifth_scene_engine_begins_a_playable_game(
-    scene_engine: FifthEngine, begun_scene: FifthGame
-) -> None:
-    assert scene_engine.packs.options() == (DecisionOption(id="srd", label="The SRD"),)
-    assert scene_engine.narrator_view(begun_scene).title == "The Taproom"
-    assert scene_engine.master_sections(begun_scene) == (("SCENE", "The Taproom"),)
-    assert [row.label for row in scene_engine.player_view(begun_scene).panels[-2].rows] == [
-        "Keeper"
-    ]
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_player_of_refuses_a_sheet_the_engine_does_not_write(engine_id: EngineId) -> None:
+    engine = ENGINES_BUILT[engine_id]
+    stranger = Character[Person](
+        id="wren",
+        engine=engine.id,
+        sheet=Person(id=PLAYER_ID, name="Wren", brief="", known=True),
+    )
+
+    with pytest.raises(Refusal, match="is not a"):
+        engine.player_of(stranger)
 
 
-def test_a_game_with_no_chapter_open_is_refused(
-    scene_engine: FifthEngine, begun_scene: FifthGame
-) -> None:
-    begun_scene.log.clear()
+def test_a_game_with_no_chapter_open_is_refused() -> None:
+    engine, state = game(LONER3E)
+    state.log.clear()
 
     with pytest.raises(Refusal, match="no chapter open"):
-        scene_engine.validate(begun_scene)
+        engine.validate(state)
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
@@ -131,12 +152,17 @@ def test_restore_accepts_a_save_with_a_null_generation() -> None:
     assert engine.restore(json.dumps(raw)) == state
 
 
-def test_begin_refuses_a_scenario_naming_an_uninstalled_pack(room_engine: SixthEngine) -> None:
-    character = room_engine.create_character("Wren", "A quiet scout", "srd", {})
-    stranded = sixth_scenario().model_copy(update={"pack_id": "gone"})
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_begin_refuses_a_scenario_naming_an_uninstalled_pack(engine_id: EngineId) -> None:
+    engine = ENGINES_BUILT[engine_id]
+    scenario_id = scenario_for(engine_id)
+    stranded = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS).model_copy(
+        update={"pack_id": "gone"}
+    )
+    character = LIBRARY.read_character("kael", engine.id, engine.character)
 
     with pytest.raises(Refusal, match="is not installed"):
-        room_engine.begin("the-keep", stranded, character)
+        engine.begin(scenario_id, stranded, character)
 
 
 async def _stubbed[M: BaseModel](_prompt: str, _model: type[M], _check: Check[M]) -> M:

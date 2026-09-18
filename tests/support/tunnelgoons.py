@@ -17,6 +17,11 @@ ROPE: Slug = "rope"
 TORCH: Slug = "torch"
 KEY: Slug = "key"
 LANTERN: Slug = "lantern"
+GATE: Slug = "gate"
+YARD: Slug = "yard"
+CELLAR: Slug = "cellar"
+WELL: Slug = "well"
+WARDEN: Slug = "warden"
 ENGINE = narrowed(ENGINES_BUILT[TUNNELGOONS], TunnelGoonsEngine)
 
 
@@ -99,6 +104,20 @@ def _kael() -> Goon:
     )
 
 
+def _game(world: TunnelGoonsWorld, *, scenario_id: Slug, chapter: Chapter) -> TunnelGoonsGame:
+    return TunnelGoonsGame(
+        scenario_id=scenario_id,
+        character_id="kael",
+        scenario=ScenarioMeta(
+            title="Test", premise="A test dungeon.", scope="One dungeon, played to its end."
+        ),
+        engine=EngineId("tunnelgoons"),
+        pack_id="srd",
+        log=[chapter],
+        world=world,
+    )
+
+
 def small_world() -> TunnelGoonsGame:
     places, ways, npcs, items = _map_pieces()
     world = TunnelGoonsWorld(
@@ -109,14 +128,40 @@ def small_world() -> TunnelGoonsGame:
         player=_kael(),
         visits=[START],
     )
-    return TunnelGoonsGame(
-        scenario_id="test",
-        character_id="kael",
-        scenario=ScenarioMeta(
-            title="Test", premise="A test dungeon.", scope="One dungeon, played to its end."
-        ),
-        engine=EngineId("tunnelgoons"),
-        pack_id="srd",
-        log=[Chapter(title="Start", focus="Where you begin")],
-        world=world,
+    return _game(world, scenario_id="test", chapter=Chapter(title="Start", focus="Where you begin"))
+
+
+def _keep_place(place_id: Slug, name: str, *, known: bool) -> Place:
+    return Place(id=place_id, name=name, brief=f"The {name.lower()}", known=known, description=name)
+
+
+def keep() -> TunnelGoonsGame:
+    places = {
+        GATE: _keep_place(GATE, "Gate", known=True),
+        YARD: _keep_place(YARD, "Yard", known=False),
+        CELLAR: _keep_place(CELLAR, "Cellar", known=False),
+        WELL: _keep_place(WELL, "Well", known=False),
+    }
+    ways = {
+        GATE: [Way(to=YARD, known=True)],
+        YARD: [Way(to=CELLAR), Way(to=WELL, locked=True)],
+        CELLAR: [Way(to=WELL)],
+    }
+    warden = Npc(
+        id=WARDEN,
+        name="Warden",
+        brief="Keeps the gate",
+        known=True,
+        place=GATE,
+        hp=Gauge(current=8, maximum=8),
     )
+    lantern = Prop(id=LANTERN, name="Lantern", brief="A dim lantern", known=False, on=YARD)
+    world = TunnelGoonsWorld(
+        places=places,
+        ways=ways,
+        npcs={WARDEN: warden},
+        items={LANTERN: lantern},
+        player=_kael(),
+        visits=[GATE],
+    )
+    return _game(world, scenario_id="the-keep", chapter=Chapter(title="Gate", focus="The gate"))

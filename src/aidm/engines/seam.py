@@ -53,7 +53,7 @@ SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adve
 PACK_SO_FAR = "THE PACK SO FAR"
 WRITES_NO = "the {engine!r} engine writes no {operation!r}"
 
-type AnyEngine = Engine[Any, Any, Any, Any]
+type AnyEngine = Engine[Any, Any]
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,10 +62,10 @@ class Written:
     telling: str | None
 
 
-class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
+class Engine[W: World[Any, Any], K: Pack](ABC):
     # The fact filed when a worldsmith request fails, by operation.
     unwritten: ClassVar[dict[Slug, Fact]]
-    # Declared, not `ClassVar`: `type[W]` cannot be one, and a test sets them on its own instance.
+    # Declared, not `ClassVar`: `type[W]` cannot be one.
     id: EngineId
     title: str
     authoring: str
@@ -73,8 +73,6 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
     directory: Path  # rules.md, look.json and a shipped packs/
     family_dir: Path
     world: type[W]
-    game: type[Game[W]]
-    member: type[M]
     pack: type[K]
     head: type[PackHead] = PackHead
     body: type[PackBody] = PackBody
@@ -209,7 +207,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
     def restore(self, raw: str) -> Game[W]:
         if (header := parse(EngineHeader, decode(raw))).engine != self.id:
             raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
-        state = parse_json(self.game, raw)
+        state = parse_json(Game[self.world], raw)
         if state.generation is not None:
             raise Refusal("the save carries a pending generation request")
         self.validate(state)
@@ -325,7 +323,7 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
             )
         self.packs.require(scenario.pack_id)
         state = parse(
-            self.game,
+            Game[self.world],
             {
                 "scenario_id": scenario_id,
                 "character_id": character.id,
@@ -339,9 +337,12 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         self.open_chapter(state)
         return self.land(state)
 
-    def player_of(self, character: AnyCharacter) -> P:
+    def player_as[S: Person](self, character: AnyCharacter, sheet: type[S]) -> S:
+        """The one check every engine's `player_of` makes: the player's sheet, of this kind."""
         if character.sheet.id != PLAYER_ID or not character.sheet.known:
             raise Refusal("a character sheet is the player's: id 'player', known")
+        if not isinstance(character.sheet, sheet):
+            raise Refusal(f"{character.id!r} is not a {self.title} sheet")
         return deepcopy(character.sheet)
 
     def over(self, state: Game[W]) -> str | None:
@@ -359,6 +360,8 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         if request is not None and request.operation not in self.unwritten:
             raise Refusal(WRITES_NO.format(engine=self.id, operation=request.operation))
 
+    @abstractmethod
+    def player_of(self, character: AnyCharacter) -> Person: ...
     @abstractmethod
     def creation_steps(self, pack_id: Slug, picks: Picks, /) -> tuple[CreationStep, ...]: ...
     @abstractmethod

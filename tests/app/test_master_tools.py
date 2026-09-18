@@ -159,7 +159,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
     assert len(state.exchanges()) == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
-    assert state.world.run.offered
+    assert state.world.scene.offered
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -175,8 +175,8 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
         narration="Dust comes away on your sleeve.",
     )
 
-    assert state.world.run.title == "The Abbot's Study"
-    assert state.world.run.offered
+    assert state.world.scene.title == "The Abbot's Study"
+    assert state.world.scene.offered
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -187,7 +187,7 @@ async def test_moving_on_from_an_offer_is_a_turn_the_master_adjudicates(tmp_path
 
     state = await play_turn(table, PURSUIT, action=MOVE_ON.id)
 
-    assert state.world.run.title == "The Abbot's Study"
+    assert state.world.scene.title == "The Abbot's Study"
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -209,8 +209,8 @@ async def test_a_departure_crosses_after_the_leaving_turn_and_keeps_the_notes(
     ]
     assert state.notes == []
     assert state.log[-2].exchanges[-1].words == "I go."
-    assert state.world.run.title == "The Cloister Walk"
-    assert not state.world.run.offered
+    assert state.world.scene.title == "The Cloister Walk"
+    assert not state.world.scene.offered
 
 
 async def test_an_action_over_an_open_decision_is_refused(tmp_path: Path) -> None:
@@ -282,8 +282,8 @@ async def test_the_way_on_is_offered_once_and_a_departure_consumes_it(tmp_path: 
 
     state = await play_turn(table, PURSUIT, LEFT, action=MOVE_ON.id, arrival="Rain.")
 
-    assert state.world.run.title == "The Cloister Walk"
-    assert not state.world.run.offered
+    assert state.world.scene.title == "The Cloister Walk"
+    assert not state.world.scene.offered
 
 
 async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
@@ -295,7 +295,7 @@ async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
 
     state = await play_turn(table, "I go.", LEFT)
 
-    assert state.world.run.title == "The Cloister Walk"
+    assert state.world.scene.title == "The Cloister Walk"
     assert state.exchanges()[-1].narration() == ""
 
 
@@ -314,7 +314,7 @@ async def test_the_players_own_words_are_the_brief_and_the_crossing_is_its_own_e
         arrival="Rain finds you before the arcade does.",
     )
 
-    assert state.world.run.title == "The Cloister Walk"
+    assert state.world.scene.title == "The Cloister Walk"
     assert "tomas" in state.world.hidden()
     # Lands as the new run's own exchange, not tacked onto the scene the player just left.
     assert len(state.log[-1].exchanges) == 1
@@ -366,8 +366,8 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     unwritten = state.exchanges()[-1]
     assert unwritten.mark == "story"
     assert unwritten.facts[0] == WAY_UNWRITTEN
-    assert state.world.run.title == "The Abbot's Study"
-    assert state.world.run.offered
+    assert state.world.scene.title == "The Abbot's Study"
+    assert state.world.scene.offered
     assert state.generation is None
 
 
@@ -382,7 +382,7 @@ async def test_the_scene_bar_refuses_a_scene_naming_nobody(
 
     assert "these name nobody" in caplog.text
     assert state.exchanges()[-1].facts[0] == WAY_UNWRITTEN
-    assert table.service.state.world.run.title == "The Abbot's Study"
+    assert table.service.state.world.scene.title == "The Abbot's Study"
 
 
 async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> None:
@@ -392,7 +392,7 @@ async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> N
     state = await play_turn(table, "I go.", LEFT, arrival="The rain has the arcade.")
 
     assert WAY_UNWRITTEN not in state.exchanges()[-1].facts
-    assert state.world.run.title == "The Cloister Walk"
+    assert state.world.scene.title == "The Cloister Walk"
 
 
 async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
@@ -404,7 +404,7 @@ async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
 
     assert "no answer left" in caplog.text
     assert state.exchanges()[-1].facts[0] == WAY_UNWRITTEN
-    assert table.service.state.world.run.title == "The Abbot's Study"
+    assert table.service.state.world.scene.title == "The Abbot's Study"
 
 
 async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_happened(

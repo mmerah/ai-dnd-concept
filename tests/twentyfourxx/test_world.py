@@ -86,7 +86,7 @@ def test_take_lead_swaps_player_and_cast_entry_and_keeps_ids(draft: Twentyfourxx
     assert KESTREL not in world.party
     assert world.cast[dead_id].id == dead_id
     assert not world.cast[dead_id].alive
-    assert dead_id in world.run.here
+    assert dead_id in world.scene.here
     assert any(fact.card == "Kestrel leads now" for fact in facts)
     TwentyfourxxWorld.model_validate_json(world.model_dump_json())
 

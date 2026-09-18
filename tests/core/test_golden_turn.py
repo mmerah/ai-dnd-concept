@@ -8,7 +8,7 @@ from support.golden_turn import INTERJECTION, NARRATION, SCRIPTS
 from support.table import ENGINE_IDS, ENGINES_BUILT, drain, game, open_table, play_turn
 
 from aidm.core.entities import EngineId, Refusal
-from aidm.core.model import Check, Generation
+from aidm.core.model import Check, Game, Generation
 from aidm.engines.tools import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -20,7 +20,10 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     engine_id: EngineId, tmp_path: Path
 ) -> None:
     table = open_table(
-        tmp_path, engine_id=engine_id, state_type=ENGINES_BUILT[engine_id].game, rng=Random(SEED)
+        tmp_path,
+        engine_id=engine_id,
+        state_type=Game[ENGINES_BUILT[engine_id].world],
+        rng=Random(SEED),
     )
     # Deterministic so the interjection this engine's script triggers fires every run.
     table.service.chatter = Random(SEED)

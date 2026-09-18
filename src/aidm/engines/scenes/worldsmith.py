@@ -1,9 +1,15 @@
 from collections.abc import Mapping
 
 from aidm.core.entities import Refusal, Slug
+from aidm.core.prompt import Sections
 from aidm.engines.base import Person, Thing, leaked_names, named_unmet, required_unmet
 from aidm.engines.scenes.world import SceneProposal, SceneWorld, resolved_id
 
+OPENING_SECTIONS: Sections = (
+    ("SCENES SO FAR", "(no scenes yet — write the opening)"),
+    ("THE WHOLE CAST", "(no cast yet — write the people and things this scene needs)"),
+    ("THE SCENE NOW", "(none yet)"),
+)
 OPENING = (
     "Write the opening scene of this adventure. Name the one place the player starts in and "
     "who is there. A scene ends when the player leaves it, so a `focus` on somewhere farther "

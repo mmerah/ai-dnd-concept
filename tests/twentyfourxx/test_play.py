@@ -39,7 +39,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     assert world.player.require_sheet().hindrances == ["Maimed"]
 
     state = await play_turn(table, "Ask what else this shift wants of Kael.", the_way_on())
-    assert state.world.run.offered
+    assert state.world.scene.offered
 
     before = len(state.exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(NEXT_SCENE)]
@@ -52,7 +52,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
         arrival="The docking ring falls away, and stacked containers rise up around you.",
     )
 
-    assert state.world.run.title == "The Cargo Bay"
+    assert state.world.scene.title == "The Cargo Bay"
     assert state.exchanges()[before].words == pursuit
     assert table.saved() == table.state
 
@@ -106,6 +106,6 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
     assert world.player.sheet.skills == {"Deception": 8}
     assert "player" in world.cast
     assert not world.cast["player"].alive
-    assert "player" in world.run.here
+    assert "player" in world.scene.here
     assert member_id not in world.party
     assert table.saved() == table.state

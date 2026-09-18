@@ -5,7 +5,7 @@ from random import Random
 from support.table import TUNNELGOONS, open_table, play_turn, tool_call
 
 from aidm.core.play import Answer
-from aidm.engines.rooms.engine import MORE_MAP
+from aidm.engines.tunnelgoons.engine import MORE_MAP
 from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame, level_up_decision
 
 GRIX = "grix"

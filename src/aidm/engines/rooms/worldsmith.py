@@ -1,8 +1,14 @@
 from aidm.core.entities import Refusal
+from aidm.core.prompt import Sections
 from aidm.engines.base import PLAYER_ID, leaked_names, required_unmet
 from aidm.engines.rooms.world import Dungeon, Dweller, MapProposal
 
 MAP_ASK = "Write the opening map."
+OPENING_SECTIONS: Sections = (
+    ("MAP SO FAR", "(no map yet)"),
+    ("SCENES SO FAR", "(no scenes yet — write the opening)"),
+    ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
+)
 
 
 def check_map[N: Dweller](draft: MapProposal[N]) -> None:

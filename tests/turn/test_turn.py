@@ -176,7 +176,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.world.run.offered
+    assert state.world.scene.offered
     assert any("already offers" in refusal for refusal in table.refusals)
 
 
@@ -331,7 +331,7 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     )
 
     mara = state.world.require("mara")
-    assert state.world.run.title == "The Cloister Walk"
+    assert state.world.scene.title == "The Cloister Walk"
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.tags) == (before.concept, before.tags)

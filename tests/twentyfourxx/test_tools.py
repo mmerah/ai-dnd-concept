@@ -962,7 +962,7 @@ def test_defend_and_repair_item_on_the_ships_hull_armor(draft: TwentyfourxxGame)
 
 def test_next_scene_offers_the_way_on_and_refuses_a_second_offer(draft: TwentyfourxxGame) -> None:
     _ = ENGINE.next_scene(draft, NextScene(), Random(0))
-    assert draft.world.run.offered
+    assert draft.world.scene.offered
     with pytest.raises(Refusal, match="already offers"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
 
