@@ -85,7 +85,7 @@ annotation simplifies.
 
 ### 3. One hire flow instead of two copies
 
-**Status:** trial of the rework: `engines/hiring.py` (constants, `Hire`, `file_hire`, `signed_on`) plus the two `World` methods; `Written` stays in `engine.py`. First trial: Trial result: src -8 lines only, 759 green, no golden moved. `require_actor`/`require_hireable` on `World` is clean. But `file_hire`/`signed_on` needed `Written`, which had to move from `engine.py` into `engines/tools.py` to avoid a circular import, and the duplicated model-facing `hire` docstring survives. Rework: a new `engines/hiring.py` module holding the hire constants, the `Hire` args model, `file_hire` and `signed_on` (it may import `engine.py`; nothing imports it back), so `Written` stays put. Or drop to only the `World` methods. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** accepted after the rework trial: src -34, tests 0, 759 green, no golden moved. `engines/hiring.py` holds the hire constants, `Hire`, `file_hire`, `signed_on`; `World` holds `require_actor`/`require_hireable`; `Written` stays in `engine.py`; `engines/tools.py` is back to shared tool-arg models only. Superseded text: `engines/hiring.py` (constants, `Hire`, `file_hire`, `signed_on`) plus the two `World` methods; `Written` stays in `engine.py`. First trial: Trial result: src -8 lines only, 759 green, no golden moved. `require_actor`/`require_hireable` on `World` is clean. But `file_hire`/`signed_on` needed `Written`, which had to move from `engine.py` into `engines/tools.py` to avoid a circular import, and the duplicated model-facing `hire` docstring survives. Rework: a new `engines/hiring.py` module holding the hire constants, the `Hire` args model, `file_hire` and `signed_on` (it may import `engine.py`; nothing imports it back), so `Written` stays put. Or drop to only the `World` methods. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** Tunnel Goons and 24XX both let the player hire someone. The `hire` tool
 (docstring included), the `advance` override, the head and tail of `write_hire`, and the world
@@ -207,7 +207,7 @@ golden prompt fixtures under `tests/core/fixtures/prompts/twentyfourxx/` will ca
 
 ### 7. One cast-block shape in `packs.py`
 
-**Status:** trial, option (a). The maintainer's condition: the payoff must be large and the result clean (plain subclassing, SOLID), not a splice hook. **Raised by:** D.
+**Status:** dropped after trial: src +30, 18 `pyright: ignore` lines (pydantic fields are invariant to the type checker, so narrowing `tuple[CastBlock, ...]` in six subclasses fights it), and Loner's shipped JSON calls the block's description `concept` while the other two say `brief`, so the shared base ends up carrying only `name`. Clean OOP but no payoff. The `hostiles` to `monsters` rename alone is folded into proposal 15. The maintainer's condition: the payoff must be large and the result clean (plain subclassing, SOLID), not a splice hook. **Raised by:** D.
 
 **Plain English.** Each engine declares its own "faction / person / monster" block class, its
 own three pack fields, its own three body fields with the same `min_length=1, max_length=6`
@@ -232,7 +232,7 @@ Golden prompt fixtures shift. Shipped JSON keys are unchanged. **Risk.** Low-med
 
 ### 8. Names for a person and a pick: `name`/`brief` and `label`/`detail`
 
-**Status:** trial, option (a). **Raised by:** E, A, lead.
+**Status:** accepted after trial, pending the maintainer's confirmation on one side effect: src +7, tests 0, 56 files (14 shipped pack JSON files migrated by script, line-for-line), 759 green, no golden moved. `PendingOption` already had its own `name` (the tool it plays), so that field became `tool_name`. `Subject` no longer inherits `DecisionOption` (+5 lines). `Thing.tag` and `Subject.headline` share one `tag_of(name, id)` helper. **Raised by:** E, A, lead.
 
 **Plain English.** A thing in the world has `name` and `brief`. A pick in a list has `label`
 and `detail`. They are the same two strings, and the code renames them back and forth:
@@ -258,7 +258,7 @@ the new keys. **Risk.** See options.
 
 ### 9. Pack authoring off `Engine`
 
-**Status:** trial, option (a). **Raised by:** A, E.
+**Status:** accepted after trial: src +5 overall, `engine.py` 388 to 324 lines, 759 green, no golden moved. `PackAuthor[K]` lives beside the pack models; `Engine.__init__` builds it like `packs` and `tools`. One test rebuilt to parse a pack directly instead of calling the removed `pack_of`. **Raised by:** A, E.
 
 **Plain English.** `Engine` is the class you read to learn how a game is played. It has 40
 methods and 17 class attributes. A quarter of it (`pack_of`, `author_pack`, `edited`,
@@ -283,7 +283,7 @@ callable is threaded through.
 
 ### 10. Master prompt beside the other two role prompts; `turn` becomes one module
 
-**Status:** trial, option (a). **Raised by:** A, B, C (3 of 6).
+**Status:** accepted after trial: src +3, tests +4, 759 green, `master.txt` goldens byte-identical. `src/aidm/turn.py` is pure turn mechanics; all three role prompts render in `app/roles.py` from `app/prompts/`. The boundary test's single-file-package path was wrong and got a one-line fix. **Raised by:** A, B, C (3 of 6).
 
 **Plain English.** The narrator's and the party member's prompts are rendered in `app/roles.py`
 from `app/prompts/`. The master's is rendered in `turn/run.py` from `turn/prompts/`. Nothing
