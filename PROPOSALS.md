@@ -85,7 +85,7 @@ annotation simplifies.
 
 ### 3. One hire flow instead of two copies
 
-**Status:** marginal after trial; rework proposed. Trial result: src -8 lines only, 759 green, no golden moved. `require_actor`/`require_hireable` on `World` is clean. But `file_hire`/`signed_on` needed `Written`, which had to move from `engine.py` into `engines/tools.py` to avoid a circular import, and the duplicated model-facing `hire` docstring survives. Rework: a new `engines/hiring.py` module holding the hire constants, the `Hire` args model, `file_hire` and `signed_on` (it may import `engine.py`; nothing imports it back), so `Written` stays put. Or drop to only the `World` methods. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** trial of the rework: `engines/hiring.py` (constants, `Hire`, `file_hire`, `signed_on`) plus the two `World` methods; `Written` stays in `engine.py`. First trial: Trial result: src -8 lines only, 759 green, no golden moved. `require_actor`/`require_hireable` on `World` is clean. But `file_hire`/`signed_on` needed `Written`, which had to move from `engine.py` into `engines/tools.py` to avoid a circular import, and the duplicated model-facing `hire` docstring survives. Rework: a new `engines/hiring.py` module holding the hire constants, the `Hire` args model, `file_hire` and `signed_on` (it may import `engine.py`; nothing imports it back), so `Written` stays put. Or drop to only the `World` methods. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** Tunnel Goons and 24XX both let the player hire someone. The `hire` tool
 (docstring included), the `advance` override, the head and tail of `write_hire`, and the world
@@ -188,7 +188,7 @@ golden moves). **Risk.** Very low.
 
 ### 6. Two hooks so 24XX stops copy-pasting its family
 
-**Status:** open. **Raised by:** A, B, D, E (4 of 6).
+**Status:** refused by the maintainer. Hooks of this kind were removed recently; human-looking code beats a splice point that exists only to drop lines. The 24XX copy stays as it is. **Raised by:** A, B, D, E (4 of 6).
 
 **Plain English.** Both scene engines add rows to the master prompt and panels to the page.
 Loner calls `super()` and appends. 24XX re-types all eight sections and all seven panels of
@@ -207,7 +207,7 @@ golden prompt fixtures under `tests/core/fixtures/prompts/twentyfourxx/` will ca
 
 ### 7. One cast-block shape in `packs.py`
 
-**Status:** open. **Raised by:** D.
+**Status:** trial, option (a). The maintainer's condition: the payoff must be large and the result clean (plain subclassing, SOLID), not a splice hook. **Raised by:** D.
 
 **Plain English.** Each engine declares its own "faction / person / monster" block class, its
 own three pack fields, its own three body fields with the same `min_length=1, max_length=6`
@@ -232,7 +232,7 @@ Golden prompt fixtures shift. Shipped JSON keys are unchanged. **Risk.** Low-med
 
 ### 8. Names for a person and a pick: `name`/`brief` and `label`/`detail`
 
-**Status:** open. **Raised by:** E, A, lead.
+**Status:** trial, option (a). **Raised by:** E, A, lead.
 
 **Plain English.** A thing in the world has `name` and `brief`. A pick in a list has `label`
 and `detail`. They are the same two strings, and the code renames them back and forth:
@@ -258,7 +258,7 @@ the new keys. **Risk.** See options.
 
 ### 9. Pack authoring off `Engine`
 
-**Status:** open. **Raised by:** A, E.
+**Status:** trial, option (a). **Raised by:** A, E.
 
 **Plain English.** `Engine` is the class you read to learn how a game is played. It has 40
 methods and 17 class attributes. A quarter of it (`pack_of`, `author_pack`, `edited`,
@@ -283,7 +283,7 @@ callable is threaded through.
 
 ### 10. Master prompt beside the other two role prompts; `turn` becomes one module
 
-**Status:** open. **Raised by:** A, B, C (3 of 6).
+**Status:** trial, option (a). **Raised by:** A, B, C (3 of 6).
 
 **Plain English.** The narrator's and the party member's prompts are rendered in `app/roles.py`
 from `app/prompts/`. The master's is rendered in `turn/run.py` from `turn/prompts/`. Nothing
