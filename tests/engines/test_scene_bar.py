@@ -1,6 +1,7 @@
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -15,13 +16,14 @@ from support.twentyfourxx import hired as twentyfourxx_hired
 from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
+from aidm.core.facts import Fact
 from aidm.core.model import AnyGame, Check, Generation
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
-from aidm.engines.packs import SRD_PACK
-from aidm.engines.scenes.engine import DEPARTURE
+from aidm.engines.packs import SRD_PACK, Pack
+from aidm.engines.scenes.engine import DEPARTURE, SceneEngine
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
@@ -44,9 +46,17 @@ class SceneCase:
     base: Mapping[str, object]  # the draft fields every scene of this case starts from
     bar: Callable[[Mapping[str, object]], None]
     apply: Callable[[AnyGame, Mapping[str, object]], None]
+    install: Callable[[AnyGame, Mapping[str, object]], list[Fact]]
     player: str
     met: Slug
     unmet: Slug
+
+
+def _draft[C: Person](
+    draft_type: type[SceneProposal[C]], base: Mapping[str, object]
+) -> Callable[[Mapping[str, object]], SceneProposal[C]]:
+    """The case's draft shape over its base fields; every helper below builds one."""
+    return lambda fields: draft_type.model_validate(dict(base) | dict(fields))
 
 
 def _bar[C: Person](
@@ -55,9 +65,10 @@ def _bar[C: Person](
     base: Mapping[str, object],
     game: Callable[[], AnyGame],
 ) -> Callable[[Mapping[str, object]], None]:
+    draft = _draft(draft_type, base)
+
     def bar(fields: Mapping[str, object]) -> None:
-        draft = draft_type.model_validate(dict(base) | dict(fields))
-        check_scene(draft, narrowed(game().world, world))
+        check_scene(draft(fields), narrowed(game().world, world))
 
     return bar
 
@@ -66,16 +77,24 @@ def _apply[C: Person](
     draft_type: type[SceneProposal[C]], base: Mapping[str, object]
 ) -> Callable[[AnyGame, Mapping[str, object]], None]:
     """`case.bar`'s counterpart: hands the same draft shape to a real world's `apply_scene`."""
+    draft = _draft(draft_type, base)
 
     def apply(state: AnyGame, fields: Mapping[str, object]) -> None:
-        state.world.apply_scene(draft_type.model_validate(dict(base) | dict(fields)))
+        state.world.apply_scene(draft(fields))
 
     return apply
 
 
-def _plain_scene(base: Mapping[str, object], fields: Mapping[str, object]) -> SceneProposal[Person]:
-    """A scene draft with no engine-specific cast, for the tests that only need the shape."""
-    return SceneProposal[Person].model_validate(dict(base) | dict(fields))
+def _install[C: Person, W: SceneWorld[Any], K: Pack](
+    engine: SceneEngine[C, W, K], draft_type: type[SceneProposal[C]], base: Mapping[str, object]
+) -> Callable[[AnyGame, Mapping[str, object]], list[Fact]]:
+    """`case.apply`'s counterpart for `install`, which also hands back the facts it wrote."""
+    draft = _draft(draft_type, base)
+
+    def install(state: AnyGame, fields: Mapping[str, object]) -> list[Fact]:
+        return engine.install(state, draft(fields))
+
+    return install
 
 
 CASES = (
@@ -85,6 +104,7 @@ CASES = (
         base=TWENTYFOURXX_BASE,
         bar=_bar(SceneProposal[Crewmate], TwentyfourxxWorld, TWENTYFOURXX_BASE, twentyfourxx_world),
         apply=_apply(SceneProposal[Crewmate], TWENTYFOURXX_BASE),
+        install=_install(TWENTYFOURXX_ENGINE, SceneProposal[Crewmate], TWENTYFOURXX_BASE),
         player="Rook",
         met=KESTREL,
         unmet=SABLE,
@@ -95,6 +115,7 @@ CASES = (
         base=LONER3E_BASE,
         bar=_bar(SceneProposal[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
         apply=_apply(SceneProposal[Loner3eCast], LONER3E_BASE),
+        install=_install(LONER3E_ENGINE, SceneProposal[Loner3eCast], LONER3E_BASE),
         player="Kael",
         met=MARA,
         unmet=MAP,
@@ -256,7 +277,7 @@ def test_a_party_members_stored_brief_naming_an_absent_unmet_neighbour_is_accept
 
 
 def test_the_opening_refuses_a_present_name_that_exists_nowhere() -> None:
-    draft = _plain_scene(TWENTYFOURXX_BASE, {"present": ("nobody",)})
+    draft = SceneProposal[Person].model_validate(dict(TWENTYFOURXX_BASE) | {"present": ("nobody",)})
     with pytest.raises(Refusal, match="these name nobody"):
         check_scene(draft)
 
@@ -425,7 +446,7 @@ def test_install_scene_names_who_travelled_in_the_trace(case: SceneCase) -> None
     state = case.game()
     state.world.party = [case.met]
     met_name = state.world.cast[case.met].name
-    facts = case.engine.install(state, _plain_scene(case.base, {"present": (str(case.unmet),)}))
+    facts = case.install(state, {"present": (str(case.unmet),)})
     assert (
         facts[0].trace
         == f"the scene opens: {case.base['title']}, the player travelling with {met_name}"

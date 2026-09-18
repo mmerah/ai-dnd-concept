@@ -31,8 +31,8 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
+from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.seam import Written
-from aidm.engines.tunnelgoons.engine import MORE_MAP
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 

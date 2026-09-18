@@ -65,9 +65,9 @@ COMPLICATION_UNWRITTEN = Fact(
 )
 
 
-class SceneEngine[W: SceneWorld[Any], K: Pack](Engine[W, K]):
+class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
     family_dir = Path(__file__).parent
-    member: type[Person]
+    member: type[C]
     unwritten: ClassVar[dict[Slug, Fact]] = {
         DEPARTURE: WAY_UNWRITTEN,
         COMPLICATION: COMPLICATION_UNWRITTEN,
@@ -75,7 +75,7 @@ class SceneEngine[W: SceneWorld[Any], K: Pack](Engine[W, K]):
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
         # Copied: a restart reopens the same scenario file.
-        draft: SceneProposal[Person] = scenario.opening.model_copy(deep=True)
+        draft: SceneProposal[C] = scenario.opening.model_copy(deep=True)
         check_scene(draft)
         return self.world.opening(draft, self.player_of(character))
 
@@ -181,14 +181,14 @@ class SceneEngine[W: SceneWorld[Any], K: Pack](Engine[W, K]):
 
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
-    ) -> NextProposal[Person]:
+    ) -> NextProposal[C]:
         world = draft.world
         prompt = self.render_next(draft, intent)
         return await worldsmith(
             prompt, NextProposal[self.member], lambda answer: check_scene(answer, world)
         )
 
-    def install(self, draft: Game[W], scene: SceneProposal[Person]) -> list[Fact]:
+    def install(self, draft: Game[W], scene: SceneProposal[C]) -> list[Fact]:
         world = draft.world
         if isinstance(scene, NextProposal):
             draft.log[-1].recap = scene.recap
@@ -209,7 +209,7 @@ class SceneEngine[W: SceneWorld[Any], K: Pack](Engine[W, K]):
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        def built(draft: SceneProposal[Person]) -> AnyScenario:
+        def built(draft: SceneProposal[C]) -> AnyScenario:
             return self.build_scenario(meta, pack_id, draft, source, draft.situation)
 
         guidance = self.guidance(pack_id, opening=True)
