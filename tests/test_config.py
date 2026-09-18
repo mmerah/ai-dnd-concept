@@ -39,38 +39,41 @@ def test_a_misspelled_role_env_var_is_refused(monkeypatch: pytest.MonkeyPatch) -
         _ = EnvFileFreeSettings()
 
 
-def test_a_malformed_provider_base_url_is_refused() -> None:
-    with pytest.raises(pydantic.ValidationError, match="base_url"):
-        _ = ProviderConfig(base_url="http://[::1/v1", api_key=pydantic.SecretStr(""))
-    with pytest.raises(pydantic.ValidationError, match="base_url"):
-        _ = ProviderConfig(base_url="http://localhost:99999/v1", api_key=pydantic.SecretStr(""))
-    with pytest.raises(pydantic.ValidationError, match="base_url"):
-        _ = ProviderConfig(base_url="not a url", api_key=pydantic.SecretStr(""))
+REFUSAL_PATTERNS = ("base_url", "ascii host name")
 
 
-def test_an_idn_base_url_is_refused() -> None:
-    with pytest.raises(pydantic.ValidationError, match="ascii host name"):
-        _ = ProviderConfig(base_url="http://☃.example/v1", api_key=pydantic.SecretStr(""))
+@pytest.mark.parametrize(
+    ("given", "expected"),
+    (
+        ("http://[::1/v1", "base_url"),
+        ("http://localhost:99999/v1", "base_url"),
+        ("not a url", "base_url"),
+        ("http://☃.example/v1", "ascii host name"),
+        ("https://open\trouter.ai/api/v1", "base_url"),
+        ("https://openrouter.ai/api\r/v1", "base_url"),
+        ("https://open\nrouter.ai/v1", "base_url"),
+        ("https://openrouter.ai/api/v1\x00", "base_url"),
+        ("http://localhost:1234", "http://localhost:1234"),
+        (" https://openrouter.ai/api/v1\n", "https://openrouter.ai/api/v1"),
+    ),
+    ids=(
+        "unclosed-bracket",
+        "port-out-of-range",
+        "not-a-url",
+        "idn-host",
+        "interior-tab",
+        "interior-carriage-return",
+        "interior-newline",
+        "trailing-nul",
+        "kept-as-given",
+        "padded",
+    ),
+)
+def test_a_base_url_is_stored_as_given_or_refused(given: str, expected: str) -> None:
+    """`expected` is the stored url, or the message a refused url must carry."""
+    if expected in REFUSAL_PATTERNS:
+        with pytest.raises(pydantic.ValidationError, match=expected):
+            _ = ProviderConfig(base_url=given, api_key=pydantic.SecretStr(""))
+        return
 
-
-def test_a_valid_base_url_is_kept_exactly_as_given_not_normalized() -> None:
-    provider = ProviderConfig(base_url="http://localhost:1234", api_key=pydantic.SecretStr(""))
-    assert provider.base_url == "http://localhost:1234"
-
-
-def test_a_padded_base_url_is_stored_stripped() -> None:
-    provider = ProviderConfig(
-        base_url=" https://openrouter.ai/api/v1\n", api_key=pydantic.SecretStr("")
-    )
-    assert provider.base_url == "https://openrouter.ai/api/v1"
-
-
-def test_a_base_url_with_an_interior_tab_or_newline_is_refused() -> None:
-    for base_url in (
-        "https://open\trouter.ai/api/v1",
-        "https://openrouter.ai/api\r/v1",
-        "https://open\nrouter.ai/v1",
-        "https://openrouter.ai/api/v1\x00",
-    ):
-        with pytest.raises(pydantic.ValidationError, match="base_url"):
-            _ = ProviderConfig(base_url=base_url, api_key=pydantic.SecretStr(""))
+    assert ProviderConfig(base_url=given, api_key=pydantic.SecretStr("")).base_url == expected

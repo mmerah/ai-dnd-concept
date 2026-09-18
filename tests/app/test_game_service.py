@@ -22,7 +22,7 @@ from support.table import (
 )
 
 from aidm.app.roles import REQUESTED
-from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, GameService, LaunchTarget, Runtime
+from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, Busy, GameService, LaunchTarget, Runtime
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
@@ -136,7 +136,7 @@ def test_resume_refuses_scenario_drift_naming_only_the_fields_that_differ(tmp_pa
 
 
 def test_one_open_game_per_slug(tmp_path: Path) -> None:
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner())
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), spawner=ScriptedSpawner())
     opened = runtime.session(TARGET)
 
     assert runtime.session(TARGET) is opened
@@ -522,7 +522,7 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
             await gate.wait()
 
     spawner.hooks.append(hold_master)
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), spawner=spawner)
     first = runtime.session(TARGET)
     second = runtime.session(
         LaunchTarget(scenario_id=scenario_for(TWENTYFOURXX), character_id="kael")
@@ -540,6 +540,27 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
     await first_play
 
     assert len(first.state.exchanges()) == 1
+
+
+async def test_the_gate_tells_a_held_turn_here_from_one_held_by_another_game(
+    tmp_path: Path,
+) -> None:
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), spawner=ScriptedSpawner())
+    here = runtime.session(TARGET)
+    elsewhere = runtime.session(
+        LaunchTarget(scenario_id=scenario_for(TWENTYFOURXX), character_id="kael")
+    )
+
+    async with runtime.gate.admit(here):
+        with pytest.raises(Busy) as own:
+            async with runtime.gate.admit(here):
+                pass
+        with pytest.raises(Busy) as other:
+            async with runtime.gate.admit(elsewhere):
+                pass
+
+    assert own.value.elsewhere is False
+    assert other.value.elsewhere is True
 
 
 async def test_a_failing_background_task_is_logged_and_close_leaves_no_live_task(

@@ -1,11 +1,11 @@
-from asyncio import Event, create_task, get_running_loop, sleep
-from collections.abc import Awaitable, Callable, Generator, Sequence
-from contextlib import contextmanager
+from asyncio import Event, create_task, sleep
+from collections.abc import Awaitable, Callable, Sequence
+from contextlib import nullcontext
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from nicegui import Client, app, core, ui
+from nicegui import Client, app, ui
 from support.game import open_game
 from support.table import (
     TWENTYFOURXX,
@@ -18,7 +18,7 @@ from support.table import (
 )
 
 from aidm.app.media import scene_key
-from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, LaunchTarget
+from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, Busy, LaunchTarget
 from aidm.config import MediaConfig, Role
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
@@ -36,14 +36,13 @@ from aidm.ui.game import (
     TURN_FAILED,
     GamePage,
     Observed,
-    can_type,
     draft_spent,
     game_page,
     near_end,
     placeholder,
-    standing_proposal,
     whole_page,
 )
+from aidm.ui.transcript import can_type, standing_proposal
 
 WREN = Subject(id="player", label="Wren", detail="A quiet scout")
 
@@ -137,87 +136,66 @@ def test_only_a_moving_fact_count_spares_the_whole_page() -> None:
     assert whole_page(replace(seen, phase=None), seen)
 
 
-@contextmanager
-def _nicegui_loop() -> Generator[None]:
-    """A refreshable's background task asserts NiceGUI's loop is set; only `ui.run()` sets it."""
-    core.loop = get_running_loop()
-    try:
-        yield
-    finally:
-        core.loop = None
-
-
-def _page[G: AnyGame](table: Table[G]) -> GamePage:
+def _screen[G: AnyGame](table: Table[G]) -> GamePage:
     """The few elements `poll_turn` touches, built without a socket connection."""
-    page = GamePage(table.service)
-    page.transcript = ui.scroll_area()
-    page.new_activity = ui.button("New activity")
-    page.dice = DiceSound()
-    page.box = ui.input()
-    page.send = ui.button()
-    page.action_button = ui.button()
-    page.over_label = ui.label()
-    page.restart_item = ui.menu_item("Restart this game")
-    page.view, page.history = table.service.player_view(), table.service.state.exchanges()
-    page.seen = Observed.of(table.service, page.view, page.history)
-    return page
+    screen = GamePage(table.service)
+    screen.scroll = ui.scroll_area()
+    screen.new_activity = ui.button("New activity")
+    screen.dice = DiceSound()
+    screen.box = ui.input()
+    screen.send = ui.button()
+    screen.action_button = ui.button()
+    screen.over_label = ui.label()
+    screen.restart_item = ui.menu_item("Restart this game")
+    screen.view, screen.history = table.service.player_view(), table.service.state.exchanges()
+    screen.seen = Observed.of(table.service, screen.view, screen.history)
+    return screen
 
 
-async def test_poll_turn_follows_only_on_the_readers_own_move(tmp_path: Path) -> None:
+async def test_poll_turn_follows_only_on_the_readers_own_move(
+    tmp_path: Path, page: Callable[[], Client]
+) -> None:
     table = open_game(tmp_path)
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            page.at_end = False
-            page.own_move = True
+    page()
+    screen = _screen(table)
+    screen.at_end = False
+    screen.own_move = True
 
-            table.service.phase = "master"  # another tab's turn starting: not the reader's move
-            page.poll_turn()
-            assert page.new_activity.visible is False
+    table.service.phase = "master"  # another tab's turn starting: not the reader's move
+    screen.poll_turn()
+    assert screen.new_activity.visible is False
 
-        _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+    _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+    screen.poll_turn()
+    assert screen.new_activity.visible is False
 
-        with _nicegui_loop(), client:
-            page.poll_turn()
-            assert page.new_activity.visible is False
-
-            page.own_move = False
-            table.service.phase = "narrator"
-            page.poll_turn()
-            assert page.new_activity.visible is True
-    finally:
-        client.delete()
+    screen.own_move = False
+    table.service.phase = "narrator"
+    screen.poll_turn()
+    assert screen.new_activity.visible is True
 
 
 async def test_a_change_that_lands_nothing_keeps_a_draft_matching_the_last_prompt(
-    tmp_path: Path,
+    tmp_path: Path, page: Callable[[], Client]
 ) -> None:
     table = open_game(tmp_path)
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            page.box.value = "I wait."
+    page()
+    screen = _screen(table)
+    screen.box.value = "I wait."
 
-            table.service.phase = "master"  # a turn starts elsewhere; nothing has landed yet
-            page.poll_turn()
+    table.service.phase = "master"  # a turn starts elsewhere; nothing has landed yet
+    screen.poll_turn()
+    assert screen.box.value == "I wait."
 
-            assert page.box.value == "I wait."
-            table.service.phase = None
-
-        _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
-
-        with _nicegui_loop(), client:
-            page.poll_turn()
-            assert page.box.value == ""
-    finally:
-        client.delete()
+    table.service.phase = None
+    _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+    screen.poll_turn()
+    assert screen.box.value == ""
 
 
 async def test_decision_buttons_grey_out_while_a_turn_is_in_flight(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, page: Callable[[], Client]
 ) -> None:
     table = open_game(tmp_path)
     seen: list[bool] = []
@@ -233,72 +211,51 @@ async def test_decision_buttons_grey_out_while_a_turn_is_in_flight(
         seen.append(enabled)
 
     monkeypatch.setattr("aidm.ui.game.decision_widget", spy_decision_widget)
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            page.view = _view(decision=_pick(allows_text=False))
+    page()
+    screen = _screen(table)
+    screen.view = _view(decision=_pick(allows_text=False))
 
-            table.service.phase = None
-            page.decision_panel()
-            table.service.phase = "master"
-            page.decision_panel()
-    finally:
-        client.delete()
+    table.service.phase = None
+    screen.decision_panel()
+    table.service.phase = "master"
+    screen.decision_panel()
 
     assert seen == [True, False]
 
 
-async def test_this_games_own_in_flight_guard_is_kept_from_the_player(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+REFUSED = "the rules wait on the player's decision first"
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected", "expected_raise"),
+    [
+        (Busy(elsewhere=False), [], None),
+        (Busy(elsewhere=True), [IN_FLIGHT_ELSEWHERE], None),
+        (Refusal(REFUSED), [REFUSED], None),
+        (RuntimeError("secret path"), [TURN_FAILED], RuntimeError),
+    ],
+    ids=("this game is busy", "another game is busy", "a refusal", "a bug"),
+)
+async def test_a_turn_that_fails_toasts_only_what_the_player_is_owed(
+    failure: Exception,
+    expected: list[str],
+    expected_raise: type[Exception] | None,
+    tmp_path: Path,
+    page: Callable[[], Client],
+    notified: list[str],
 ) -> None:
     table = open_game(tmp_path)
-    notified: list[str] = []
 
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
+    async def failing() -> None:
+        raise failure
 
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
+    page()
+    screen = _screen(table)
+    raised = nullcontext() if expected_raise is None else pytest.raises(expected_raise)
+    with raised:
+        assert await screen._run(failing) is False  # pyright: ignore[reportPrivateUsage]
 
-    async def busy_here() -> None:
-        raise Refusal(IN_FLIGHT_HERE)
-
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            landed = await page._run(busy_here)  # pyright: ignore[reportPrivateUsage]
-    finally:
-        client.delete()
-
-    assert landed is False
-    assert notified == []
-
-
-async def test_another_games_in_flight_guard_still_reaches_this_player(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    table = open_game(tmp_path)
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
-    async def busy_elsewhere() -> None:
-        raise Refusal(IN_FLIGHT_ELSEWHERE)
-
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            landed = await page._run(busy_elsewhere)  # pyright: ignore[reportPrivateUsage]
-    finally:
-        client.delete()
-
-    assert landed is False
-    assert notified == [IN_FLIGHT_ELSEWHERE]
+    assert notified == expected
 
 
 class _FakeTimer:
@@ -310,7 +267,7 @@ class _FakeTimer:
 
 
 async def test_opened_retries_silently_while_the_gate_is_held_by_another_game(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    tmp_path: Path, page: Callable[[], Client], notified: list[str]
 ) -> None:
     table = open_game(tmp_path)
     gate = Event()
@@ -328,21 +285,10 @@ async def test_opened_retries_silently_while_the_gate_is_held_by_another_game(
     held = create_task(elsewhere.open())
     await sleep(0)
 
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
     opener = _FakeTimer()
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            await page._opened(opener)  # pyright: ignore[reportPrivateUsage, reportArgumentType]
-    finally:
-        client.delete()
+    page()
+    screen = _screen(table)
+    await screen._opened(opener)  # pyright: ignore[reportPrivateUsage, reportArgumentType]
 
     assert notified == []
     assert not opener.cancelled
@@ -351,28 +297,27 @@ async def test_opened_retries_silently_while_the_gate_is_held_by_another_game(
     await held
 
 
-async def test_restart_item_greys_out_while_a_turn_is_in_flight(tmp_path: Path) -> None:
+async def test_restart_item_greys_out_while_a_turn_is_in_flight(
+    tmp_path: Path, page: Callable[[], Client]
+) -> None:
     table = open_game(tmp_path)
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            assert page.restart_item.enabled is True
+    page()
+    screen = _screen(table)
+    assert screen.restart_item.enabled is True
 
-            table.service.phase = "master"
-            page.poll_turn()
-            assert page.restart_item.enabled is False
+    table.service.phase = "master"
+    screen.poll_turn()
+    assert screen.restart_item.enabled is False
 
-            table.service.phase = None
-            page.poll_turn()
-            assert page.restart_item.enabled is True
-    finally:
-        client.delete()
+    table.service.phase = None
+    screen.poll_turn()
+    assert screen.restart_item.enabled is True
 
 
 async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    tmp_path: Path, page: Callable[[], Client], notified: list[str]
 ) -> None:
+    """Restart runs through `GamePage.restart`, not `_run`: its own gate, its own toast."""
     table = open_game(tmp_path)
     gate = Event()
 
@@ -387,20 +332,8 @@ async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player
     playing = create_task(table.service.play(Answer(text="I wait.")))
     await sleep(0)
 
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            await page.restart()
-    finally:
-        client.delete()
+    page()
+    await _screen(table).restart()
 
     assert notified == [IN_FLIGHT_HERE]
 
@@ -408,60 +341,8 @@ async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player
     await playing
 
 
-async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    table = open_game(tmp_path)
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
-    async def refused() -> None:
-        raise Refusal("the rules wait on the player's decision first")
-
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            landed = await page._run(refused)  # pyright: ignore[reportPrivateUsage]
-    finally:
-        client.delete()
-
-    assert landed is False
-    assert notified == ["the rules wait on the player's decision first"]
-
-
-async def test_a_non_refusal_failure_still_toasts_and_still_propagates(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    table = open_game(tmp_path)
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
-    async def broken() -> None:
-        raise RuntimeError("secret path")
-
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            with pytest.raises(RuntimeError, match="secret path"):
-                await page._run(broken)  # pyright: ignore[reportPrivateUsage]
-    finally:
-        client.delete()
-
-    assert notified == [TURN_FAILED]
-
-
 async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, page: Callable[[], Client]
 ) -> None:
     table = open_game(tmp_path)
     built: list[object] = []
@@ -474,16 +355,17 @@ async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(
             built.append("built")
 
     monkeypatch.setattr("aidm.ui.game.GamePage", _Recorder)
-    client = Client(ui.page("/"))
+    client = page()
     client.delete()
 
-    with _nicegui_loop(), client:
-        game_page(table.service)
+    game_page(table.service)
 
     assert built == []
 
 
-async def test_build_remembers_scene_art_already_on_disk_like_the_clip(tmp_path: Path) -> None:
+async def test_build_remembers_scene_art_already_on_disk_like_the_clip(
+    tmp_path: Path, page: Callable[[], Client]
+) -> None:
     settings = updated(offline_settings(tmp_path), media=MediaConfig(enabled=True).model_dump())
     table = open_game(tmp_path, settings=settings)
     session = table.service
@@ -493,14 +375,12 @@ async def test_build_remembers_scene_art_already_on_disk_like_the_clip(tmp_path:
     key = scene_key(session.engine.narrator_view(session.state))
     (art_dir / f"{key}.png").write_bytes(b"")
 
-    client = Client(ui.page("/"))
+    client = page()
     client.tab_id = "test-tab"
     # composer() reads app.storage.tab, which a real handshake would have created for this tab.
     await app.storage._create_tab_storage(client.tab_id)  # pyright: ignore[reportPrivateUsage]
-    try:
-        with _nicegui_loop(), client:
-            page = GamePage(session)
-            page.build()
-            assert page.shown_art == session.scene_art()
-    finally:
-        client.delete()
+    screen = GamePage(session)
+
+    screen.build()
+
+    assert screen.shown_art == session.scene_art()

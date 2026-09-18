@@ -1,7 +1,8 @@
 import logging
 import random
 import shutil
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
+from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
 from tempfile import mkdtemp
@@ -11,7 +12,7 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.launch import LauncherCatalog, LaunchTarget
 from aidm.app.runtime import Runtime
-from aidm.core.creation import CreationStep, picked
+from aidm.core.creation import CreationStep, drop_stale, picked
 from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioMeta
@@ -43,6 +44,8 @@ class DocumentUpload:
         ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True).props(
             f'accept="{",".join(SOURCE_SUFFIXES)}"'
         )
+        # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
+        ui.context.client.on_delete(self.discard)  # pyright: ignore[reportUnknownMemberType]
 
     async def uploaded(self, event: UploadEventArguments) -> None:
         # The source reader opens a path, and a PDF cannot be parsed from bytes.
@@ -72,27 +75,26 @@ class CharacterForm:
         self.create_button: ui.button | None = None
 
     def build(self) -> None:
-        page_header("New character", look=self.runtime.engines[self.engine_id].look)
-        with page_body():
-            page_intro(
-                "Character",
-                "New character",
-                "Name them, pick their rules, and answer what the rules ask.",
+        with _form_page(
+            self.runtime,
+            self.engine_id,
+            eyebrow="Character",
+            title="New character",
+            lead="Name them, pick their rules, and answer what the rules ask.",
+        ):
+            _engine_select(self.runtime, self.engine_id, self.choose_engine)
+            self.name = ui.input(label="Name")
+            self.brief = ui.input(label="Brief", placeholder="Who are they, in one sentence?")
+            self.steps()
+            heading("Preview")
+            self.preview()
+            # Outside the preview refreshable: a rebuild on blur must not destroy button focus.
+            self.create_button = (
+                ui.button("Create", icon="person_add", on_click=self.create)
+                .props("color=primary")
+                .classes("self-end")
             )
-            with ui.card().classes("w-full"):
-                _engine_select(self.runtime, self.engine_id, self.choose_engine)
-                self.name = ui.input(label="Name")
-                self.brief = ui.input(label="Brief", placeholder="Who are they, in one sentence?")
-                self.steps()
-                heading("Preview")
-                self.preview()
-                # Outside the preview refreshable: a rebuild on blur must not destroy button focus.
-                self.create_button = (
-                    ui.button("Create", icon="person_add", on_click=self.create)
-                    .props("color=primary")
-                    .classes("self-end")
-                )
-                self.create_button.set_visibility(self.ready)
+            self.create_button.set_visibility(self.ready)
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
@@ -117,7 +119,7 @@ class CharacterForm:
 
     def answered(self) -> None:
         engine = self.runtime.engines[self.engine_id]
-        _drop_stale(engine.creation_steps(self.packs, self.picks), self.picks)
+        drop_stale(engine.creation_steps(self.packs, self.picks), self.picks)
         self.steps.refresh()
         self.preview.refresh()
 
@@ -215,34 +217,29 @@ class ScenarioForm:
         self.button: ui.button
 
     def build(self) -> None:
-        page_header("New scenario", look=self.runtime.engines[self.engine_id].look)
-        with page_body():
-            page_intro(
-                "Scenario",
-                "New scenario",
-                "Describe the adventure, or upload one, and the worldsmith writes its opening.",
+        with _form_page(
+            self.runtime,
+            self.engine_id,
+            eyebrow="Scenario",
+            title="New scenario",
+            lead="Describe the adventure, or upload one, and the worldsmith writes its opening.",
+        ):
+            _engine_select(self.runtime, self.engine_id, self.choose_engine)
+            self.title = ui.input(label="Title")
+            self.character_fields()
+            self.premise = ui.textarea(label="Premise", placeholder="What is this adventure about?")
+            self.scope = ui.textarea(
+                label="Scope",
+                placeholder="How far does this go, and does it tend toward an ending?",
             )
-            with ui.card().classes("w-full"):
-                _engine_select(self.runtime, self.engine_id, self.choose_engine)
-                self.title = ui.input(label="Title")
-                self.character_fields()
-                self.premise = ui.textarea(
-                    label="Premise", placeholder="What is this adventure about?"
-                )
-                self.scope = ui.textarea(
-                    label="Scope",
-                    placeholder="How far does this go, and does it tend toward an ending?",
-                )
-                self.style = ui.input(label="Art style")
-                self._set_style_placeholder()
-                self.voice = ui.input(
-                    label="Narrator voice", placeholder="Leave empty for the default voice"
-                )
-                heading("Or upload the adventure")
-                self.upload.build()
-                self.button_row()
-        # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
-        ui.context.client.on_delete(self.upload.discard)  # pyright: ignore[reportUnknownMemberType]
+            self.style = ui.input(label="Art style")
+            self._set_style_placeholder()
+            self.voice = ui.input(
+                label="Narrator voice", placeholder="Leave empty for the default voice"
+            )
+            heading("Or upload the adventure")
+            self.upload.build()
+            self.button_row()
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
@@ -298,8 +295,7 @@ class ScenarioForm:
         return [pack for pack in packs if pack in offered]
 
     def seeds(self) -> tuple[str, ...]:
-        engine = self.runtime.engines[self.engine_id]
-        return engine.packs.seeds(self.packs)
+        return self.runtime.engines[self.engine_id].seeds(self.packs)
 
     def follow_supplements(self) -> None:
         self.seed_button.set_visibility(bool(self.seeds()))
@@ -364,33 +360,29 @@ class PackForm:
         self.button: ui.button
 
     def build(self) -> None:
-        page_header("New pack", look=self.runtime.engines[self.engine_id].look)
-        with page_body():
-            page_intro(
-                "Pack",
-                "New pack",
-                "Name a genre, or upload a document, and the worldsmith writes the whole kit.",
+        with _form_page(
+            self.runtime,
+            self.engine_id,
+            eyebrow="Pack",
+            title="New pack",
+            lead="Name a genre, or upload a document, and the worldsmith writes the whole kit.",
+        ):
+            _engine_select(self.runtime, self.engine_id, self.choose_engine)
+            self.name = ui.input(label="Name")
+            self.premise = ui.textarea(
+                label="Premise",
+                placeholder="What genre is this, and what is a story in it about?",
             )
-            with ui.card().classes("w-full"):
-                _engine_select(self.runtime, self.engine_id, self.choose_engine)
-                self.name = ui.input(label="Name")
-                self.premise = ui.textarea(
-                    label="Premise",
-                    placeholder="What genre is this, and what is a story in it about?",
-                )
-                heading("Or upload a document")
-                self.upload.build()
-                self.license = ui.input(
-                    label="Licence",
-                    placeholder="Optional: who wrote the source, under what terms",
-                )
-                with ui.row().classes("w-full items-center game-gap-xl"):
-                    self.button = ui.button(
-                        "Write the pack", icon="auto_fix_high", on_click=self.write
-                    ).props("color=primary")
-                    ui.label("Writing takes several minutes.").classes("text-xs opacity-60")
-        # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
-        ui.context.client.on_delete(self.upload.discard)  # pyright: ignore[reportUnknownMemberType]
+            heading("Or upload a document")
+            self.upload.build()
+            self.license = ui.input(
+                label="Licence", placeholder="Optional: who wrote the source, under what terms"
+            )
+            with ui.row().classes("w-full items-center game-gap-xl"):
+                self.button = ui.button(
+                    "Write the pack", icon="auto_fix_high", on_click=self.write
+                ).props("color=primary")
+                ui.label("Writing takes several minutes.").classes("text-xs opacity-60")
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
@@ -431,6 +423,18 @@ def new_pack_page(runtime: Runtime) -> None:
     PackForm(runtime).build()
 
 
+@contextmanager
+def _form_page(
+    runtime: Runtime, engine_id: EngineId, *, eyebrow: str, title: str, lead: str
+) -> Generator[None]:
+    """The shape every create form wears: header, body, intro, one card."""
+    page_header(title, look=runtime.engines[engine_id].look)
+    with page_body():
+        page_intro(eyebrow, title, lead)
+        with ui.card().classes("w-full"):
+            yield
+
+
 def _engine_select(
     runtime: Runtime, chosen: EngineId, on_change: Callable[[ValueChangeEventArguments[str]], None]
 ) -> None:
@@ -469,12 +473,3 @@ def _selected_packs(
     except Refusal as refused:
         alert(str(refused))
         return None
-
-
-def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
-    """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
-    for step in steps:
-        if not step.constrains:
-            continue
-        if picked(picks, step.id) not in {option.id for option in step.options}:
-            picks.pop(step.id, None)

@@ -23,7 +23,7 @@ from aidm.app import runtime as runtime_module
 from aidm.app.runtime import Runtime
 from aidm.config import SERVER_HOST, MediaConfig, Settings
 from aidm.ui import theme
-from aidm.ui.app import _register_pages  # pyright: ignore[reportPrivateUsage]
+from aidm.ui.app import mount
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
 
@@ -58,10 +58,10 @@ def main() -> None:
         media=MediaConfig(enabled=True, provider="local") if parsed.art else MediaConfig(),
     )
     agents = ScriptedAgents(delay=parsed.delay)
-    # `lambda _: agents` keeps the scripted roles across a reload, which rebuilds the spawner.
-    runtime = Runtime(settings, lambda _: agents)
+    # The built agents are passed so a reload, which rebuilds the runtime, keeps them.
+    runtime = Runtime(settings, spawner=agents)
     agents.runtime = runtime
-    _register_pages(runtime)
+    mount(runtime)
 
     @app.get("/qa/log")
     def _log() -> list[dict[str, object]]:  # pyright: ignore[reportUnusedFunction]

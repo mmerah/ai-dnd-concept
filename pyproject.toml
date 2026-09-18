@@ -40,12 +40,12 @@ default-groups = ["dev", "qa"]
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 asyncio_mode = "auto"
-pythonpath = ["tests", "scripts"]
+pythonpath = ["tests"]
 testpaths = ["tests"]
 
 [tool.basedpyright]
-include = ["src", "tests", "scripts"]
-extraPaths = ["src", "tests", "scripts"]
+include = ["src", "tests"]
+extraPaths = ["src", "tests"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"

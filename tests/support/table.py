@@ -118,17 +118,15 @@ class ScriptedSpawner:
     turns: list[Callable[[], None]] = field(default_factory=list)
     answers: dict[Role, list[str]] = field(default_factory=dict)
     prompts: list[tuple[Role, str]] = field(default_factory=list)
-    resumed: list[tuple[Role, str | None]] = field(default_factory=list)
     hooks: list[Callable[[Role, str], Awaitable[None]]] = field(default_factory=list)
 
     async def run(
         self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
     ) -> RunResult:
-        del tools
+        del session, tools
         for hook in self.hooks:
             await hook(role, prompt)
         self.prompts.append((role, prompt))
-        self.resumed.append((role, session))
         # A session every time, so a test exercises the resumed path the real CLIs take.
         spoke = partial(RunResult, session=f"{role}-1")
         if role == "master":
@@ -168,7 +166,7 @@ class Table[G: AnyGame]:
     def call(self, name: str, args: dict[str, JsonValue]) -> str:
         """A refusal is an error result the CLI reads and carries on from, not a crash."""
         try:
-            answered = self.runtime.require_turn().call(name, args)
+            answered = self.runtime.gate.require_turn().call(name, args)
         except Refusal as refused:
             self.refusals.append(str(refused))
             answered = str(refused)
@@ -214,7 +212,7 @@ def open_table[G: AnyGame](
 ) -> Table[G]:
     settings = settings or offline_settings(saves)
     spawner = ScriptedSpawner()
-    runtime = Runtime(settings, lambda _: spawner)
+    runtime = Runtime(settings, spawner=spawner)
     selected_engine = ENGINES_BUILT[engine_id] if engine is None else engine
     runtime.engines[engine_id] = selected_engine
     scenario_id = scenario_for(engine_id)
@@ -247,16 +245,6 @@ async def play_turn[G: AnyGame](
     else:
         answer = Answer(text=prompt) if isinstance(prompt, str) else prompt
         await table.service.play(answer)
-    return table.state
-
-
-async def take[G: AnyGame](
-    table: Table[G], action: Slug, words: str, *, arrival: str | None = None
-) -> G:
-    """The page's own action that opens no turn: the worldsmith writes, the narrator may tell."""
-    if arrival is not None:
-        table.spawner.answers.setdefault("narrator", []).append(narrated(arrival))
-    await table.service.act(action, words)
     return table.state
 
 

@@ -82,3 +82,49 @@ Refuted review findings:
   now.
 
 Known and accepted: `Driver.secrets` stays a protocol property (a one-line read of a field).
+
+## Phase 3: app, UI and tests
+
+Counts, start → end: `src` 10,483 → 10,506 (target about 10,508); `tests` 12,387 → 12,065
+(target about 11,990: three `test_roles.py` tests came back, see below, and the UI fixtures took
+fewer lines out than the plan measured); `qa` 2,004 → 2,004; `scripts` 390 → 0; `tests/fixtures`
+420 → 0; 782 → 762 tests collected. No golden moved.
+
+Decisions off-plan:
+
+- Four parts, all opus: A (app) and C1 (goldens-pinned deletions, `test_spawn`/`test_config`,
+  the converter) ran in parallel on disjoint files; B (UI) then C2 (UI fixtures, launcher
+  parametrization, support) followed.
+- `Runtime` is a plain class with `__init__(settings, spawner=None)` and a `spawner` attribute,
+  not a dataclass with an `InitVar` and a stored `roles`: the `InitVar` left `Runtime.spawner`
+  as a class attribute equal to `None`, and `roles` already means role configuration
+  (`Settings.roles`, `aidm.app.roles`).
+- `_save_option` calls `check_drift` directly; `check_resumes` has one caller,
+  `Runtime._resumed`, since the catalog builds its target from the save's own ids.
+- `ui/app.py` exposes `mount(runtime)`, not `register_pages`: it also mounts the MCP endpoint,
+  the dice sound and the lifespan hooks. The route table is a local of `mount`.
+- `CreationStep.offers(answer)` is the one legality rule read by `check_picks` and `drop_stale`.
+- `Engine.seeds` is a one-line pass-through, kept so `ui/` reads no `engine.packs`.
+- `ui/settings.py` shows a field's `description` as the widget's hint through `_widget`, over a
+  private `_box` that builds the widget; `_label` has no field to read.
+- The three `test_roles.py` tests PLAN step 7 deleted are back, unchanged: the prompt goldens
+  mask everything after `ANSWER WITH:` and the one interjection golden renders an empty sheet, so
+  nothing else pinned which schema each render asks for or the non-empty companion sheet.
+- The restart-refusal toast test stays its own test: it needs a held master spawn and a live
+  `play` task, which the `_run` parametrization has no branch for.
+- `tests/ui/test_app.py` and `test_create.py` moved onto the `page`/`notified` fixtures too.
+- `qa/agents.py` read `runtime.turn` after `Gate` landed; basedpyright does not include `qa/`,
+  and the QA harness (`qa/run_all.sh`) found it. What it still reports, the two loner findings
+  ("unwritten card missing", "speaker name missing on the bubble") and the `create` scenario's
+  timeout on a scenario written from an upload (the scripted worldsmith reads an empty schema
+  section), reproduces identically on the phase 2 commit and is outside this phase.
+
+Refuted review findings:
+
+- "`Look` is a one-field wrapper; read `look.json` as a bare `Mapping` through a `TypeAdapter`":
+  `look.json` is a file boundary and the rule is a strict model at each boundary; `read_model`
+  reads models. The plan decided `Look.palette`; the reviewer offered the cut only if re-opened.
+
+Known and accepted: the QA harness is the only check that covers `qa/agents.py` against the
+runtime's surface; the plan's `src` target counted the `Gate`/`Busy` structure at about +17 and
+it came to +13 with the plain `Runtime`.

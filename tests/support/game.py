@@ -1,8 +1,8 @@
+from functools import partial
 from pathlib import Path
 from random import Random
 
 from aidm.app.runtime import GameService, LaunchTarget
-from aidm.config import Settings
 from aidm.core.entities import Slug
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eCharacter, Loner3eGame, Loner3eScenario
@@ -12,7 +12,6 @@ from support.table import (
     LIBRARY,
     LONER3E,
     SCENARIO_MODELS,
-    Table,
     game,
     narrowed,
     open_table,
@@ -53,21 +52,7 @@ def initialized() -> tuple[AnyEngine, Loner3eGame]:
     return engine, narrowed(state, Loner3eGame)
 
 
-def open_game(
-    saves: Path,
-    *,
-    rng: Random | None = None,
-    settings: Settings | None = None,
-    engine: AnyEngine | None = None,
-) -> Table[Loner3eGame]:
-    return open_table(
-        saves,
-        rng=rng,
-        settings=settings,
-        engine=engine,
-        engine_id=LONER3E,
-        state_type=Loner3eGame,
-    )
+open_game = partial(open_table, engine_id=LONER3E, state_type=Loner3eGame)
 
 
 def session(directory: Path) -> GameService:

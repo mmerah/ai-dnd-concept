@@ -274,6 +274,7 @@ class World[P: Person, M: Person](Mutable):
 def character_panel(rows: Rows) -> Panel:
     return Panel(
         title="Character",
+        portrait=True,
         rows=tuple(PanelRow(label=label, detail=detail) for label, detail in rows),
     )
 

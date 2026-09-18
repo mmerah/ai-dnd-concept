@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -74,80 +75,55 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
 
 
 def test_a_second_save_on_the_same_form_lands(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    page: Callable[[], Client],
+    notified: list[str],
 ) -> None:
     monkeypatch.delenv("ROLES__NARRATOR__MODEL", raising=False)
     monkeypatch.chdir(tmp_path)
 
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
     # A stale snapshot reads a box moved back to its old value as no change at all.
     form = SettingsForm(offline_settings(tmp_path))
-    client = Client(ui.page("/"))
-    try:
-        with client:
-            widget = ui.input(value="fable")
-            form.boxes = {("roles", "narrator", "model"): widget}
-            form.save()
+    page()
+    widget = ui.input(value="fable")
+    form.boxes = {("roles", "narrator", "model"): widget}
+    form.save()
 
-            widget.value = "sonnet"
-            notified.clear()
-            form.save()
-    finally:
-        client.delete()
+    widget.value = "sonnet"
+    notified.clear()
+    form.save()
 
     assert read_settings().roles.narrator.model == "sonnet"
     assert "Nothing changed." not in notified
 
 
 def test_a_no_op_save_tells_the_player_nothing_changed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, page: Callable[[], Client], notified: list[str]
 ) -> None:
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
     form = SettingsForm(offline_settings(tmp_path))
-    client = Client(ui.page("/"))
-    try:
-        with client:
-            form.save()
-    finally:
-        client.delete()
+    page()
+
+    form.save()
 
     assert "Nothing changed." in notified
 
 
 def test_an_invalid_save_names_the_first_bad_key(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    page: Callable[[], Client],
+    notified: list[str],
 ) -> None:
     monkeypatch.delenv("ROLES__MASTER__TIMEOUT", raising=False)
     monkeypatch.chdir(tmp_path)
 
-    notified: list[str] = []
-
-    def spy_notify(message: str, **_kwargs: object) -> None:
-        notified.append(message)
-
-    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
-
     form = SettingsForm(offline_settings(tmp_path))
-    client = Client(ui.page("/"))
-    try:
-        with client:
-            widget = ui.number(value=-1)
-            form.boxes = {("roles", "master", "timeout"): widget}
-            form.save()
-    finally:
-        client.delete()
+    page()
+    widget = ui.number(value=-1)
+    form.boxes = {("roles", "master", "timeout"): widget}
+
+    form.save()
 
     assert notified
     text = notified[-1]

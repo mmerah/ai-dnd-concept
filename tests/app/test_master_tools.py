@@ -10,7 +10,6 @@ from support.table import (
     narrated,
     offline_settings,
     play_turn,
-    take,
     the_way_on,
     tool_call,
     updated,
@@ -221,7 +220,7 @@ async def test_an_action_over_an_open_decision_is_refused(tmp_path: Path) -> Non
     before = state.model_dump_json()
 
     with pytest.raises(Refusal, match="decision"):
-        _ = await take(table, MOVE_ON.id, PURSUIT)
+        await table.service.act(MOVE_ON.id, PURSUIT)
 
     assert table.state.model_dump_json() == before
 

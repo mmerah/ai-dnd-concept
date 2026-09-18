@@ -1,12 +1,15 @@
 from pathlib import Path
 
+import pytest
+from support.table import ENGINE_IDS, ENGINES_BUILT
+
 import aidm.ui.theme
+from aidm.core.entities import EngineId
 from aidm.core.facts import DiceEvent, Fact
-from aidm.core.views import DiceLook
 from aidm.ui.dice import rolled_since
-from aidm.ui.theme import dice_variables
 
 TWO_D6 = DiceEvent(label="2d6", faces=(6, 6), rolled=(2, 5))
+DIE_KEYS = ("game-die-body", "game-die-ink", "game-die-glow")
 
 
 def _fact(*, told: bool) -> Fact:
@@ -22,10 +25,11 @@ def test_only_told_dice_after_the_seen_facts_count_as_landed() -> None:
     assert not rolled_since(facts[:2], 1)
 
 
-def test_dice_look_reaches_theme_css_through_the_variables_set_look_writes() -> None:
-    """theme.css reads `var(--game-die-*)` off what `set_look` writes; a rename must fail here."""
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_an_engine_paints_its_dice_through_variables_theme_css_reads(engine_id: EngineId) -> None:
+    """theme.css reads `var(--game-die-*)` off the engine's palette; a rename must fail here."""
     css = Path(aidm.ui.theme.__file__).with_name("theme.css").read_text()
-    variables = dice_variables(DiceLook(body="#202020", ink="#f5f5f5", glow="#ffb703"))
+    palette = ENGINES_BUILT[engine_id].look.palette
 
-    assert len(variables) == len(DiceLook.model_fields)
-    assert all(f"var(--{name})" in css for name in variables)
+    assert all(key in palette for key in DIE_KEYS)
+    assert all(f"var(--{key})" in css for key in DIE_KEYS)

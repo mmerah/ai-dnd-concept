@@ -1,6 +1,6 @@
 import json
 import shutil
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pytest
@@ -52,7 +52,7 @@ def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> Launc
 
 def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
-    runtime = Runtime(settings, lambda _: ScriptedSpawner())
+    runtime = Runtime(settings, spawner=ScriptedSpawner())
     return narrowed(runtime.session(TARGET).state, Loner3eGame)
 
 
@@ -148,16 +148,6 @@ def test_the_catalog_lists_shipped_and_written_packs(tmp_path: Path) -> None:
     )
 
 
-def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) -> None:
-    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(offline_settings(tmp_path)))
-
-    catalog = _catalog(offline_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
-
-    # The scenario and the character are both still there; only the rules disagree.
-    assert [(entry.id, entry.engine) for entry in catalog.characters] == KAEL_FOR_EACH
-    assert not catalog.saves
-
-
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = offline_settings(tmp_path)
     FileStore(tmp_path).write("whispering-vault--kael", _opening_state(settings))
@@ -175,19 +165,6 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     assert saved.target == TARGET
 
 
-def test_a_save_filed_under_another_stem_is_not_listed(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    settings = offline_settings(tmp_path)
-    FileStore(tmp_path).write("old-game", _opening_state(settings))
-
-    catalog = _catalog(settings, ENGINES_BUILT)
-
-    assert not catalog.saves
-    assert "filed under another name" in caplog.text
-    assert catalog.unresumable == ("old-game",)
-
-
 @pytest.mark.parametrize(
     "change",
     ({"engine": "retired"}, {"scenario_id": "gone"}, {"character_id": "nobody"}),
@@ -203,42 +180,6 @@ def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[
 
     assert not catalog.saves
     assert catalog.unresumable == ("orphan",)
-
-
-def test_a_save_playing_an_uninstalled_pack_is_not_listed(tmp_path: Path) -> None:
-    settings = offline_settings(tmp_path)
-    state = updated(_opening_state(settings), packs=("srd", "gone"))
-    FileStore(tmp_path).write(TARGET.slug, state)
-
-    catalog = _catalog(settings, ENGINES_BUILT)
-
-    assert not catalog.saves
-    assert catalog.unresumable == (TARGET.slug,)
-
-
-def test_a_save_whose_scenario_has_drifted_is_not_listed(tmp_path: Path) -> None:
-    settings = offline_settings(tmp_path)
-    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(settings))
-
-    catalog = _catalog(offline_settings(tmp_path, _retitled(tmp_path)), ENGINES_BUILT)
-
-    assert not catalog.saves
-    assert catalog.unresumable == ("whispering-vault--kael",)
-
-
-def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> None:
-    """A stale save is invalid outright: the catalog skips it rather than listing it unopenable."""
-    settings = offline_settings(tmp_path)
-    state = _opening_state(settings)
-    FileStore(tmp_path).write("whispering-vault--kael", state)
-    broken = state.model_dump(mode="json")
-    broken["payload"]["cast"]["ghost"] = {"name": "Ghost"}
-    _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
-
-    catalog = _catalog(settings, ENGINES_BUILT)
-
-    assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
-    assert catalog.unresumable == ("unopenable",)
 
 
 def test_the_catalog_reports_where_a_save_left_off(tmp_path: Path) -> None:
@@ -264,18 +205,83 @@ def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> 
     assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
 
 
-def test_a_save_that_is_not_utf8_is_skipped_not_raised(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
+type BadSave = tuple[Settings, Mapping[EngineId, AnyEngine], str]
+
+
+def _playing_another_engine(tmp_path: Path) -> BadSave:
+    """The scenario and the character are both still there; only the rules disagree."""
+    FileStore(tmp_path).write(TARGET.slug, _opening_state(offline_settings(tmp_path)))
+    return offline_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED, TARGET.slug
+
+
+def _filed_under_another_stem(tmp_path: Path) -> BadSave:
     settings = offline_settings(tmp_path)
-    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(settings))
+    FileStore(tmp_path).write("old-game", _opening_state(settings))
+    return settings, ENGINES_BUILT, "old-game"
+
+
+def _playing_an_uninstalled_pack(tmp_path: Path) -> BadSave:
+    settings = offline_settings(tmp_path)
+    FileStore(tmp_path).write(TARGET.slug, updated(_opening_state(settings), packs=("srd", "gone")))
+    return settings, ENGINES_BUILT, TARGET.slug
+
+
+def _whose_scenario_drifted(tmp_path: Path) -> BadSave:
+    FileStore(tmp_path).write(TARGET.slug, _opening_state(offline_settings(tmp_path)))
+    return offline_settings(tmp_path, _retitled(tmp_path)), ENGINES_BUILT, TARGET.slug
+
+
+def _that_will_not_restore(tmp_path: Path) -> BadSave:
+    settings = offline_settings(tmp_path)
+    state = _opening_state(settings)
+    FileStore(tmp_path).write(TARGET.slug, state)
+    broken = state.model_dump(mode="json")
+    broken["payload"]["cast"]["ghost"] = {"name": "Ghost"}
+    _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
+    return settings, ENGINES_BUILT, "unopenable"
+
+
+def _that_is_not_utf8(tmp_path: Path) -> BadSave:
+    settings = offline_settings(tmp_path)
+    FileStore(tmp_path).write(TARGET.slug, _opening_state(settings))
     _ = (tmp_path / "binary.json").write_bytes(b"\xff\xfe not text")
+    return settings, ENGINES_BUILT, "binary"
 
-    catalog = _catalog(settings, ENGINES_BUILT)
 
-    assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
-    assert "skipping save 'binary'" in caplog.text
-    assert catalog.unresumable == ("binary",)
+@pytest.mark.parametrize(
+    ("write", "logged"),
+    [
+        (_playing_another_engine, "its scenario or character is gone"),
+        (_filed_under_another_stem, "filed under another name"),
+        (_playing_an_uninstalled_pack, "packs not installed for 'loner3e': ['gone']"),
+        (_whose_scenario_drifted, "save scenario differs from the one on disk in: title"),
+        (_that_will_not_restore, "payload.cast.ghost.id: Field required"),
+        (_that_is_not_utf8, "binary.json cannot be read"),
+    ],
+    ids=(
+        "another engine",
+        "another stem",
+        "an uninstalled pack",
+        "a drifted scenario",
+        "a state that will not restore",
+        "bytes that are not text",
+    ),
+)
+def test_a_save_the_launcher_cannot_resume_is_skipped_not_listed(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    write: Callable[[Path], BadSave],
+    logged: str,
+) -> None:
+    """A stale save is invalid outright: the catalog skips it rather than listing it unopenable."""
+    settings, engines, bad = write(tmp_path)
+
+    catalog = _catalog(settings, engines)
+
+    written = sorted(path.stem for path in tmp_path.glob("*.json"))
+    assert [save.target.slug for save in catalog.saves] == [stem for stem in written if stem != bad]
+    assert bad in catalog.unresumable
+    assert logged in caplog.text
 
 
 SOURCE_MD = REPOSITORY_ROOT / "tests/core/fixtures/source/drowned-road.md"
@@ -310,7 +316,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     settings = offline_settings(tmp_path, tmp_path / "scenarios")
     thin = json.dumps({**_OPENING, "present": ["nobody-here"]})
     spawner = ScriptedSpawner(answers={"worldsmith": [thin, json.dumps(_OPENING)]})
-    runtime = Runtime(settings, lambda _: spawner)
+    runtime = Runtime(settings, spawner=spawner)
 
     meta = ScenarioMeta(
         title="The Sunken Bell",
@@ -346,7 +352,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     }
     broken = json.dumps(_OPENING | {"cast": {**cast, "bell-rope": _OPENING_ITEM}})
     spawner = ScriptedSpawner(answers={"worldsmith": [broken, broken]})
-    runtime = Runtime(offline_settings(tmp_path, scenarios), lambda _: spawner)
+    runtime = Runtime(offline_settings(tmp_path, scenarios), spawner=spawner)
 
     with pytest.raises(Refusal, match="the worldsmith answered nothing usable") as failed:
         _ = await runtime.new_scenario(
@@ -372,7 +378,7 @@ async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_p
         update={"characters_dir": characters}
     )
     spawner = ScriptedSpawner()
-    runtime = Runtime(settings, lambda _: spawner)
+    runtime = Runtime(settings, spawner=spawner)
 
     with pytest.raises(Refusal, match="this scenario plays srd"):
         _ = await runtime.new_scenario(
@@ -389,7 +395,7 @@ async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_p
 async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Path) -> None:
     scenarios = tmp_path / "scenarios"
     spawner = ScriptedSpawner(answers={"worldsmith": [json.dumps(_OPENING)]})
-    runtime = Runtime(offline_settings(tmp_path, scenarios), lambda _: spawner)
+    runtime = Runtime(offline_settings(tmp_path, scenarios), spawner=spawner)
 
     name = await runtime.new_scenario(
         LONER3E,

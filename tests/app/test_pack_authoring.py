@@ -123,7 +123,7 @@ async def test_the_pack_prompt_says_it_has_no_scope_of_play(tmp_path: Path) -> N
 def _runtime(tmp_path: Path, answers: list[str]) -> tuple[Runtime, ScriptedSpawner]:
     settings = offline_settings(tmp_path).model_copy(update={"packs_dir": tmp_path / "packs"})
     spawner = ScriptedSpawner(answers={"worldsmith": answers})
-    return Runtime(settings, lambda _: spawner), spawner
+    return Runtime(settings, spawner=spawner), spawner
 
 
 def _head(**changes: JsonValue) -> str:

@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from random import Random
 
-from support.table import TUNNELGOONS, open_table, play_turn, take, tool_call
+from support.table import TUNNELGOONS, open_table, play_turn, tool_call
 
 from aidm.core.play import Answer
 from aidm.engines.rooms.engine import MORE_MAP
@@ -121,7 +121,8 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
     assert table.service.player_view().action == MORE_MAP
     before = len(table.state.exchanges())
 
-    after = await take(table, MORE_MAP.id, "Deeper in.")
+    await table.service.act(MORE_MAP.id, "Deeper in.")
+    after = table.state
 
     unwritten = after.exchanges()
     assert len(unwritten) == before + 1

@@ -7,7 +7,7 @@ from mcp.server import Server, ServerRequestContext
 from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 
-from aidm.app.runtime import Runtime
+from aidm.app.runtime import Gate
 from aidm.core.entities import Refusal
 from aidm.core.tools import schema_of
 
@@ -47,11 +47,9 @@ class MountedLifespan:
             self._ready.set()
 
 
-def endpoint(
-    runtime: Runtime,
-) -> tuple[StreamableHTTPASGIApp, StreamableHTTPSessionManager]:
+def endpoint(gate: Gate) -> tuple[StreamableHTTPASGIApp, StreamableHTTPSessionManager]:
     manager = StreamableHTTPSessionManager(
-        app=_build_server(runtime),
+        app=_build_server(gate),
         json_response=True,
         stateless=True,
         security_settings=TransportSecuritySettings(
@@ -63,14 +61,14 @@ def endpoint(
     return StreamableHTTPASGIApp(manager), manager
 
 
-def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
+def _build_server(gate: Gate) -> Server[dict[str, object]]:
     lock = Lock()
 
     async def on_list_tools(
         _ctx: ServerRequestContext[dict[str, object]],
         _params: types.PaginatedRequestParams | None,
     ) -> types.ListToolsResult:
-        turn = runtime.turn
+        turn = gate.turn
         return types.ListToolsResult(
             tools=[
                 types.Tool(
@@ -88,7 +86,7 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         """The lock replaces a sequential toolset: a CLI may call several tools at once."""
         async with lock:
             try:
-                answered = runtime.require_turn().call(params.name, params.arguments or {})
+                answered = gate.require_turn().call(params.name, params.arguments or {})
             except Refusal as refused:
                 return _content(str(refused), error=True)
             except Exception:

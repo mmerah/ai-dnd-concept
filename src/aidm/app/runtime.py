@@ -1,12 +1,12 @@
 import logging
 from asyncio import CancelledError, Task, create_task, gather, to_thread
-from collections.abc import AsyncGenerator, Callable, Mapping
+from collections.abc import AsyncGenerator, Mapping
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from aidm.app.launch import LaunchTarget
+from aidm.app.launch import LaunchTarget, check_resumes
 from aidm.app.media import ICON_DIR, Illustrator
 from aidm.app.providers import close_posting
 from aidm.app.roles import OPENING_NARRATION, interject, master, narrate, worldsmith
@@ -42,6 +42,7 @@ class Tasks:
         task.add_done_callback(self._done)
 
     async def settled(self) -> None:
+        """The test hook: every background task this service started has landed."""
         with suppress(CancelledError):
             await gather(*self.running)
 
@@ -68,7 +69,7 @@ class GameService:
     spawner: Spawner
     store: FileStore
     state: AnyGame
-    gate: "Runtime" = field(repr=False, compare=False)
+    gate: "Gate" = field(repr=False, compare=False)
     media: Illustrator
     reader: Reader
     interjections: bool = True
@@ -152,10 +153,10 @@ class GameService:
             if turn.played:
                 await master(self.spawner, turn)
             lines: tuple[SpokenLine, ...] = ()
-            if turn.narrates():
+            if turn.narrates:
                 self.phase = "narrator"
                 lines = await self._narrated(
-                    turn.draft, tuple(turn.facts), turn.words, landed=turn.landed()
+                    turn.draft, tuple(turn.facts), turn.words, landed=turn.landed
                 )
             state = turn.finish(lines, enabled=self.meanwhile)
         finally:
@@ -299,28 +300,15 @@ class GameService:
         self.state = state
 
 
+class Busy(Refusal):
+    def __init__(self, *, elsewhere: bool) -> None:
+        super().__init__(IN_FLIGHT_ELSEWHERE if elsewhere else IN_FLIGHT_HERE)
+        self.elsewhere = elsewhere
+
+
 @dataclass(slots=True)
-class Runtime:
-    settings: Settings
-    spawn: Callable[[Settings], Spawner] = RoleRunner
+class Gate:
     admitted: GameService | None = field(default=None, repr=False)
-    _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
-    engines: dict[EngineId, AnyEngine] = field(init=False)
-    spawner: Spawner = field(init=False)
-    library: Library = field(init=False)
-    store: FileStore = field(init=False)
-    packs: PackStore = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.engines = build_engines(self.settings.packs_dir)
-        self.spawner = self.spawn(self.settings)
-        self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
-        self.store = FileStore(self.settings.saves_dir)
-        self.packs = PackStore(self.settings.packs_dir)
-
-    @property
-    def default_engine(self) -> EngineId:
-        return next(iter(self.engines))
 
     @property
     def turn(self) -> Turn | None:
@@ -336,12 +324,28 @@ class Runtime:
     async def admit(self, session: GameService) -> AsyncGenerator[None]:
         """One writer at a time: two turns on one save is the only failure that costs a game."""
         if self.admitted is not None:
-            raise Refusal(IN_FLIGHT_HERE if self.admitted is session else IN_FLIGHT_ELSEWHERE)
+            raise Busy(elsewhere=self.admitted is not session)
         self.admitted = session
         try:
             yield
         finally:
             self.admitted = None
+
+
+class Runtime:
+    def __init__(self, settings: Settings, spawner: Spawner | None = None) -> None:
+        self.settings = settings
+        self.spawner: Spawner = spawner or RoleRunner(settings)
+        self.gate = Gate()
+        self.engines = build_engines(settings.packs_dir)
+        self.library = Library(settings.scenarios_dir, settings.characters_dir)
+        self.store = FileStore(settings.saves_dir)
+        self.packs = PackStore(settings.packs_dir)
+        self._sessions: dict[str, GameService] = {}
+
+    @property
+    def default_engine(self) -> EngineId:
+        return next(iter(self.engines))
 
     async def close(self) -> None:
         for session in list(self._sessions.values()):
@@ -359,7 +363,7 @@ class Runtime:
         engine = self.engines[engine_id]
         character = self.library.read_character(character_id, engine.id, engine.character)
         engine.admit(packs, character)
-        source = await to_thread(given_text, meta.premise, document, self.settings.source_max_bytes)
+        source = await to_thread(given_text, meta.premise, document)
         name = slug(meta.title, self.library.scenario_ids())
 
         def check(built: AnyScenario) -> None:
@@ -375,7 +379,7 @@ class Runtime:
     ) -> Slug:
         """Written and installed only once both asks land, so a failed pack leaves no file."""
         engine = self.engines[engine_id]
-        source = await to_thread(given_text, premise, document, self.settings.source_max_bytes)
+        source = await to_thread(given_text, premise, document)
         pack_id = slug(name, (*engine.packs.installed, *self.packs.ids(engine.id)))
         origin = (
             "written in this app from the premise"
@@ -427,12 +431,7 @@ class Runtime:
             state = engine.begin(target.scenario_id, scenario, character)
         else:
             state = engine.restore(saved)
-            if (state.scenario_id, state.character_id) != (target.scenario_id, character.id):
-                raise Refusal(
-                    f"save is {state.scenario_id!r}/{state.character_id!r}, "
-                    f"selected is {target.scenario_id!r}/{character.id!r}"
-                )
-            state.scenario.check_drift(scenario.meta)
+            check_resumes(state, target, scenario.meta)
         # A save armed before the switch went off must not spend itself on the next write.
         if not self.settings.meanwhile:
             engine.disarm(state)
@@ -452,7 +451,7 @@ class Runtime:
             spawner=self.spawner,
             store=self.store,
             state=self._resumed(engine, target, scenario, character),
-            gate=self,
+            gate=self.gate,
             interjections=settings.interjections,
             meanwhile=settings.meanwhile,
             media=Illustrator.open(
