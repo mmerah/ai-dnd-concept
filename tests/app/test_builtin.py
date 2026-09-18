@@ -1,5 +1,5 @@
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 from random import Random
@@ -13,8 +13,8 @@ from support.table import ENGINES_BUILT, LONER3E, offline_settings, updated
 from aidm.app.spawn import RoleRunner
 from aidm.config import RoleConfig, RoleSettings, Settings
 from aidm.core.entities import Refusal
-from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
+from aidm.turn import Turn
 
 CHANGE_TAGS = ENGINES_BUILT[LONER3E].tools["change_tags"]
 TRACE = "- the player Kael[player] gained the tag Listening"
@@ -22,20 +22,23 @@ FENCED = '```json\n{"lines": []}\n```'
 _, STATE = initialized()
 
 
-@dataclass(slots=True)
-class _Tools:
-    state: AnyGame
+@dataclass(slots=True, kw_only=True)
+class _Tools(Turn):
     calls: list[tuple[str, JsonValue]] = field(default_factory=list)
 
-    def published_tools(self) -> Sequence[MasterTool]:
+    def published_tools(self) -> tuple[MasterTool, ...]:
         return (CHANGE_TAGS,)
 
     def call(self, name: str, raw: JsonValue) -> str:
         if name != CHANGE_TAGS.name:
             raise Refusal(f"{name!r} is not a tool of the 'loner3e' engine.")
-        _ = CHANGE_TAGS.call(self.state.draft(), raw, Random(0))
+        _ = CHANGE_TAGS.call(self.draft, raw, Random(0))
         self.calls.append((name, raw))
         return TRACE
+
+
+def _tools() -> _Tools:
+    return _Tools(engine=ENGINES_BUILT[LONER3E], draft=STATE.draft(), rng=Random(0))
 
 
 def _settings(**roles: RoleConfig) -> Settings:
@@ -96,7 +99,7 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
         reasoning_details=[{"type": "reasoning.text", "text": "thinking"}],
     )
     sent = _post(monkeypatch, first, _said("Done."))
-    tools = _Tools(STATE)
+    tools = _tools()
 
     spoken = await RoleRunner(_settings(master=RoleConfig(provider="local", model="m"))).run(
         "master", "PLAY", None, tools
@@ -145,7 +148,7 @@ async def test_a_master_still_calling_tools_past_the_cap_is_cut_off(
     master = RoleConfig(provider="local", model="m", max_rounds=3)
 
     with pytest.raises(Refusal, match="3 rounds"):
-        _ = await RoleRunner(_settings(master=master)).run("master", "PLAY", None, _Tools(STATE))
+        _ = await RoleRunner(_settings(master=master)).run("master", "PLAY", None, _tools())
     assert len(sent) == 3
 
 
@@ -173,7 +176,7 @@ async def test_a_failed_provider_refuses_in_words_the_player_reads(
 
     with pytest.raises(Refusal, match=expected):
         _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
-            "narrator", "BRIEF", None, _Tools(STATE)
+            "narrator", "BRIEF", None, _tools()
         )
 
 

@@ -34,6 +34,7 @@ REFUSAL_PATTERNS = ("base_url", "ascii host name")
         ("https://open\nrouter.ai/v1", "base_url"),
         ("http://localhost:1234", "http://localhost:1234"),
         (" https://openrouter.ai/api/v1\n", "https://openrouter.ai/api/v1"),
+        ("http://localhost:11434/v1/", "http://localhost:11434/v1"),
     ),
     ids=(
         "not-a-url",
@@ -41,6 +42,7 @@ REFUSAL_PATTERNS = ("base_url", "ascii host name")
         "interior-newline",
         "kept-as-given",
         "padded",
+        "trailing-slash",
     ),
 )
 def test_a_base_url_is_stored_as_given_or_refused(given: str, expected: str) -> None:

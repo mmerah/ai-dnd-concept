@@ -49,7 +49,7 @@ class ProviderConfig(Configured):
             httpx.URL(base_url)
         except httpx.InvalidURL as bad:
             raise ValueError("a base url holds an ascii host name") from bad
-        return base_url
+        return base_url.rstrip("/")
 
 
 class RoleConfig(Configured):
