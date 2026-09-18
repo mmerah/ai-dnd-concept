@@ -5,22 +5,19 @@ from typing import Any, ClassVar
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.model import AnyScenario, Game, Generation, ScenarioMeta, WorldsmithAnswer
+from aidm.core.model import AnyScenario, Commission, Game, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, lines_of, render_history, section_if
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.tools import tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import character_panel, here_panel, party_panel, party_section, trail_panel
+from aidm.engines.engine import WRITES_NO, Engine, Written
 from aidm.engines.packs import Pack
 from aidm.engines.rooms.tools import (
     ELSEWHERE,
-    MEANWHILE,
-    MOVE,
-    MOVE_ITEM,
     MOVED_CARD,
     MOVES_OFFSCREEN,
     NOTHING_OFFSCREEN,
-    UNLOCK_WAY,
     Meanwhile,
     Move,
     MoveItem,
@@ -28,7 +25,6 @@ from aidm.engines.rooms.tools import (
 )
 from aidm.engines.rooms.world import Dweller, MapProposal, RegionProposal, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, OPENING_SECTIONS, check_extension
-from aidm.engines.seam import WRITES_NO, Engine, Written
 
 EXTEND: Slug = "extend"
 MORE_MAP = DecisionOption(
@@ -46,7 +42,7 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
     member: type[N]
     unwritten: ClassVar[dict[Slug, Fact]] = {EXTEND: MAP_UNWRITTEN}
 
-    def family_sections(self, draft: Game[W]) -> Sections:
+    def worldsmith_sections(self, draft: Game[W]) -> Sections:
         world = draft.world
         return (
             ("MAP SO FAR", world.map_so_far()),
@@ -124,22 +120,25 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
             over=self.over(state),
         )
 
-    def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
-        return (
-            *super().master_tools(),
-            master_tool("move_item", MOVE_ITEM, MoveItem, self.move_item),
-            master_tool(
-                "unlock_way", UNLOCK_WAY, UnlockWay, lambda d, a, _: d.world.unlock_way(a.to_id)
-            ),
-            master_tool("move", MOVE, Move, lambda d, a, _: d.world.move(a.to_id, a.with_ids)),
-            master_tool("meanwhile", MEANWHILE, Meanwhile, self.meanwhile),
-        )
-
+    @tool
     def move_item(self, draft: Game[W], args: MoveItem, _rng: Random) -> list[Fact]:
+        """An item moves to a new holder."""
         return draft.world.move_item(args.item_id, args.to_id)
 
+    @tool
+    def unlock_way(self, draft: Game[W], args: UnlockWay, _rng: Random) -> list[Fact]:
+        """A locked way out of this place opens."""
+        return draft.world.unlock_way(args.to_id)
+
+    @tool
+    def move(self, draft: Game[W], args: Move, _rng: Random) -> list[Fact]:
+        """Call this to carry the player through an unlocked way out of this place."""
+        return draft.world.move(args.to_id, args.with_ids)
+
+    @tool
     def meanwhile(self, draft: Game[W], args: Meanwhile, _rng: Random) -> list[Fact]:
-        """The ids resolve here; the world is handed what they name and changes its fields."""
+        """Time has passed where the player is not. Move a dweller, move a loose item, and shut a
+        way they know — any combination, in one call, while ELSEWHERE is shown."""
         world = draft.world
         if not world.meanwhile_due:
             raise Refusal(NOTHING_OFFSCREEN)
@@ -162,7 +161,7 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
-        draft.generation = Generation(operation=EXTEND, detail=words)
+        draft.commission = Commission(operation=EXTEND, detail=words)
 
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
@@ -205,7 +204,7 @@ class RoomEngine[N: Dweller, W: RoomWorld[Any, Any], K: Pack](Engine[W, K]):
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     async def advance(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.operation == EXTEND:
             self.install(draft, await self.write_next(draft, request.detail, worldsmith))

@@ -13,10 +13,10 @@ from support.table import (
 )
 
 from aidm.core.entities import Refusal, Slug, parse
-from aidm.core.model import Generation
+from aidm.core.model import Commission
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 from aidm.engines.scenes.engine import MOVE_ON
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import NextProposal, Scene, SceneWorld
@@ -101,7 +101,7 @@ def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_cle
     draft.world.meanwhile_due = True
     assert MEANWHILE_NUDGE in engine.render_next(draft, "Down the stair.")
 
-    scene = NextProposal[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+    scene = NextProposal[Loner3eEntity](place="a2", title="A2", situation=SITUATION, recap=RECAP)
     engine.install(draft, scene)
 
     assert draft.world.meanwhile_due is False
@@ -165,14 +165,14 @@ def test_a_departure_over_an_offer_requests_the_crossing_and_leaves_the_offer() 
 
     _ = engine.tools["next_scene"].call(draft, {"pursuit": "Down the stair."}, Random(0))
 
-    assert draft.generation is not None
-    assert draft.generation.detail == "Down the stair."
+    assert draft.commission is not None
+    assert draft.commission.detail == "Down the stair."
 
 
 def test_a_scene_engine_refuses_to_write_an_operation_not_its_own() -> None:
     engine, state = game(LONER3E)
     draft = narrowed(state, Loner3eGame).draft()
-    draft.generation = Generation(operation="hire", detail="Hire a fixer.")
+    draft.commission = Commission(operation="hire", detail="Hire a fixer.")
 
     with pytest.raises(Refusal, match="writes no 'hire'"):
         engine.validate(draft)
@@ -211,7 +211,7 @@ def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
     engine, state = game(LONER3E)
     assert isinstance(engine, Loner3eEngine)
     draft = narrowed(state, Loner3eGame).draft()
-    scene = NextProposal[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+    scene = NextProposal[Loner3eEntity](place="a2", title="A2", situation=SITUATION, recap=RECAP)
 
     _ = engine.install(draft, scene)
 

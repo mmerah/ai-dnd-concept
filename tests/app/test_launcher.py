@@ -27,11 +27,11 @@ from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING, FileStore, Library
 from aidm.core.model import ScenarioMeta
 from aidm.core.play import DecisionOption
+from aidm.engines.engine import AnyEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.loner3e.worldsmith import Loner3ePack
 from aidm.engines.registry import build_engines
-from aidm.engines.seam import AnyEngine
 
 MIRROR = EngineId("mirror")
 _MIRRORED = Loner3eEngine(NO_PACKS)

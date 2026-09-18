@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from aidm.core.entities import EngineId
+from aidm.engines.engine import AnyEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.seam import AnyEngine
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 

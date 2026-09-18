@@ -7,7 +7,6 @@ from aidm.app.providers import post_bearer
 from aidm.config import ProviderConfig, Role, RoleConfig
 from aidm.core.entities import Echoed, Loose, Refusal, parse_json
 from aidm.core.io import decode
-from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, Tools, schema_of
 
 
@@ -103,7 +102,7 @@ async def _complete(
     return reply.choices[0].message
 
 
-def _declared(tool: MasterTool[AnyGame]) -> JsonValue:
+def _declared(tool: MasterTool) -> JsonValue:
     return {
         "type": "function",
         "function": {

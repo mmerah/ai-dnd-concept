@@ -29,7 +29,7 @@ class _Tools:
     state: AnyGame
     calls: list[tuple[str, JsonValue]] = field(default_factory=list)
 
-    def published_tools(self) -> Sequence[MasterTool[AnyGame]]:
+    def published_tools(self) -> Sequence[MasterTool]:
         return (CHANGE_TAGS,)
 
     def call(self, name: str, raw: JsonValue) -> str:

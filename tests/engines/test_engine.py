@@ -23,7 +23,7 @@ from support.twentyfourxx import small_world as twentyfourxx_small_world
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyGame, Character, Check, Generation
+from aidm.core.model import AnyGame, Character, Check, Commission
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.world import Loner3eWorld
 from aidm.engines.tools import HIRE
@@ -135,19 +135,19 @@ def test_restored_round_trips(engine_id: EngineId) -> None:
     assert engine.restore(state.model_dump_json()) == state
 
 
-def test_restore_refuses_a_save_smuggling_a_pending_generation() -> None:
+def test_restore_refuses_a_save_smuggling_a_pending_commission() -> None:
     engine, state = game(ENGINE_IDS[0])
     raw = json.loads(state.model_dump_json())
-    raw["generation"] = {"operation": "departure", "detail": "smuggled in by hand"}
+    raw["commission"] = {"operation": "departure", "detail": "smuggled in by hand"}
 
-    with pytest.raises(Refusal, match="generation"):
+    with pytest.raises(Refusal, match="commission"):
         engine.restore(json.dumps(raw))
 
 
-def test_restore_accepts_a_save_with_a_null_generation() -> None:
+def test_restore_accepts_a_save_with_a_null_commission() -> None:
     engine, state = game(ENGINE_IDS[0])
     raw = json.loads(state.model_dump_json())
-    raw["generation"] = None
+    raw["commission"] = None
 
     assert engine.restore(json.dumps(raw)) == state
 
@@ -182,7 +182,7 @@ async def test_advance_matches_every_operation_the_engine_declares_unwritten(
             draft = small_world().draft()
         else:
             draft, target = state.draft(), None
-        request = Generation(
+        request = Commission(
             operation=operation, detail="a request the stub never reads", target=target
         )
 

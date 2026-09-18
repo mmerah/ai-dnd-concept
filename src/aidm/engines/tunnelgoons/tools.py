@@ -6,16 +6,6 @@ from aidm.core.entities import Frozen, Slug
 from aidm.engines.tools import ACTOR, Attempt
 from aidm.engines.tunnelgoons.world import Ability, Boost
 
-REST = "The player and the party spend a night here and heal to full Health."
-ROLL = (
-    "Call this for an uncertain action that carries a real cost. The engine rolls "
-    "2d6, adds the ability and the items, and reads the total."
-)
-LEVEL_UP = (
-    "Call this once, when the whole adventure ends. The engine opens the pick to "
-    "the player, then to each living hired member in turn."
-)
-
 
 class Roll(Attempt):
     ability: Ability = Field(description="Which ability the action calls on.")

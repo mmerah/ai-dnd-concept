@@ -14,8 +14,8 @@ from support.twentyfourxx import hired as twentyfourxx_hired
 from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
-from aidm.core.model import AnyGame, Generation
-from aidm.engines.seam import AnyEngine
+from aidm.core.model import AnyGame, Commission
+from aidm.engines.engine import AnyEngine
 from aidm.engines.tools import HIRE, SIGNED_ON
 from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
@@ -73,10 +73,10 @@ def _hire(case: HireCase, draft: AnyGame) -> None:
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_hire_sets_the_generation_and_ends_the_turn(case: HireCase) -> None:
+def test_hire_sets_the_commission_and_ends_the_turn(case: HireCase) -> None:
     draft = case.game().draft()
     _hire(case, draft)
-    assert draft.generation == Generation(operation=HIRE, detail=TERMS, target=case.member)
+    assert draft.commission == Commission(operation=HIRE, detail=TERMS, target=case.member)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
@@ -89,8 +89,8 @@ def test_hire_refuses_a_sheeted_member(case: HireCase) -> None:
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party(case: HireCase) -> None:
     draft = case.game().draft()
-    generation = Generation(operation=HIRE, detail=TERMS, target=case.member)
-    written = await case.engine.advance(draft, generation, stub_worldsmith(case.answer))
+    commission = Commission(operation=HIRE, detail=TERMS, target=case.member)
+    written = await case.engine.advance(draft, commission, stub_worldsmith(case.answer))
     world = draft.world
     member = world.require_member_here(case.member)
     assert member.hired

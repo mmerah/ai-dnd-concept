@@ -4,13 +4,6 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
 
-MOVE_ITEM = "An item moves to a new holder."
-UNLOCK_WAY = "A locked way out of this place opens."
-MOVE = "Call this to carry the player through an unlocked way out of this place."
-MEANWHILE = (
-    "Time has passed where the player is not. Move a dweller, move a loose item, and shut a "
-    "way they know — any combination, in one call, while ELSEWHERE is shown."
-)
 ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
 MOVES_OFFSCREEN = "something moves where the player cannot see"

@@ -7,8 +7,8 @@ from support.table import LONER3E, ScriptedSpawner, narrowed, offline_settings
 
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
+from aidm.engines.engine import SCOPELESS
 from aidm.engines.loner3e.worldsmith import Loner3ePack
-from aidm.engines.seam import SCOPELESS
 
 PREMISE = "A drowned coast where the lower town is under water and the bells still ring."
 SKILLS: list[JsonValue] = [

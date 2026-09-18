@@ -12,9 +12,9 @@ from aidm.engines.base import (
     party_panel,
     party_section,
 )
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 
-KAEL = Loner3eCast(id="kael", name="Kael", brief="", known=True)
+KAEL = Loner3eEntity(id="kael", name="Kael", brief="", known=True)
 
 
 def _state() -> Loner3eGame:
@@ -37,7 +37,7 @@ def test_party_section_is_empty_for_nobody_and_party_panel_orders_entity_before_
     assert party_section(()) == ()
     assert party_panel(()) == ()
 
-    member = Loner3eCast(
+    member = Loner3eEntity(
         id="mara", name="Mara", brief="Keeps to herself.", known=True, concept="A Watcher"
     )
 

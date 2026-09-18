@@ -69,7 +69,7 @@ class WorldsmithAnswer(Protocol):
     ) -> M: ...
 
 
-class Generation(Frozen):
+class Commission(Frozen):
     """An engine's one request to the worldsmith; the platform runs it once the turn ends."""
 
     operation: Slug  # the engine's own name for what it will author and install
@@ -86,7 +86,7 @@ class Game[W: BaseModel](Mutable):
     source: str = ""
     pending: PendingDecision | None = None
     # `exclude=True` keeps it out of every save, so `restore` only refuses a hand-edited one.
-    generation: Generation | None = Field(default=None, exclude=True)
+    commission: Commission | None = Field(default=None, exclude=True)
     notes: list[str] = Field(default_factory=list)
     log: list[Chapter] = Field(default_factory=list)
     world: W

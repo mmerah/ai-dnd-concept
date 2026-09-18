@@ -8,7 +8,7 @@ from support.golden_turn import INTERJECTION, NARRATION, SCRIPTS
 from support.table import ENGINE_IDS, ENGINES_BUILT, drain, game, open_table, play_turn
 
 from aidm.core.entities import EngineId, Refusal
-from aidm.core.model import Check, Game, Generation
+from aidm.core.model import Check, Commission, Game
 from aidm.engines.tools import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -68,7 +68,7 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
 
     # The family's own write, not the seam's `hire`: the detail is a place to go.
     operation = next(operation for operation in engine.unwritten if operation != HIRE)
-    request = Generation(operation=operation, detail="Deeper in, toward the sound.")
+    request = Commission(operation=operation, detail="Deeper in, toward the sound.")
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), request, recording)
     golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", masked(prompts[0]))

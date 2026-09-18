@@ -5,32 +5,25 @@ from typing import ClassVar
 from aidm.core.creation import CreationStep, Picks, picked
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter, AnyScenario, Generation, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, AnyScenario, Commission, WorldsmithAnswer
 from aidm.core.play import DecisionOption
-from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.tools import NoArgs, tool
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.engine import Written
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import MapProposal
 from aidm.engines.rooms.worldsmith import check_map
-from aidm.engines.seam import Written
 from aidm.engines.tools import (
     HIRE,
     HIRE_PENDING,
-    HIRE_TOOL,
     HIRE_UNWRITTEN,
     NO_HIRE_TARGET,
     SIGNED_ON,
     SIGNS_ON,
     Hire,
 )
-from aidm.engines.tunnelgoons.tools import (
-    LEVEL_UP,
-    REST,
-    ROLL,
-    LevelUp,
-    Roll,
-)
+from aidm.engines.tunnelgoons.tools import LevelUp, Roll
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
@@ -76,14 +69,19 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
     member = Npc
     unwritten: ClassVar[dict[Slug, Fact]] = {**RoomEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
+    @tool
     def hire(self, draft: TunnelGoonsGame, args: Hire, _rng: Random) -> list[Fact]:
+        """Call this when the player hires someone here to work. Someone already travelling with the
+        player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing
+        more lands this turn. A sheet is for someone hired to work, never for one who only comes
+        along."""
         member = draft.world.require_hireable(args.target_id)
-        draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
+        draft.commission = Commission(operation=HIRE, detail=args.terms, target=member.id)
         trace = HIRE_PENDING.format(name=member.name, terms=args.terms)
         return [Fact(trace=trace)]
 
     async def write_hire(
-        self, draft: TunnelGoonsGame, request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: TunnelGoonsGame, request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.target is None:
             raise Refusal(NO_HIRE_TARGET)
@@ -104,20 +102,16 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
     async def advance(
-        self, draft: TunnelGoonsGame, request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: TunnelGoonsGame, request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.operation == HIRE:
             return await self.write_hire(draft, request, worldsmith)
         return await super().advance(draft, request, worldsmith)
 
-    def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
-        return (
-            *super().master_tools(),
-            master_tool("hire", HIRE_TOOL, Hire, self.hire),
-            master_tool("rest", REST, NoArgs, lambda d, _a, _: d.world.rest()),
-            master_tool("roll", ROLL, Roll, self.roll),
-            master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
-        )
+    @tool
+    def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
+        """The player and the party spend a night here and heal to full Health."""
+        return draft.world.rest()
 
     def creation_steps(self, pack_id: Slug, _picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(
@@ -169,7 +163,10 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
         taken = (*draft.places, *draft.npcs, *draft.items)
         return self.world.opening(draft, player, player.unpack_kit(taken))
 
+    @tool
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
+        """Call this for an uncertain action that carries a real cost. The engine rolls 2d6, adds
+        the ability and the items, and reads the total."""
         world = draft.world
         world.check_unnamed(args.what)
         actor = world.require_actor(args.actor_id)
@@ -211,7 +208,10 @@ class TunnelGoonsEngine(RoomEngine[Npc, TunnelGoonsWorld, TunnelGoonsPack]):
                 facts.extend(world.kill(actor.id))
         return facts
 
+    @tool
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
+        """Call this once, when the whole adventure ends. The engine opens the pick to the player,
+        then to each living hired member in turn."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
         if sheet_of(actor).level > 1:

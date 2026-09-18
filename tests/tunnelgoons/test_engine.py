@@ -3,8 +3,8 @@ from support.table import NO_PACKS, TUNNELGOONS, game, narrowed
 from support.tunnelgoons import ENGINE
 
 from aidm.core.entities import Refusal
+from aidm.engines.engine import AnyEngine
 from aidm.engines.packs import SRD_PACK, PackSet
-from aidm.engines.seam import AnyEngine
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 from aidm.engines.tunnelgoons.worldsmith import TunnelGoonsPack

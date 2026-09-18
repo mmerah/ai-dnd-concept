@@ -6,17 +6,6 @@ from aidm.core.entities import Frozen, Slug
 from aidm.engines.loner3e.world import DIE_FACE, TagKind
 from aidm.engines.tools import Attempt
 
-CHANGE_TAGS = "A character here gains tags, loses tags, or both."
-DRIVE = "A living character's goal, motive or nemesis changes."
-RESTORE_LUCK = "A character's luck refills and any defeat is behind them."
-ROLL = (
-    "Call this for one closed dramatic question. The engine rolls Chance against "
-    "Risk, reads the answer, and moves luck in a conflict."
-)
-SPEND_LUCK = (
-    "A character here spends luck on a cost the selected pack's SPECIAL RULES name, such as a "
-    "spell."
-)
 TWIST_NOTE = (
     "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
     "arriving. Develop it this turn. Say what it set in motion, what it costs, and what it "

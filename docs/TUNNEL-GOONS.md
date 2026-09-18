@@ -67,4 +67,5 @@ Every entity has `known`, and a `Way` is known once the player has walked it: wh
 
 ## Where the rules live
 
-`src/aidm/engines/tunnelgoons/`, instructions in `rules.md`.
+`src/aidm/engines/tunnelgoons/`, instructions in `rules.md`. The room machinery is `RoomEngine`
+in `src/aidm/engines/rooms/`.

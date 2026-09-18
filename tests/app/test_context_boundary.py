@@ -4,8 +4,8 @@ from support.table import ENGINES_BUILT, LONER3E
 from aidm.app.roles import render_narrator
 from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.core.views import NarratorView
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.seam import AnyEngine
+from aidm.engines.engine import AnyEngine
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 from aidm.turn.run import ANSWERED_BY_OPTION, render_master
 
 SECRET = "hidden-actor"
@@ -17,11 +17,11 @@ def _state() -> Loner3eGame:
     _, state = initialized()
     state = with_entity(
         state,
-        Loner3eCast(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
+        Loner3eEntity(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
     )
     return with_entity(
         state,
-        Loner3eCast(id="ledger", name="a ledger", brief="Mara's notes.", known=True),
+        Loner3eEntity(id="ledger", name="a ledger", brief="Mara's notes.", known=True),
     )
 
 

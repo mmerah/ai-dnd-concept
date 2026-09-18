@@ -13,10 +13,10 @@ from aidm.core.creation import (
 )
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, Commission, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.tools import tool
 from aidm.core.views import Panel, PanelRow, PlayerView, Rows
 from aidm.engines.base import (
     PLAYER_ID,
@@ -26,12 +26,11 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
+from aidm.engines.engine import Written
 from aidm.engines.scenes.engine import MOVE_ON, SceneEngine
-from aidm.engines.seam import Written
 from aidm.engines.tools import (
     HIRE,
     HIRE_PENDING,
-    HIRE_TOOL,
     HIRE_UNWRITTEN,
     NO_HIRE_TARGET,
     SIGNED_ON,
@@ -40,17 +39,6 @@ from aidm.engines.tools import (
     Kill,
 )
 from aidm.engines.twentyfourxx.tools import (
-    ASK_WORLD,
-    CHANGE_HINDRANCES,
-    DEFEND,
-    DROP_ITEM,
-    GAIN_ITEM,
-    JOB,
-    REPAIR_ITEM,
-    ROLL,
-    SHIP_UPGRADE,
-    SPEND,
-    TAKE_LEAD,
     AskWorld,
     ChangeHindrances,
     Defend,
@@ -136,14 +124,19 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         if not srd.starting_kit:
             raise ValueError(f"the {self.id!r} srd pack has no starting kit")
 
+    @tool
     def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
+        """Call this when the player hires someone here to work. Someone already travelling with the
+        player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing
+        more lands this turn. A sheet is for someone hired to work, never for one who only comes
+        along."""
         member = draft.world.require_hireable(args.target_id)
-        draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
+        draft.commission = Commission(operation=HIRE, detail=args.terms, target=member.id)
         trace = HIRE_PENDING.format(name=member.name, terms=args.terms)
         return [Fact(trace=trace)]
 
     async def write_hire(
-        self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: TwentyfourxxGame, request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.target is None:
             raise Refusal(NO_HIRE_TARGET)
@@ -172,32 +165,11 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
     async def advance(
-        self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: TwentyfourxxGame, request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.operation == HIRE:
             return await self.write_hire(draft, request, worldsmith)
         return await super().advance(draft, request, worldsmith)
-
-    def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
-        return (
-            *super().master_tools(),
-            master_tool("hire", HIRE_TOOL, Hire, self.hire),
-            master_tool(
-                "change_hindrances", CHANGE_HINDRANCES, ChangeHindrances, self.change_hindrances
-            ),
-            master_tool("gain_item", GAIN_ITEM, GainItem, self.gain_item),
-            master_tool("drop_item", DROP_ITEM, DropItem, self.drop_item),
-            master_tool("repair_item", REPAIR_ITEM, RepairItem, self.repair_item),
-            master_tool("spend", SPEND, Spend, self.spend),
-            master_tool(
-                "take_lead", TAKE_LEAD, TakeLead, lambda d, a, _: d.world.take_lead(a.actor_id)
-            ),
-            master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
-            master_tool("defend", DEFEND, Defend, self.defend),
-            master_tool("roll", ROLL, Roll, self.roll),
-            master_tool("ask_world", ASK_WORLD, AskWorld, self.ask_world),
-            master_tool("job", JOB, Job, self.job),
-        )
 
     def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
         specialties, origins = self._offered(pack_id)
@@ -373,38 +345,57 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                 return option.label
         return None
 
+    @tool
     def change_hindrances(
         self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
     ) -> list[Fact]:
+        """The actor picks up hindrances, sheds them, or both at once."""
         world = draft.world
         world.check_unnamed(*args.gained)
         return world.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
 
+    @tool
     def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
+        """The actor gains an item and pays for it."""
         world = draft.world
         world.check_unnamed(args.name)
         return world.require_actor(args.actor_id).gain_item(
             args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
         )
 
+    @tool
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
+        """The actor loses an item for good."""
         actor = draft.world.require_actor(args.actor_id)
         return actor.require_sheet().drop_item(args.item_id, actor)
 
+    @tool
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
+        """The actor mends a broken item."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
         return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
 
+    @tool
     def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
+        """The actor pays credits for something that is not an item or a repair."""
         world = draft.world
         world.check_unnamed(args.why)
         return world.require_actor(args.actor_id).spend(args.amount, args.why)
 
+    @tool
+    def take_lead(self, draft: TwentyfourxxGame, args: TakeLead, _rng: Random) -> list[Fact]:
+        """A hired member takes the lead after the player dies."""
+        return draft.world.take_lead(args.actor_id)
+
+    @tool
     def ship_upgrade(self, draft: TwentyfourxxGame, args: ShipUpgrade, _rng: Random) -> list[Fact]:
+        """The player upgrades one ship function."""
         return draft.world.upgrade_ship(args.function_id)
 
+    @tool
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
+        """A carried item or a ship function breaks so a hit becomes a hindrance."""
         world = draft.world
         world.check_unnamed(args.hindrance)
         return world.defend(args.actor_id, args.item_id, args.hindrance)
@@ -446,7 +437,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         """A dead lead with a hired member alive is a succession, not an ending."""
         return None if state.world.sheeted_members() else super().over(state)
 
+    @tool
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
+        """Call this when the outcome of an action matters. The engine picks the dice, rolls them,
+        and reads the result."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
         helper = args.helped_by
@@ -542,13 +536,20 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
         return DicePool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 
+    @tool
     def ask_world(self, _draft: TwentyfourxxGame, args: AskWorld, rng: Random) -> list[Fact]:
+        """Call this to ask about the world's bad luck when nobody acts. The engine rolls one d6
+        and reads it."""
         rolled = roll((6,), args.question, rng)
         result = _banded(rolled.face, "trouble now", "signs of it", "nothing")
         # The dice trace; the answer itself is never told.
         return [rolled.fact, Fact(trace=f"{args.question} — d6 [{rolled.face}] → {result}")]
 
+    @tool
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
+        """Call this to look for work with `find`, to record agreed work with `take`, and to close
+        the job with `finish`. With `find` the engine rolls the SRD's d6. With `finish` it raises
+        one skill for each operator and pays each of them d6 credits."""
         match args.verb:
             case "find":
                 return self._find(draft, args.where, rng)

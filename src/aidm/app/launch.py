@@ -7,7 +7,7 @@ from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import FileStore, Library, decode, routed
 from aidm.core.model import AnyGame, ScenarioMeta
 from aidm.core.views import Look
-from aidm.engines.seam import AnyEngine
+from aidm.engines.engine import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
 

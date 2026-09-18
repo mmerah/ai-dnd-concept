@@ -19,8 +19,8 @@ from aidm.app.media import (
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.core.io import FileStore, publish
 from aidm.core.views import NarratorView
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.seam import AnyEngine
+from aidm.engines.engine import AnyEngine
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 
 NARRATION = "The door groans open."
 STYLE = "Painterly fantasy illustration, muted colours, no text or lettering."
@@ -39,7 +39,7 @@ def _illustrator(saves: Path, icon_dirs: tuple[Path, ...] = ()) -> Illustrator:
 def _placed(state: Loner3eGame, name: str, *, known: bool) -> Loner3eGame:
     return with_entity(
         state,
-        Loner3eCast(
+        Loner3eEntity(
             id=name.lower().replace(" ", "-"),
             name=name,
             brief=f"A {name.lower()}.",

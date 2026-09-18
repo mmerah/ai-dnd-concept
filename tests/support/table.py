@@ -20,8 +20,8 @@ from aidm.core.io import Library
 from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.core.tools import Tools
+from aidm.engines.engine import AnyEngine
 from aidm.engines.registry import build_engines
-from aidm.engines.seam import AnyEngine
 
 # One tool call as a scripted game master makes it.
 type Call = tuple[str, dict[str, JsonValue]]

@@ -15,9 +15,9 @@ from aidm.core.model import AnyGame
 from aidm.core.play import Answer, SpokenLine
 from aidm.core.prompt import Sections, lines_of, render_history, sections
 from aidm.core.tools import MasterTool
-from aidm.engines.seam import AnyEngine
+from aidm.engines.engine import AnyEngine
 
-MASTER_PROMPT = Path(__file__).parent / "prompts" / "master.md"
+MASTER_ROLE = Path(__file__).parent / "prompts" / "master.md"
 PAUSED_TO_ASK = 'The rules paused play to ask the player: "{prompt}" '
 RULES_WAIT = "the rules now wait on the player's decision"
 REQUEST_WAIT = "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
@@ -90,14 +90,14 @@ class Turn:
     @property
     def narrates(self) -> bool:
         """A hand-over that moved no fiction gets no prose."""
-        waiting = self.draft.pending is not None or self.draft.generation is not None
+        waiting = self.draft.pending is not None or self.draft.commission is not None
         return any(fact.told for fact in self.facts) or not waiting
 
     @property
     def landed(self) -> bool:
         return bool(self.facts) or self.draft.pending is not None
 
-    def picture(self) -> str:
+    def master_prompt(self) -> str:
         return render_master(
             self.engine.instructions,
             self.engine.master_sections(self.draft),
@@ -110,7 +110,7 @@ class Turn:
         """The one gate every published tool passes; returns what changed as the master reads it."""
         if (ended := self.engine.over(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
-        found = self.engine.tool(name)
+        found = self.engine.require_tool(name)
         pending = self.draft.pending
         if pending is not None:
             # A plain answer, not a refusal: a retry prompt would tell the model to try again.
@@ -118,7 +118,7 @@ class Turn:
                 f"the rules are waiting on the player: {pending.prompt}\n"
                 "Stop here and exit; the player's answer opens the next turn."
             )
-        if self.draft.generation is not None:
+        if self.draft.commission is not None:
             return REQUEST_WAIT
         notes_before = len(self.draft.notes)
         facts = self.apply(lambda draft, rng: found.call(draft, raw, rng))
@@ -128,7 +128,7 @@ class Turn:
             lines.append(f"- {RULES_WAIT}")
         return "\n".join(lines) or NOTHING
 
-    def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
+    def published_tools(self) -> tuple[MasterTool, ...]:
         return tuple(self.engine.tools.values())
 
     def finish(self, lines: tuple[SpokenLine, ...], *, enabled: bool) -> AnyGame:
@@ -139,7 +139,7 @@ class Turn:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
         candidate, dice = self.draft.draft(), deepcopy(self.rng)
         facts = play(candidate, dice)
-        self.draft = self.engine.land(candidate)
+        self.draft = self.engine.accept(candidate)
         self.rng.setstate(dice.getstate())
         self.facts.extend(facts)
         return facts
@@ -156,7 +156,7 @@ def render_master(
     played = sum(len(chapter.exchanges) for chapter in state.log)
     return sections(
         (
-            ("YOUR ROLE", read_cached_text(MASTER_PROMPT)),
+            ("YOUR ROLE", read_cached_text(MASTER_ROLE)),
             ("THE RULES OF THIS GAME", instructions),
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             ("THE SCOPE OF PLAY", state.scenario.scope),

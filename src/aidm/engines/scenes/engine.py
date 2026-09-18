@@ -8,14 +8,14 @@ from aidm.core.facts import Fact
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
+    Commission,
     Game,
-    Generation,
     ScenarioMeta,
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, render_history, section_if
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.tools import tool
 from aidm.core.views import NarratorView, PlayerView
 from aidm.engines.base import (
     Person,
@@ -25,17 +25,9 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
+from aidm.engines.engine import WRITES_NO, Engine, Written
 from aidm.engines.packs import Pack
-from aidm.engines.scenes.tools import (
-    ENTER,
-    LEAVE,
-    MOVING_ON,
-    NEXT_SCENE,
-    SCENE_LEFT,
-    Enter,
-    Leave,
-    NextScene,
-)
+from aidm.engines.scenes.tools import MOVING_ON, SCENE_LEFT, Enter, Leave, NextScene
 from aidm.engines.scenes.world import NextProposal, SceneProposal, SceneWorld
 from aidm.engines.scenes.worldsmith import (
     COMPLICATING,
@@ -46,7 +38,6 @@ from aidm.engines.scenes.worldsmith import (
     TURNING,
     check_scene,
 )
-from aidm.engines.seam import WRITES_NO, Engine, Written
 
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
@@ -93,7 +84,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
             *self.packs.rules_section(state.pack_id),
         )
 
-    def family_sections(self, draft: Game[W]) -> Sections:
+    def worldsmith_sections(self, draft: Game[W]) -> Sections:
         world = draft.world
         return (
             ("SCENES SO FAR", render_history(draft.log)),
@@ -136,21 +127,27 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
             over=self.over(state),
         )
 
-    def master_tools(self) -> tuple[MasterTool[Game[W]], ...]:
-        return (
-            *super().master_tools(),
-            master_tool("enter", ENTER, Enter, lambda d, a, _: d.world.enter(a.target_id)),
-            master_tool("leave", LEAVE, Leave, lambda d, a, _: d.world.leave(a.target_id)),
-            master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
-        )
+    @tool
+    def enter(self, draft: Game[W], args: Enter, _rng: Random) -> list[Fact]:
+        """A cast member comes into the scene."""
+        return draft.world.enter(args.target_id)
 
+    @tool
+    def leave(self, draft: Game[W], args: Leave, _rng: Random) -> list[Fact]:
+        """A cast member goes out of the scene."""
+        return draft.world.leave(args.target_id)
+
+    @tool
     def next_scene(self, draft: Game[W], args: NextScene, _rng: Random) -> list[Fact]:
+        """Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead
+        once the player has left this place. Set `complication` instead to bring a new situation
+        down on this place."""
         if args.pursuit:
-            draft.generation = Generation(operation=DEPARTURE, detail=args.pursuit)
+            draft.commission = Commission(operation=DEPARTURE, detail=args.pursuit)
             return [SCENE_LEFT]
         if not args.complication:
             return draft.world.offer()
-        draft.generation = Generation(operation=COMPLICATION, detail=args.complication)
+        draft.commission = Commission(operation=COMPLICATION, detail=args.complication)
         return [
             Fact(
                 trace=f"the worldsmith writes the complication once this turn ends: "
@@ -220,7 +217,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     async def advance(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         if request.operation == DEPARTURE:
             return await self.depart(draft, request, worldsmith)
@@ -229,7 +226,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
         raise ValueError(WRITES_NO.format(engine=self.id, operation=request.operation))
 
     async def depart(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         left = draft.world.scene.title
         exchanges = draft.exchanges()
@@ -239,7 +236,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[W, K]):
         return Written(tuple(self.install(draft, scene)), CROSSING.format(left=left, asked=asked))
 
     async def complicate(
-        self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
+        self, draft: Game[W], request: Commission, worldsmith: WorldsmithAnswer
     ) -> Written:
         scene = await self.write_next(draft, COMPLICATING.format(brief=request.detail), worldsmith)
         return Written(tuple(self.install(draft, scene)), TURNING)

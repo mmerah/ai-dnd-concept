@@ -1,17 +1,20 @@
 import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
+from inspect import cleandoc, signature
 from random import Random
-from typing import Any, Protocol
+from types import FunctionType
+from typing import Protocol
 
 from pydantic import BaseModel, JsonValue
 
 from aidm.core.entities import Frozen, parse_json
 from aidm.core.facts import Fact
-from aidm.core.model import AnyGame, Game
+from aidm.core.model import AnyGame
 
 NOISE_KEYS = ("title", "pattern", "maxLength", "minLength")
+_MARKED: dict[Callable[..., object], type[BaseModel]] = {}
 
 
 # No docstring: pydantic would publish it as the schema's `description`.
@@ -20,31 +23,37 @@ class NoArgs(Frozen):
 
 
 @dataclass(frozen=True, slots=True)
-class MasterTool[G: Game[Any]]:
+class MasterTool:
     name: str
     description: str
     args: type[BaseModel]
-    call: Callable[[G, JsonValue, Random], tuple[Fact, ...]]
+    call: Callable[[AnyGame, JsonValue, Random], tuple[Fact, ...]]
 
 
 class Tools(Protocol):
-    def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
+    def published_tools(self) -> Sequence[MasterTool]: ...
     def call(self, name: str, raw: JsonValue) -> str: ...
 
 
-def master_tool[G: Game[Any], A: BaseModel](
-    name: str,
-    description: str,
-    args: type[A],
-    resolve: Callable[[G, A, Random], Sequence[Fact]],
-) -> MasterTool[G]:
+def tool[F: Callable[..., Sequence[Fact]]](method: F) -> F:
+    """Mark an engine method as a tool the master calls; its docstring is what the master reads."""
+    if not (method.__doc__ or "").strip():
+        raise ValueError(f"{method.__qualname__} carries no description")
+    args = _args_of(method)
     if bare := [key for key, info in args.model_fields.items() if not info.description]:
-        raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
+        raise ValueError(
+            f"{method.__qualname__} parameters the model reads carry no description: {bare}"
+        )
+    _MARKED[method] = args
+    return method
 
-    def call(draft: G, raw: JsonValue, rng: Random) -> tuple[Fact, ...]:
-        return tuple(resolve(draft, parse_json(args, json.dumps(raw)), rng))
 
-    return MasterTool(name, description, args, call)
+def tools_of(engine: object) -> dict[str, MasterTool]:
+    """Definition order, base class first; a name defined again keeps the slot it first took."""
+    marked = {
+        name: function for cls in reversed(type(engine).__mro__) for name, function in _marked(cls)
+    }
+    return {name: _published(engine, name, function) for name, function in marked.items()}
 
 
 def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
@@ -58,6 +67,35 @@ def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
 
 def schema_text(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
+
+
+def _marked(cls: type[object]) -> Iterator[tuple[str, FunctionType]]:
+    """A class's own namespace, in definition order."""
+    members: Mapping[str, object] = vars(cls)
+    for name, value in members.items():
+        if isinstance(value, FunctionType) and value in _MARKED:
+            yield name, value
+
+
+def _published(engine: object, name: str, function: FunctionType) -> MasterTool:
+    """The bound method resolves an override; the marked function carries the text and the model."""
+    args = _MARKED[function]
+    bound: Callable[[AnyGame, BaseModel, Random], Sequence[Fact]] = getattr(engine, name)
+
+    def call(draft: AnyGame, raw: JsonValue, rng: Random) -> tuple[Fact, ...]:
+        return tuple(bound(draft, parse_json(args, json.dumps(raw)), rng))
+
+    # One line: the master reads a description, not the source's wrapping.
+    return MasterTool(name, " ".join(cleandoc(function.__doc__ or "").split()), args, call)
+
+
+def _args_of(function: Callable[..., object]) -> type[BaseModel]:
+    """A tool method reads `(self, draft, args, rng)`; the master fills the third parameter."""
+    parameters = list(signature(function).parameters.values())
+    annotation: object = parameters[2].annotation if len(parameters) > 2 else None
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return annotation
+    raise ValueError(f"{function.__qualname__} takes no argument model")
 
 
 def _inline_refs(node: JsonValue, defs: Mapping[str, JsonValue]) -> None:

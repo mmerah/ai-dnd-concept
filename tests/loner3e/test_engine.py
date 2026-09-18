@@ -12,7 +12,7 @@ from aidm.engines.loner3e.tools import DEFEAT_NOTE, TWIST_NOTE, Roll
 from aidm.engines.loner3e.world import (
     LUCK_MAX,
     TIES_PER_TWIST,
-    Loner3eCast,
+    Loner3eEntity,
     outcome_for,
     twist_pairing,
 )
@@ -216,8 +216,8 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
 
 def test_a_conflict_between_two_non_player_sides_never_asks_the_player() -> None:
     _, state = initialized()
-    wight = Loner3eCast(id="wight", name="Wight", brief="", known=True)
-    hound = Loner3eCast(id="hound", name="Hound", brief="", known=True)
+    wight = Loner3eEntity(id="wight", name="Wight", brief="", known=True)
+    hound = Loner3eEntity(id="hound", name="Hound", brief="", known=True)
     state = with_entity(state, wight)
     state = with_entity(state, hound)
     draft = state.draft()

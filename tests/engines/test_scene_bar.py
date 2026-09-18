@@ -17,11 +17,11 @@ from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.model import AnyGame, Check, Generation
+from aidm.core.model import AnyGame, Check, Commission
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
+from aidm.engines.loner3e.world import Loner3eEntity, Loner3eWorld
 from aidm.engines.packs import SRD_PACK, Pack
 from aidm.engines.scenes.engine import DEPARTURE, SceneEngine
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
@@ -113,9 +113,11 @@ CASES = (
         engine=LONER3E_ENGINE,
         game=lambda: initialized()[1],
         base=LONER3E_BASE,
-        bar=_bar(SceneProposal[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
-        apply=_apply(SceneProposal[Loner3eCast], LONER3E_BASE),
-        install=_install(LONER3E_ENGINE, SceneProposal[Loner3eCast], LONER3E_BASE),
+        bar=_bar(
+            SceneProposal[Loner3eEntity], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]
+        ),
+        apply=_apply(SceneProposal[Loner3eEntity], LONER3E_BASE),
+        install=_install(LONER3E_ENGINE, SceneProposal[Loner3eEntity], LONER3E_BASE),
         player="Kael",
         met=MARA,
         unmet=MAP,
@@ -554,7 +556,7 @@ async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: Sce
     recap = "They leave the mess behind and press on toward what waits next."
     answer = {**case.base, "present": [case.met], "hidden": [case.unmet], "recap": recap}
     written = await case.engine.advance(
-        draft, Generation(operation=DEPARTURE, detail="Onward."), stub_worldsmith(answer)
+        draft, Commission(operation=DEPARTURE, detail="Onward."), stub_worldsmith(answer)
     )
     assert len(draft.log) == chapters_before + 1
     assert any(fact.card.startswith("New scene:") for fact in written.facts)
@@ -574,7 +576,7 @@ async def test_depart_tells_the_narrator_the_players_words_not_the_pursuit(
     answer = {**case.base, "present": [case.met], "hidden": [case.unmet], "recap": "They fled."}
     written = await case.engine.advance(
         draft,
-        Generation(operation=DEPARTURE, detail=f"go find {hidden_name}"),
+        Commission(operation=DEPARTURE, detail=f"go find {hidden_name}"),
         stub_worldsmith(answer),
     )
     assert written.telling is not None
@@ -592,7 +594,7 @@ async def test_render_worldsmith_lists_the_player_first(case: SceneCase) -> None
 
     with pytest.raises(Refusal, match="recorded"):
         await case.engine.advance(
-            case.game().draft(), Generation(operation=DEPARTURE, detail="Onward."), recording
+            case.game().draft(), Commission(operation=DEPARTURE, detail="Onward."), recording
         )
 
     cast_section = prompts[0].split("THE WHOLE CAST:\n", 1)[1].split("\n\n", 1)[0]

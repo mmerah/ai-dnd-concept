@@ -20,9 +20,9 @@ from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.views import Chattiness, PlayerView
+from aidm.engines.engine import AnyEngine
 from aidm.engines.packs import SRD_PACK
 from aidm.engines.registry import build_engines
-from aidm.engines.seam import AnyEngine
 from aidm.turn.run import NO_TURN, RESTART, Turn
 
 LOGGER = logging.getLogger(__name__)
@@ -134,12 +134,12 @@ class GameService:
                 raise Refusal("the rules wait on the player's decision first")
             draft = self.state.draft()
             self.engine.act(draft, action, words)
-            if draft.generation is None:
+            if draft.commission is None:
                 await self._turn(Answer(text=words), draft)
                 return
             self.intent = words
             try:
-                self.save(self.engine.land(draft))
+                self.save(self.engine.accept(draft))
                 written = await self._grow(words=words, mark="")
             finally:
                 self.intent = ""
@@ -210,19 +210,19 @@ class GameService:
         self.speak(self._newest())
 
     async def _grow(self, *, words: str, mark: Mark) -> bool:
-        request = self.state.generation
+        request = self.state.commission
         if request is None:
             return False
         draft = self.state.draft()
-        draft.generation = None
+        draft.commission = None
         if self.engine.over(self.state) is not None:
-            self.save(self.engine.land(draft))
+            self.save(self.engine.accept(draft))
             return False
         self.phase, grown = "worldsmith", True
         try:
             written = await self.engine.advance(draft, request, worldsmith(self.spawner))
             if written.telling is None:
-                landed = self.engine.land(draft)
+                landed = self.engine.accept(draft)
             else:
                 self.phase = "narrator"
                 lines = await self._narrated(draft, written.facts, written.telling)
@@ -230,7 +230,7 @@ class GameService:
         except Refusal as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
-            draft.generation = None
+            draft.commission = None
             unwritten = self.engine.unwritten[request.operation]
             landed = self.engine.close(draft, (), (unwritten,), words=words, mark=mark)
             grown = False
