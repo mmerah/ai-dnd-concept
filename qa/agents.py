@@ -2,8 +2,8 @@
 
 The master reads PLAYER ACTION from its prompt like the real one. A line that starts with `!` is
 a script: `!roll what="Try the door" actor_id=player question="Does it give?"` calls that tool,
-`!crash` and `!refuse` fail the spawn, `!fail narrator` and `!bad worldsmith` arm a one-shot
-failure of another role.
+`!crash` and `!refuse` fail the spawn, `!fail narrator` fails another role's next ask (its retry
+too), `!bad worldsmith` makes one answer garbage so the retry lands.
 Plain words with no script get one engine-appropriate roll, so dice show up in the page.
 
 The narrator echoes what it was given, so every screenshot shows what the page was told. The
@@ -22,6 +22,7 @@ from typing import Literal
 
 from pydantic import JsonValue
 
+from aidm.app.roles import RETRIES
 from aidm.app.runtime import Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role
@@ -61,21 +62,30 @@ class ScriptedAgents:
     runtime: Runtime | None = None
     faults: dict[Role, list[Fault]] = field(default_factory=dict)
     log: list[Spoken] = field(default_factory=list)
+    # The first prompt of each session: a resumed CLI still holds it, so a retry reads it too.
+    sessions: dict[str, str] = field(default_factory=dict)
     scenes: "count[int]" = field(default_factory=lambda: count(1))
 
     async def run(
         self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
     ) -> RunResult:
-        del session, tools
+        del tools
         spoken = Spoken(role=role, prompt=prompt, answer="")
         self.log.append(spoken)
+        if session is None:
+            first = asked = prompt
+        else:
+            first = self.sessions[session]
+            asked = f"{first}\n\n{prompt}"
+        session_id = f"{role}-{len(self.log)}"
+        self.sessions[session_id] = first
         await sleep(self.delay)
         try:
-            spoken.answer = await self._answer(role, prompt, spoken)
+            spoken.answer = await self._answer(role, asked, spoken)
         except (OSError, Refusal) as failed:
             spoken.error = f"{type(failed).__name__}: {failed}"
             raise
-        return RunResult(spoken.answer, f"{role}-{len(self.log)}")
+        return RunResult(spoken.answer, session_id)
 
     async def _answer(self, role: Role, prompt: str, spoken: Spoken) -> str:
         armed = self.faults.get(role, [])
@@ -115,7 +125,9 @@ class ScriptedAgents:
                     continue
                 case "fail" | "bad" | "slow":
                     role = _role(rest[0])
-                    self.faults.setdefault(role, []).append(head)
+                    # A failure holds through the retry: the ask fails, not one spawn of it.
+                    times = RETRIES + 1 if head == "fail" else 1
+                    self.faults.setdefault(role, []).extend([head] * times)
                 case _:
                     await self._call(head, _args(rest), spoken)
 
@@ -163,10 +175,14 @@ class ScriptedAgents:
         if '"places"' in schema:
             opening = "(no map yet)" in prompt
             room = f"qa-room-{number}"
+            # Only a region written in play recaps what the player leaves; an opening map cannot.
+            recap = (
+                {"recap": f"Recap of the region before {number}."} if '"recap"' in schema else {}
+            )
             return json.dumps(
                 {
+                    **recap,
                     "start": room,
-                    "recap": f"Recap of the region before {number}.",
                     "places": {
                         room: {
                             "id": room,

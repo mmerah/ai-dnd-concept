@@ -287,7 +287,7 @@ def body(s: Session) -> None:
     # 17. The narrator speaks for someone here, guessing an id from the name.
     submit(page, 'I ask the npc a question. [say qa-npc-2 "I answer you."]\n!none')
     wait_idle(page)
-    s.check(any("I answer you." in b for b in bubbles(page)), "spoken line missing")
+    s.check("I answer you." in bubbles(page), "spoken line missing")
     s.check(
         "QA Npc 2" in clean(page.inner_text(".game-transcript")),
         "speaker name missing on the bubble",
