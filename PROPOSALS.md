@@ -17,6 +17,42 @@ child, and copy-paste between the two hiring engines.
 
 ---
 
+## Final tally (after all 15 trials)
+
+Every trial ran ruff, ruff format, basedpyright and the full suite green on its own worktree,
+branched from the same base commit. Line counts are `src/aidm/**/*.py` only.
+
+| # | Outcome | src lines | What it buys |
+|---|---|---|---|
+| 1 | dropped | | the rooms generics are load-bearing (package boundary) |
+| 2 | keep | -20 | one `Goon`, `World[M]`, no `sheet_of` |
+| 3 | keep (reworked) | -34 | `engines/hiring.py`, `World.require_actor`/`require_hireable` |
+| 4 | keep | -8 (tests -40) | `Operation(write, failure_fact)`, one `advance` |
+| 5 | keep | +27 | one noun `commission`; `ending`, `play_option`, `narrator_prompt`; keyword-only render |
+| 6 | refused | | no splice hooks |
+| 7 | dropped | +30 | 18 type suppressions, `concept` vs `brief` |
+| 8 | keep | +7 | `name`/`brief` everywhere, 14 pack files migrated, `Subject` is not an option |
+| 9 | keep | +5 | `PackAuthor`; `engine.py` 388 to 324 |
+| 10 | keep | +3 | `turn.py` pure mechanics; three prompts in `app/roles.py` |
+| 11 | keep (scaled to b) | about -14 | `working(role)`, no `busy` |
+| 12 | keep (2 adjustments) | +26 | `app/present.py`, `GameService` 43 to 38 members |
+| 13 | keep | +2 | visible `@tool` on every override, `args` by name |
+| 14 | keep (minus banner) | about +25 | UI reads the view; `Runtime` façades; `game.py` -110 |
+| 15 | keep | +20 | 13 renames, same file set per engine and per family |
+
+Net on `src`: roughly +40 lines. The wins are not in the count. `Engine` loses 64 lines and
+a job; one table replaces two lists per engine; one hire module replaces two copies; one
+noun each for the worldsmith's request and for a thing's name; `turn.py`, `hiring.py`,
+`present.py`, `pack.py` each hold one subject; the UI stops reaching into saves and engines.
+
+Suggested landing order for a plan (each step keeps the four checks green): 5, 15, 8 (the
+three renames first, so every later diff is written in the final vocabulary), then 4, 3, 2,
+9, 13 (engine layer), then 10, 12, 11, 14 (app and UI). The trial branches are reference
+implementations from the base commit, not mergeable as-is: they were made independently and
+several touch the same files.
+
+---
+
 ## Group 1: the engine layer
 
 ### 1. Fold the `rooms/` family into `tunnelgoons/`
@@ -310,7 +346,7 @@ byte-identical so the `master.txt` goldens do not move. **Risk.** Low.
 
 ### 11. `GameService` tidy: one way to say "a role is working", one way to land a step
 
-**Status:** trial, option (a). **Raised by:** B, C.
+**Status:** reworked to option (b) after trial. The (a) trial was src +22 and green, but `_landed` fitted only 2 of the 4 sites: `_grow`'s success path must keep `close` inside the `try` and `save` outside it (two tests pin that), and an interjection speaks without illustrating. A helper with two exceptions is not a helper. Kept: the `working(role)` context manager (the attribute becomes `working_role`) and the `busy` deletion, which the trial showed read clearly. **Raised by:** B, C.
 
 **Plain English.** The page shows "Narrator is working" by reading a `phase` field the runtime
 sets by hand in four methods and clears in three `finally` blocks. Four things answer "is this
@@ -334,7 +370,7 @@ has 29 tests over these paths and some set `service.phase` directly.
 
 ### 12. Media and speech in one module, one `Presenter`
 
-**Status:** trial, option (a). **Raised by:** B, C, lead (3 of 6).
+**Status:** accepted after trial, with two plan-time adjustments: src +26, `runtime.py` 478 to 436, `GameService` 43 to 38 members, 759 green. Adjustments: keep a one-line `_present()` on `GameService` (the trial spelled the presenter call out three times because the brief said to drop it), and have `Presenter.present(...)` return the coroutines for `GameService` to retain, so `Tasks` stays in `runtime.py` instead of moving into `present.py` to dodge an import cycle. A one-line comment where `newest=None` means art only. **Raised by:** B, C, lead (3 of 6).
 
 **Plain English.** `Illustrator` (art) and `Reader` (speech) are the same shape twice: a config,
 a provider, a cache directory under the save, a `Claims` lock, an `enabled` guard, an `open()`
@@ -360,7 +396,7 @@ test import the classes by path or touch `service.media`.
 
 ### 13. The tool mark: less implicit, no protocol with one implementer
 
-**Status:** trial, option (a), with one change asked by the maintainer: `TwentyfourxxEngine.kill` gets a visible `@tool` (repeating the one-sentence docstring), and `tools_of` refuses an unmarked override of a marked tool, so no published tool is ever invisible. The maintainer also asked whether a library (pydantic-ai slim, FastMCP) could replace `core/tools.py`; answer: only the 50-line mark, not the schema tidy that the prompts also read, and at the cost of a framework that wants the run loop. Not worth it. **Raised by:** A, B, D, E, lead (5 of 6).
+**Status:** accepted after trial: src +2, tests +14, 760 green, `master_tools.json` goldens byte-identical. `kill` in 24XX carries a visible `@tool`; an unmarked override of a marked tool is refused at engine construction; `args` is found by name; `Tools` sits beside `Turn`. One ripple: a no-args tool spelled its parameter `_args` and now spells it `args` with a `del`. Original ask: `TwentyfourxxEngine.kill` gets a visible `@tool` (repeating the one-sentence docstring), and `tools_of` refuses an unmarked override of a marked tool, so no published tool is ever invisible. The maintainer also asked whether a library (pydantic-ai slim, FastMCP) could replace `core/tools.py`; answer: only the 50-line mark, not the schema tidy that the prompts also read, and at the cost of a framework that wants the run loop. Not worth it. **Raised by:** A, B, D, E, lead (5 of 6).
 
 **Plain English.** The `@tool` mark is the codebase's one piece of metaprogramming and every
 reviewer says the idea is right. Three things around it are not: `Tools` is a protocol in `core`
@@ -388,7 +424,7 @@ stubs to build a real `Turn`.
 
 ### 14. UI reads the view, not the save; small UI tidies
 
-**Status:** trial, all parts. **Raised by:** C.
+**Status:** accepted after trial minus part 5: src +35, tests +7, 762 green. Parts 1 to 4 and 6 are structural: the transcript reads `PlayerView` (which gains `premise`), three pages go through `Runtime` façades plus one `runtime.engine(id)` accessor, the seven predicates and `Observed` live in `transcript.py` (`game.py` sheds about 110 lines), `ui/dice.py` is gone, `typed()` is the one trim. Part 5, the `banner` widget, is dropped: it added wrapper elements and changed the proposal row's markup for no functional gain. **Raised by:** C.
 
 **Plain English.** The transcript takes the whole `GameService` and reaches past `PlayerView`
 into the save file for facts the view already carries. Two pages walk `runtime.engines[...]`
@@ -415,7 +451,7 @@ things.
 
 ### 15. Small renames, in one pass
 
-**Status:** trial, all parts, plus `hostiles` to `monsters` from proposal 7. Constraint from the maintainer: the two families keep the same four files as each other, and the three engines keep the same four files as each other (`engine.py`, `world.py`, `pack.py`, `tools.py`). **Raised by:** A, B, D, E, lead.
+**Status:** accepted after trial: 41 files, src +20, tests -1, 759 green, no golden moved, zero type suppressions. One behaviour change: `raised(12)` returns `None` instead of raising; every player-visible refusal text is unchanged. `render_request` folded into `render_worldsmith(draft=...)`. File sets: every engine has `engine.py`, `world.py`, `pack.py`, `tools.py`; both families keep `engine.py`, `world.py`, `worldsmith.py`, `tools.py`. Constraint from the maintainer: the two families keep the same four files as each other, and the three engines keep the same four files as each other (`engine.py`, `world.py`, `pack.py`, `tools.py`). **Raised by:** A, B, D, E, lead.
 
 **Plain English.** A batch of one-minute fixes, each removing a stumble.
 
