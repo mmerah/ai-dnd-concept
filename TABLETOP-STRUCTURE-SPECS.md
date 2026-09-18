@@ -120,11 +120,13 @@ class Scenario[P: BaseModel](Frozen):
     source: str = ""
     payload: P
 
+
 class Character[P: BaseModel](Frozen):
     id: Slug
     engine: EngineId
     pack: Slug
     payload: P
+
 
 class Game[P: BaseModel](Mutable):
     ...
@@ -153,7 +155,9 @@ class PackSet[K: Pack]:
         return found
 
     def options(self) -> tuple[DecisionOption, ...]:
-        return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.installed.items())
+        return tuple(
+            DecisionOption(id=key, label=pack.name) for key, pack in self.installed.items()
+        )
 
     def guidance(self, pack_id: Slug, *, opening: bool) -> str: ...
     def rules_section(self, pack_id: Slug) -> Sections: ...
@@ -170,8 +174,7 @@ def admit(self, pack_id: Slug, character: AnyCharacter) -> None:
     self.packs.require(pack_id)
     if character.pack not in (SRD_PACK, pack_id):
         raise Refusal(
-            f"{character.id!r} was made with {character.pack!r}; "
-            f"this scenario plays {pack_id!r}"
+            f"{character.id!r} was made with {character.pack!r}; this scenario plays {pack_id!r}"
         )
 ```
 
