@@ -118,6 +118,11 @@ def _label(path: tuple[str, ...]) -> str:
 
 
 def _widget(label: str, field: FieldInfo, value: object) -> Widget:
+    widget = _box(label, field, value)
+    return widget if field.description is None else widget.props(f'hint="{field.description}"')
+
+
+def _box(label: str, field: FieldInfo, value: object) -> Widget:
     bare = _unaliased(field.annotation)
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".

@@ -4,7 +4,7 @@ from pathlib import Path
 from nicegui import ui
 
 from aidm.core.io import read_cached_text
-from aidm.core.views import DiceLook, Look
+from aidm.core.views import Look
 
 # The single source for every hex value: the first paint, `set_look` and the Quasar colours.
 NEUTRAL_PALETTE: Mapping[str, str] = {
@@ -28,8 +28,7 @@ NEUTRAL_PALETTE: Mapping[str, str] = {
 
 def set_look(look: Look | None) -> None:
     palette = {**NEUTRAL_PALETTE, **(look.palette if look is not None else {})}
-    variables = palette if look is None else {**palette, **dice_variables(look.dice)}
-    ui.query("body").style("; ".join(f"--{key}: {value}" for key, value in variables.items()))
+    ui.query("body").style("; ".join(f"--{key}: {value}" for key, value in palette.items()))
     ui.colors(
         primary=palette["game-accent"],
         secondary=palette["game-muted"],
@@ -38,11 +37,6 @@ def set_look(look: Look | None) -> None:
         positive=palette["game-success"],
         negative=palette["game-danger"],
     )
-
-
-def dice_variables(dice: DiceLook) -> dict[str, str]:
-    """What `.game-die*` in theme.css reads: the chips wear the engine's colours through these."""
-    return {"game-die-body": dice.body, "game-die-ink": dice.ink, "game-die-glow": dice.glow}
 
 
 def install() -> None:

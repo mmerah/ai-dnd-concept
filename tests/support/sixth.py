@@ -2,12 +2,12 @@ from pathlib import Path
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Slug, slug
-from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.packs import Pack
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Dweller, MapProposal, Place, Prop, RoomWorld, Way
+from support.engine_dir import install_engine_dir
 
 SIXTH = EngineId("sixth")
 GATE = "gate"
@@ -65,15 +65,7 @@ def installed(tmp_path: Path) -> SixthEngine:
     class Installed(SixthEngine):
         directory = tmp_path
 
-    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    (tmp_path / "packs").mkdir()
-    (tmp_path / "packs" / "srd.json").write_text(
-        '{"name": "The SRD", "source": "the test", "license": "CC0"}', encoding=ENCODING
-    )
-    (tmp_path / "look.json").write_text(
-        '{"palette": {}, "dice": {"body": "#000", "ink": "#fff", "glow": "#fff"}}',
-        encoding=ENCODING,
-    )
+    install_engine_dir(tmp_path)
     return Installed(tmp_path / "written")
 
 

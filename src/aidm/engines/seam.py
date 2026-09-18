@@ -248,6 +248,9 @@ class Engine[P: Person, M: Person, W: World[Any, Any], K: Pack](ABC):
         """The packs a choice selects, in order: every game plays its engine's SRD."""
         return self.packs.select((SRD_PACK, *supplements))
 
+    def seeds(self, packs: tuple[Slug, ...]) -> tuple[str, ...]:
+        return self.packs.seeds(packs)
+
     def admit(self, packs: tuple[Slug, ...], character: AnyCharacter) -> None:
         """Refuse packs that cannot start a game and a character these packs cannot start."""
         self.packs.select(packs)

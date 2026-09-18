@@ -5,7 +5,7 @@ from typing import Self
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import FileStore, Library, decode, routed
-from aidm.core.model import ScenarioMeta
+from aidm.core.model import AnyGame, ScenarioMeta
 from aidm.core.views import Look
 from aidm.engines.seam import AnyEngine
 
@@ -141,6 +141,16 @@ class LauncherCatalog:
             saves=tuple(saves),
             unresumable=tuple(unresumable),
         )
+
+
+def check_resumes(state: AnyGame, target: LaunchTarget, meta: ScenarioMeta) -> None:
+    """The one rule for resuming a save: it is this game, and its scenario has not moved on."""
+    if (state.scenario_id, state.character_id) != (target.scenario_id, target.character_id):
+        raise Refusal(
+            f"save is {state.scenario_id!r}/{state.character_id!r}, "
+            f"selected is {target.scenario_id!r}/{target.character_id!r}"
+        )
+    state.scenario.check_drift(meta)
 
 
 def _save_option(

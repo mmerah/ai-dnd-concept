@@ -9,11 +9,9 @@
     "game-accent": "#91c8ff",
     "game-wash": "rgba(145, 200, 255, .08)",
     "game-radius": "10px",
-    "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace"
-  },
-  "dice": {
-    "body": "#101418",
-    "ink": "#5ee1ff",
-    "glow": "#5ee1ff"
+    "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+    "game-die-body": "#101418",
+    "game-die-ink": "#5ee1ff",
+    "game-die-glow": "#5ee1ff"
   }
 }

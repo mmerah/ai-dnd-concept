@@ -87,11 +87,13 @@ class Turn:
         )
         self.words, self.action = option.label, ANSWERED_BY_OPTION
 
+    @property
     def narrates(self) -> bool:
         """A hand-over that moved no fiction gets no prose."""
         waiting = self.draft.pending is not None or self.draft.generation is not None
         return any(fact.told for fact in self.facts) or not waiting
 
+    @property
     def landed(self) -> bool:
         return bool(self.facts) or self.draft.pending is not None
 

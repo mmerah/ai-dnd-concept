@@ -45,7 +45,7 @@ async def master(spawner: Spawner, turn: Turn) -> None:
     try:
         await spawner.run("master", turn.picture(), None, turn)
     except Refusal as failed:
-        if not turn.landed():
+        if not turn.landed:
             raise
         LOGGER.warning(
             "the game master failed after applying %d facts: %s", len(turn.facts), failed

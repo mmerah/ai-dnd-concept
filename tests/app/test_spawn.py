@@ -19,48 +19,19 @@ from aidm.core.io import decode
 
 
 @dataclass(frozen=True, slots=True)
-class _NoSuchBinary:
+class _StubDriver:
+    argv: tuple[str, ...]
     secrets: tuple[str, ...] = ()
 
     def command(
         self, role: Role, config: RoleConfig, session: str | None, url: str
     ) -> tuple[str, ...]:
         del role, config, session, url
-        return ("aidm-no-such-binary",)
+        return self.argv
 
     def read_result(self, output: str) -> RunResult:
         del output
-        raise AssertionError("exec fails before there is any output to read")
-
-
-@dataclass(frozen=True, slots=True)
-class _NoCommandBuilder:
-    secrets: tuple[str, ...] = ()
-
-    def command(
-        self, role: Role, config: RoleConfig, session: str | None, url: str
-    ) -> tuple[str, ...]:
-        del role, config, session, url
-        raise AssertionError("no command is built for a prompt over the cap")
-
-    def read_result(self, output: str) -> RunResult:
-        del output
-        raise AssertionError("no command is built for a prompt over the cap")
-
-
-@dataclass(frozen=True, slots=True)
-class _CrashingProcess:
-    secrets: tuple[str, ...] = ()
-
-    def command(
-        self, role: Role, config: RoleConfig, session: str | None, url: str
-    ) -> tuple[str, ...]:
-        del role, config, session, url
-        return ("aidm-crashing",)
-
-    def read_result(self, output: str) -> RunResult:
-        del output
-        raise AssertionError("a nonzero exit is caught before there is a result to read")
+        raise AssertionError("the run fails before there is a result to read")
 
 
 CODEX_OUTPUT = "\n".join(
@@ -137,7 +108,7 @@ async def test_a_missing_cli_binary_is_a_refusal_not_a_crash() -> None:
     config = RoleConfig(model="opus", effort="high")
 
     with pytest.raises(Refusal, match="could not be started"):
-        _ = await run_cli("master", config, _NoSuchBinary(), 1, "PLAY", None)
+        _ = await run_cli("master", config, _StubDriver(("aidm-no-such-binary",)), 1, "PLAY", None)
 
 
 async def test_a_prompt_over_the_cap_is_refused_before_any_command_is_built() -> None:
@@ -145,7 +116,12 @@ async def test_a_prompt_over_the_cap_is_refused_before_any_command_is_built() ->
 
     with pytest.raises(Refusal, match="takes fewer than 131072"):
         _ = await run_cli(
-            "worldsmith", config, _NoCommandBuilder(), 1, "x" * PROMPT_MAX_BYTES, None
+            "worldsmith",
+            config,
+            _StubDriver(("aidm-never-run",)),
+            1,
+            "x" * PROMPT_MAX_BYTES,
+            None,
         )
 
 
@@ -165,7 +141,7 @@ async def test_a_crashed_roles_raw_output_never_reaches_the_player(
     config = RoleConfig(model="opus", effort="high")
 
     with pytest.raises(Refusal, match="master exited 3") as failed:
-        _ = await run_cli("master", config, _CrashingProcess(), 1, "PLAY", None)
+        _ = await run_cli("master", config, _StubDriver(("aidm-crashing",)), 1, "PLAY", None)
 
     assert "HIDDEN HERE" not in str(failed.value)
 

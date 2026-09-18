@@ -57,9 +57,10 @@ class RoleConfig(Configured):
     # A string, not a `Literal`: model aliases move faster than this file.
     model: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     effort: Effort = "medium"
-    timeout: float = Field(default=300.0, gt=0.0)
-    # The replies a master may make in one turn over an API; a CLI paces itself.
-    max_rounds: int = Field(default=30, gt=0)
+    timeout: float = Field(
+        default=300.0, gt=0.0, description="bounds the whole run: the CLI process or the API rounds"
+    )
+    max_rounds: int = Field(default=30, gt=0, description="read only over a completion API")
 
 
 class MediaConfig(Configured):
@@ -89,13 +90,9 @@ class RoleSettings(Configured):
     worldsmith: RoleConfig = RoleConfig(model="sonnet", timeout=900.0)
 
     def for_name(self, name: Role) -> RoleConfig:
-        match name:
-            case "master":
-                return self.master
-            case "narrator":
-                return self.narrator
-            case "worldsmith":
-                return self.worldsmith
+        return {"master": self.master, "narrator": self.narrator, "worldsmith": self.worldsmith}[
+            name
+        ]
 
 
 class Providers(Configured):
@@ -109,11 +106,7 @@ class Providers(Configured):
     )
 
     def for_name(self, name: ProviderName) -> ProviderConfig:
-        match name:
-            case "openrouter":
-                return self.openrouter
-            case "local":
-                return self.local
+        return {"openrouter": self.openrouter, "local": self.local}[name]
 
 
 class Settings(BaseSettings):
@@ -133,8 +126,6 @@ class Settings(BaseSettings):
     interjections: bool = True
     # The world moves offscreen every few turns; off stops the clock and disarms it.
     meanwhile: bool = True
-    # The in-play request prompt adds cast and history under the 131072-byte argv cap.
-    source_max_bytes: int = Field(default=48_000, ge=1)
     # Not `PORT`, set by too many shells.
     server_port: int = Field(default=8080, gt=0, lt=65536)
     saves_dir: Path = Path("saves")

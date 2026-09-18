@@ -52,15 +52,8 @@ S. John Ross for [Risus](https://www.risusrpg.com/); the Adventure Maker setup i
 - `packs/ap10-pirates.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP10_pirates.html>.
 - `packs/ap11-western.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP11_western.html>.
 - `packs/ap12-cyberpunk.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP12_cyberpunk.html>.
-- `scripts/srd_packs.py` builds an adventure pack's JSON from the SRD's own markdown page,
-  `content/adventure_packs/APnn_<name>.md` in <https://github.com/zotiquestgames/lonersrd>, run as
-  `uv run python scripts/srd_packs.py tests/fixtures/srd/AP01_fantasy.md`; the twelve packs that
-  ship are its output over the twelve pages.
-  `tests/fixtures/srd/AP01_fantasy.md` is that page, copied unchanged — CC BY-SA 4.0, (c) Roberto
-  Bisceglie / Zotiquest Games.
-- The four trait tables' ids are stable across runs of the converter: the same page converts to
-  the same ids every time, and a label with a diacritic, such as `Naïve`, folds to its plain form,
-  `naive`.
+- The twelve packs are checked in; each pack's `source` field names the SRD page it was taken from,
+  and the four trait tables' ids are the labels' slugs with diacritics folded (`Naïve` → `naive`).
 
 **Open question, carried from `README.md`:** the AP01 page carries no CC declaration at all — only
 the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0.

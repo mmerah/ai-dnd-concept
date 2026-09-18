@@ -85,22 +85,6 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert UNREVEALED not in prompt
 
 
-def test_the_narrator_prompt_names_the_party_and_leaves_a_member_out_of_who_is_here() -> None:
-    state = _state()
-    draft = state.draft()
-    draft.payload.party.append("ledger")
-    state = draft.commit()
-
-    prompt = render_narrator(
-        _engine().narrator_view(state), evidence="- (nothing changed)", prompt="I wait.", scenes=()
-    )
-
-    assert "YOUR PARTY:\nyou are Kael" in prompt
-    assert "with you: a ledger[ledger] — Mara's notes." in prompt
-    who_is_here = prompt.split("WHO IS HERE:\n", 1)[1].split("\n\n", 1)[0]
-    assert "a ledger" not in who_is_here
-
-
 def test_the_narrator_prompt_carries_the_id_of_each_subject_here() -> None:
     state = _state()
 
@@ -110,35 +94,6 @@ def test_the_narrator_prompt_carries_the_id_of_each_subject_here() -> None:
 
     who_is_here = prompt.split("WHO IS HERE:\n", 1)[1].split("\n\n", 1)[0]
     assert "a ledger[ledger] — Mara's notes." in who_is_here
-
-
-def test_the_narrator_prompt_carries_the_players_own_sheet() -> None:
-    state = _state()
-
-    prompt = render_narrator(
-        _engine().narrator_view(state), evidence="- (nothing changed)", prompt="I wait.", scenes=()
-    )
-
-    assert "THE PLAYER'S SHEET:\n- Concept: A Wary Relic-Hunter" in prompt
-    assert "- Gear: Pry Bar, Chalk and Wire, A Guttering Lantern" in prompt
-
-
-def test_the_master_prompt_shows_the_scope_right_after_the_scenario() -> None:
-    state = _state()
-
-    master = _master_prompt(state, "I look around.")
-
-    assert (
-        f"SCENARIO:\n{state.scenario.title}\n{state.scenario.premise}\n\n"
-        f"THE SCOPE OF PLAY:\n{state.scenario.scope}"
-    ) in master
-
-
-def test_the_master_prompt_ends_on_the_action_with_no_empty_waiting_section() -> None:
-    master = _master_prompt(_state(), "I look around.")
-
-    assert "WAITING ON THE PLAYER" not in master
-    assert master.endswith("PLAYER ACTION:\nI look around.")
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:

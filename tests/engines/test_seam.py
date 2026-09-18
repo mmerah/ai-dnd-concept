@@ -84,6 +84,15 @@ def test_validate_refuses_a_game_that_does_not_play_the_srd(engine_id: EngineId)
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_one_panel_alone_carries_the_portrait(engine_id: EngineId) -> None:
+    engine, state = game(engine_id)
+
+    assert [panel.title for panel in engine.player_view(state).panels if panel.portrait] == [
+        "Character"
+    ]
+
+
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
 def test_restored_round_trips(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     assert engine.restore(state.model_dump_json()) == state

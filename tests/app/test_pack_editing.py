@@ -94,7 +94,7 @@ def _runtime(tmp_path: Path) -> Runtime:
 def _reopened(tmp_path: Path) -> Runtime:
     """A second runtime over the same directory reads the packs back off disk."""
     settings = offline_settings(tmp_path).model_copy(update={"packs_dir": tmp_path / "packs"})
-    return Runtime(settings, lambda _: ScriptedSpawner())
+    return Runtime(settings, spawner=ScriptedSpawner())
 
 
 def _file(tmp_path: Path) -> Path:

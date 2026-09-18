@@ -20,6 +20,9 @@ class CreationStep(Frozen):
     def constrains(self) -> bool:
         return bool(self.options) and not self.allows_text
 
+    def offers(self, answer: str) -> bool:
+        return not self.constrains or any(option.id == answer for option in self.options)
+
 
 def picked(picks: Picks, step_id: Slug) -> str:
     return picks.get(step_id, "")
@@ -36,10 +39,15 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
             raise Refusal(f"{step.id!r} is unanswered")
         if len(answer) > ANSWER_MAX:
             raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
-        if not step.constrains:
-            continue
-        if answer not in {option.id for option in step.options}:
+        if not step.offers(answer):
             raise Refusal(f"{step.id!r} offers no {answer!r}")
+
+
+def drop_stale(steps: Sequence[CreationStep], picks: dict[Slug, str]) -> None:
+    """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
+    for step in steps:
+        if not step.offers(picked(picks, step.id)):
+            picks.pop(step.id, None)
 
 
 def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:

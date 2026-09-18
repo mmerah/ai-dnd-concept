@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from functools import partial
 
 from nicegui import app, ui
@@ -110,6 +111,28 @@ def home_page(runtime: Runtime) -> None:
         _packs(catalog)
 
 
+def mount(runtime: Runtime) -> None:
+    """Puts the MCP endpoint, the dice sound, the lifespan hooks and every page on the app."""
+    plain_pages: tuple[tuple[str, Callable[[Runtime], None]], ...] = (
+        ("/", home_page),
+        ("/create", character_page),
+        ("/scenario", scenario_page),
+        ("/pack", new_pack_page),
+        ("/settings", lambda runtime: settings_page(runtime.settings)),
+    )
+    asgi, manager = endpoint(runtime.gate)
+    app.mount(MOUNT_PATH, asgi)
+    app.add_static_file(local_file=DICE_SOUND, url_path=DICE_SOUND_ROUTE)
+    lifespan = MountedLifespan(manager)
+    app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
+    app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]
+    app.on_shutdown(runtime.close)  # pyright: ignore[reportUnknownMemberType]
+    for route, page in plain_pages:
+        ui.page(route)(partial(page, runtime))
+    ui.page(GAME_ROUTE)(partial(_game, runtime))
+    ui.page(PACK_ROUTE)(partial(_pack, runtime))
+
+
 def start() -> None:
     # Without a handler the root logger drops every INFO record, spawns included.
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -117,7 +140,7 @@ def start() -> None:
         settings = read_settings()
     except Refusal as broken:
         raise SystemExit(f"settings: {broken}") from None
-    _register_pages(Runtime(settings))
+    mount(Runtime(settings))
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
@@ -208,51 +231,21 @@ def _refused_page(message: str) -> None:
         ui.button("Home", icon="home", on_click=lambda: ui.navigate.to("/")).props("color=primary")
 
 
-def _register_pages(runtime: Runtime) -> None:
-    asgi, manager = endpoint(runtime)
-    app.mount(MOUNT_PATH, asgi)
-    app.add_static_file(local_file=DICE_SOUND, url_path=DICE_SOUND_ROUTE)
-    lifespan = MountedLifespan(manager)
-    app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
-    app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]
-    app.on_shutdown(runtime.close)  # pyright: ignore[reportUnknownMemberType]
+async def _game(runtime: Runtime, scenario: str, character: str) -> None:
+    try:
+        session = runtime.session(
+            LaunchTarget(scenario_id=content_id(scenario), character_id=content_id(character))
+        )
+    except Refusal as refused:
+        _refused_page(str(refused))
+        return
+    # Tab storage (the composer draft) is readable only after the handshake.
+    await ui.context.client.connected()
+    game_page(session)
 
-    @ui.page("/")
-    def _index() -> None:  # pyright: ignore[reportUnusedFunction]
-        home_page(runtime)
 
-    @ui.page(GAME_ROUTE)
-    async def _game(scenario: str, character: str) -> None:  # pyright: ignore[reportUnusedFunction]
-        try:
-            session = runtime.session(
-                LaunchTarget(scenario_id=content_id(scenario), character_id=content_id(character))
-            )
-        except Refusal as refused:
-            _refused_page(str(refused))
-            return
-        # Tab storage (the composer draft) is readable only after the handshake.
-        await ui.context.client.connected()
-        game_page(session)
-
-    @ui.page("/create")
-    def _create() -> None:  # pyright: ignore[reportUnusedFunction]
-        character_page(runtime)
-
-    @ui.page("/scenario")
-    def _scenario() -> None:  # pyright: ignore[reportUnusedFunction]
-        scenario_page(runtime)
-
-    @ui.page("/pack")
-    def _new_pack() -> None:  # pyright: ignore[reportUnusedFunction]
-        new_pack_page(runtime)
-
-    @ui.page(PACK_ROUTE)
-    def _pack(engine: str, pack: str) -> None:  # pyright: ignore[reportUnusedFunction]
-        try:
-            pack_page(runtime, EngineId(engine), content_id(pack))
-        except Refusal as refused:
-            _refused_page(str(refused))
-
-    @ui.page("/settings")
-    def _settings() -> None:  # pyright: ignore[reportUnusedFunction]
-        settings_page(runtime.settings)
+def _pack(runtime: Runtime, engine: str, pack: str) -> None:
+    try:
+        pack_page(runtime, EngineId(engine), content_id(pack))
+    except Refusal as refused:
+        _refused_page(str(refused))

@@ -11,19 +11,17 @@ from typing import Self
 from nicegui import app, ui
 from nicegui.events import GenericEventArguments, ScrollEventArguments
 
-from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, GameService
+from aidm.app.runtime import Busy, GameService
 from aidm.config import Role
-from aidm.core.entities import Refusal, Slug
-from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.play import Answer, DecisionOption, Exchange, Marked
+from aidm.core.entities import Refusal
+from aidm.core.play import Answer, DecisionOption, Exchange
 from aidm.core.views import PlayerView
+from aidm.ui import transcript
 from aidm.ui.dice import DiceSound, rolled_since
 from aidm.ui.widgets import (
     alert,
-    avatar,
     decision_widget,
     entity_row,
-    heading,
     labeled_value,
     media_url,
     page_header,
@@ -32,20 +30,6 @@ from aidm.ui.widgets import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-STEP_COPY: dict[Role, tuple[str, str]] = {
-    "master": (
-        "Game Master",
-        "Works out what your action actually does: who reacts, what changes, "
-        "and whether the dice decide it.",
-    ),
-    "narrator": ("Narrator", "Writes what you see and hear this turn."),
-    "worldsmith": (
-        "Worldsmith",
-        "Writes the next scene or region, or what the game master asked for: where the story "
-        "goes and who is waiting there. This one is slow; a few minutes is normal.",
-    ),
-}
 
 TURN_FAILED = "Something went wrong. The turn did not land — check the server log."
 BLANK = string.whitespace + (
@@ -60,12 +44,6 @@ RAIL: tuple[tuple[str, str, str], ...] = (
     (SCENE_TAB, "map", "Scene"),
     (JOURNAL_TAB, "history_edu", "Journal"),
 )
-MARK_LABELS: dict[Marked, str] = {
-    "opening": "(the story begins)",
-    "story": "(the story goes on)",
-    "interjection": "(the party speaks)",
-}
-DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -96,7 +74,7 @@ class GamePage:
         self.shown_clip: Path | None = None
         self.autoplay_clip: Path | None = None
         self.scene_open: bool = False
-        self.transcript: ui.scroll_area
+        self.scroll: ui.scroll_area
         self.drawer: ui.right_drawer
         self.tabs: ui.tabs
         self.rail: dict[str, ui.button] = {}
@@ -145,12 +123,12 @@ class GamePage:
             ):
                 self.scene_header()
                 # No padding class: NiceGUI already pads the scroll content; twice would misalign.
-                with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
+                with ui.scroll_area().classes("w-full flex-grow game-transcript") as scroll:
                     self.chat()
                     self.live_turn()
-                self.transcript = transcript
-                transcript.on_scroll(self.scrolled)
-                ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
+                self.scroll = scroll
+                scroll.on_scroll(self.scrolled)
+                ui.timer(0.5, lambda: scroll.scroll_to(percent=1.0), once=True)
                 self.foot()
 
         self.drawer = ui.right_drawer(value=None).props("width=420").classes("game-drawer")
@@ -263,57 +241,20 @@ class GamePage:
 
     @ui.refreshable_method
     def chat(self) -> None:
-        session = self.session
-        history = self.history
-        if not history:
-            ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-        # The live decision widget sits directly below the last exchange, so it needs no pause line.
-        last = history[-1] if history and session.state.pending is not None else None
-        player = self.view.player
-        for exchange in history:
-            if exchange.mark:
-                ui.label(MARK_LABELS[exchange.mark]).classes(
-                    "w-full text-center text-xs italic opacity-60"
-                )
-            else:
-                _bubble(session, player.id, player.label, exchange.words, sent=True)
-            for fact in cards(exchange.facts):
-                _card(fact)
-            for line in exchange.lines:
-                _bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
-            if exchange.decision and exchange is not last:
-                ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
-        if (proposed := standing_proposal(history, self.view, session.phase)) is not None:
-            with ui.row().classes(DECISION_ROW):
-                ui.icon("record_voice_over").classes("game-card-icon")
-                ui.label(f"{proposed.lines[0].speaker} proposes: {proposed.proposal}").classes(
-                    "text-sm"
-                )
-                ui.button(
-                    "Accept", on_click=partial(self.play, Answer(text=proposed.proposal))
-                ).props("outline dense")
-        # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
-        if clip := session.newest_clip():
-            ui.audio(clip, autoplay=clip == self.autoplay_clip)
-            # Consumed by this render: a later refresh of the same turn must not restart it.
-            self.autoplay_clip = None
+        transcript.chat(
+            self.session,
+            self.view,
+            self.history,
+            autoplay_clip=self.autoplay_clip,
+            accept=self.accept,
+        )
+        # Consumed by this render: a later refresh of the same turn must not restart the clip.
+        self.autoplay_clip = None
 
     @ui.refreshable_method
     def live_turn(self) -> None:
-        session = self.session
-        turn = session.turn
-        player = self.view.player
-        if turn is not None:
-            _bubble(session, player.id, player.label, turn.words, sent=True)
-            shown = cards(turn.facts)
-            for fact in shown:
-                _card(fact, live=fact is shown[-1])
-        elif session.intent:
-            _bubble(session, player.id, player.label, session.intent, sent=True)
-        self.ticker = None
-        if session.phase is not None:
-            elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
-            self.ticker = _inline_status(session.phase, elapsed)
+        elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
+        self.ticker = transcript.live_turn(self.session, self.view, elapsed)
 
     @ui.refreshable_method
     def way_on_panel(self) -> None:
@@ -321,7 +262,7 @@ class GamePage:
         action = self.view.action
         if action is None:
             return
-        with ui.row().classes(DECISION_ROW):
+        with ui.row().classes(transcript.DECISION_ROW):
             ui.icon("arrow_forward").classes("game-card-icon")
             ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
             ui.label(f"{action.detail} Press {action.label} with your words.").classes(
@@ -354,11 +295,9 @@ class GamePage:
         view = self.view
         player = view.player
         with ui.column().classes("w-full game-gap-xl"):
-            for index, panel in enumerate(view.panels):
-                # The sheet leads in both engine families, so it alone carries the portrait.
-                sheet = index == 0
-                with section(panel.title, classes="game-portrait" if sheet else ""):
-                    if sheet:
+            for panel in view.panels:
+                with section(panel.title, classes="game-portrait" if panel.portrait else ""):
+                    if panel.portrait:
                         entity_row(session.icon(player.id), player.label, player.detail)
                     if not panel.rows:
                         ui.label("nothing").classes("text-sm opacity-60")
@@ -372,21 +311,7 @@ class GamePage:
 
     @ui.refreshable_method
     def journal(self) -> None:
-        heading("Chronicle")
-        played = self.history
-        for number, exchange in reversed(list(enumerate(played, start=1))):
-            title = MARK_LABELS[exchange.mark] if exchange.mark else exchange.words
-            with ui.expansion(f"turn {number}: {title}").classes("w-full game-card"):
-                # A speaker is named, because a bare quote reads as narration without bubbles.
-                for line in exchange.lines:
-                    if line.speaker_id is None:
-                        ui.label(line.text).classes("whitespace-pre-wrap text-sm")
-                    else:
-                        with ui.row().classes("items-start no-wrap game-gap-sm"):
-                            ui.label(f"{line.speaker}:").classes(
-                                "font-bold whitespace-nowrap text-sm"
-                            )
-                            ui.label(line.text).classes("whitespace-pre-wrap text-sm")
+        transcript.journal(self.history)
 
     def composer(self) -> None:
         with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm game-gap-lg"):
@@ -440,7 +365,7 @@ class GamePage:
             self._scroll(follow=self.at_end or self.own_move)
         ticker, started = self.ticker, self.step_started
         if ticker is not None and started is not None and not ticker.is_deleted:
-            ticker.set_text(_clock(monotonic() - started))
+            ticker.set_text(transcript.clock(monotonic() - started))
 
     def _clear_spent_draft(self) -> None:
         history = self.history
@@ -472,6 +397,9 @@ class GamePage:
 
     async def answered(self, option_id: str) -> None:
         await self.play(Answer(option_id=option_id))
+
+    async def accept(self, proposal: str) -> None:
+        await self.play(Answer(text=proposal))
 
     async def submit(self) -> None:
         typed = (self.box.value or "").strip(BLANK)
@@ -531,13 +459,13 @@ class GamePage:
             self.new_activity.set_visibility(False)
 
     def catch_up(self) -> None:
-        self.transcript.scroll_to(percent=1.0)
+        self.scroll.scroll_to(percent=1.0)
         self.new_activity.set_visibility(False)
 
     def _set_composer(self) -> None:
         session = self.session
         player = self.view
-        typing = can_type(player, session.phase)
+        typing = transcript.can_type(player, session.phase)
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
         action = player.action
@@ -564,7 +492,7 @@ class GamePage:
             return
         self.new_activity.set_visibility(False)
         # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
-        get_running_loop().call_later(0.1, lambda: self.transcript.scroll_to(percent=1.0))
+        get_running_loop().call_later(0.1, lambda: self.scroll.scroll_to(percent=1.0))
 
     async def _opened(self, opener: ui.timer) -> None:
         """Retries while the gate is held at either end; anything else is persistent."""
@@ -574,10 +502,8 @@ class GamePage:
             nonlocal blocked
             try:
                 await self.session.open()
-            except Refusal as error:
-                if blocked := str(error) in (IN_FLIGHT_HERE, IN_FLIGHT_ELSEWHERE):
-                    return
-                raise
+            except Busy:
+                blocked = True
 
         try:
             _ = await self._run(opening)
@@ -592,11 +518,13 @@ class GamePage:
             widget.set_enabled(False)
         try:
             await playing()
+        except Busy as busy:
+            # Silent when it is this game's own turn: a double-click guard, not a message.
+            if busy.elsewhere:
+                alert(str(busy))
+            return False
         except Refusal as error:
-            message = str(error)
-            # A double-click guard, not a message for the player: this game's own turn in flight.
-            if message != IN_FLIGHT_HERE:
-                alert(message)
+            alert(str(error))
             return False
         except Exception:
             # Announced, not handled: the re-raise is what logs the detail kept off the screen.
@@ -616,20 +544,6 @@ def game_page(session: GameService) -> None:
     GamePage(session).build()
 
 
-def can_type(player: PlayerView, phase: Role | None) -> bool:
-    decision = player.decision
-    return phase is None and (decision is None or decision.allows_text) and player.over is None
-
-
-def standing_proposal(
-    history: Sequence[Exchange], player: PlayerView, phase: Role | None
-) -> Exchange | None:
-    newest = history[-1] if history else None
-    if newest is None or not newest.proposal:
-        return None
-    return newest if can_type(player, phase) and player.decision is None else None
-
-
 def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
     return size - position - container <= slack
 
@@ -647,63 +561,9 @@ def placeholder(player: PlayerView, phase: Role | None) -> str:
     if player.over is not None:
         return "The game is over. Restart it from the menu."
     if phase is not None:
-        return f"{STEP_COPY[phase][0]} is working..."
+        return f"{transcript.STEP_COPY[phase][0]} is working..."
     if player.decision is None:
         return "What do you do?"
     if player.decision.allows_text:
         return "The game is waiting on your answer."
     return "Choose an option above."
-
-
-def _card(fact: Fact, *, live: bool = False) -> None:
-    headline, *detail = fact.card.split("\n")
-    with ui.column().classes("game-card w-full game-gap-sm"):
-        ui.label(headline).classes("text-sm font-bold")
-        for line in detail:
-            ui.label(line).classes("text-xs opacity-80")
-        if fact.dice:
-            with ui.row().classes("items-start game-gap-2xl"):
-                for group in fact.dice:
-                    _dice_group(group, live=live)
-
-
-def _dice_group(die: DiceEvent, *, live: bool) -> None:
-    with ui.column().classes("game-gap-2xs"):
-        ui.label(die.label).classes("text-xs opacity-60")
-        with ui.row().classes("no-wrap game-gap-sm"):
-            for index, (face, value) in enumerate(zip(die.faces, die.rolled, strict=True)):
-                with ui.column().classes(
-                    "game-die game-gap-0"
-                    + (" game-die-kept" if index in die.highlight else "")
-                    + (" game-die-live" if live else "")
-                ):
-                    ui.label(f"d{face}").classes("game-die-face")
-                    ui.label(str(value)).classes("game-die-value")
-
-
-def _bubble(
-    session: GameService, speaker_id: Slug | None, name: str, text: str, *, sent: bool
-) -> None:
-    narration = speaker_id is None
-    icon = None if narration else session.icon(speaker_id)
-    chat_name = "DM" if narration else name
-    message = ui.chat_message(text, name=chat_name, sent=sent).classes(
-        "w-full game-message" + (" game-narration" if narration else "")
-    )
-    with message.add_slot("avatar"):
-        avatar(icon, None if narration else chat_name)
-
-
-def _inline_status(step: Role, elapsed: float) -> ui.label:
-    label, description = STEP_COPY[step]
-    with ui.row().classes("items-center no-wrap q-py-xs game-gap-md"):
-        ui.spinner(size="1.1rem")
-        ui.label(label).classes("text-sm font-bold")
-        ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
-    ui.label(description).classes("text-xs opacity-70")
-    return ticker
-
-
-def _clock(seconds: float) -> str:
-    minutes, rest = divmod(int(seconds), 60)
-    return f"{minutes}:{rest:02d}"
