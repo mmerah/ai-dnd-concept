@@ -368,10 +368,10 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             raise Refusal(f"{dead.name} is dead and cannot lead")
         del self.cast[member.id]
         self.party.remove(member.id)
-        self.run.here.remove(member.id)
+        self.scene.here.remove(member.id)
         self.player = member
         self.cast[dead.id] = dead
-        self.run.here.append(dead.id)
+        self.scene.here.append(dead.id)
         trace = f"{member.tag} takes the lead; {dead.tag} is dead"
         return [member.fact(trace, card=f"{member.name} leads now")]
 

@@ -16,7 +16,7 @@ from aidm.core.model import (
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import Sections, render_history, section_if
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import NarratorView, Panel, PlayerView
+from aidm.core.views import NarratorView, PlayerView
 from aidm.engines.base import (
     Person,
     character_panel,
@@ -42,6 +42,7 @@ from aidm.engines.scenes.worldsmith import (
     CROSSING,
     MEANWHILE_NUDGE,
     OPENING,
+    OPENING_SECTIONS,
     TURNING,
     check_scene,
 )
@@ -64,41 +65,33 @@ COMPLICATION_UNWRITTEN = Fact(
 )
 
 
-class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
+class SceneEngine[W: SceneWorld[Any], K: Pack](Engine[W, K]):
     family_dir = Path(__file__).parent
+    member: type[Person]
     unwritten: ClassVar[dict[Slug, Fact]] = {
         DEPARTURE: WAY_UNWRITTEN,
         COMPLICATION: COMPLICATION_UNWRITTEN,
     }
-    opening_sections = (
-        ("SCENES SO FAR", "(no scenes yet — write the opening)"),
-        ("THE WHOLE CAST", "(no cast yet — write the people and things this scene needs)"),
-        ("THE SCENE NOW", "(none yet)"),
-    )
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> W:
         # Copied: a restart reopens the same scenario file.
-        draft: SceneProposal[C] = scenario.opening.model_copy(deep=True)
+        draft: SceneProposal[Person] = scenario.opening.model_copy(deep=True)
         check_scene(draft)
         return self.world.opening(draft, self.player_of(character))
 
     def master_sections(self, state: Game[W]) -> Sections:
         world = state.world
-        scene = world.run
+        scene = world.scene
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
             *section_if("WHAT THIS SCENE IS ABOUT", scene.focus),
             ("YOU PLAY FOR", world.player.line()),
-            *self.sheet_sections(state),
             ("HERE WITH THE PLAYER", world.here_lines()),
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *section_if("THE ARC (the player has not found this)", world.arc),
             *self.packs.rules_section(state.pack_id),
         )
-
-    def sheet_sections(self, _state: Game[W]) -> Sections:
-        return ()
 
     def family_sections(self, draft: Game[W]) -> Sections:
         world = draft.world
@@ -110,7 +103,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
 
     def narrator_view(self, state: Game[W]) -> NarratorView:
         world = state.world
-        scene = world.run
+        scene = world.scene
         here = list(world.here())
         return NarratorView(
             place=scene.place,
@@ -129,18 +122,17 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         me = player.subject()
         return PlayerView(
             player=me,
-            scene_title=world.run.title,
-            situation=world.run.situation,
+            scene_title=world.scene.title,
+            situation=world.scene.situation,
             panels=(
                 character_panel(world.sheet_rows()),
-                *self.panels(state),
                 *world.scene_panel(),
                 *party_panel(world.members()),
                 here_panel(other.subject() for other in world.others()),
-                trail_panel(run.title for run in world.runs),
+                trail_panel(scene.title for scene in world.scenes),
             ),
             decision=state.pending,
-            action=MOVE_ON if world.run.offered else None,
+            action=MOVE_ON if world.scene.offered else None,
             over=self.over(state),
         )
 
@@ -167,7 +159,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         ]
 
     def act(self, draft: Game[W], action: Slug, _words: str) -> None:
-        if action != MOVE_ON.id or not draft.world.run.offered:
+        if action != MOVE_ON.id or not draft.world.scene.offered:
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
 
@@ -189,14 +181,14 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
 
     async def write_next(
         self, draft: Game[W], intent: str, worldsmith: WorldsmithAnswer
-    ) -> NextProposal[C]:
+    ) -> NextProposal[Person]:
         world = draft.world
         prompt = self.render_next(draft, intent)
         return await worldsmith(
             prompt, NextProposal[self.member], lambda answer: check_scene(answer, world)
         )
 
-    def install(self, draft: Game[W], scene: SceneProposal[C]) -> list[Fact]:
+    def install(self, draft: Game[W], scene: SceneProposal[Person]) -> list[Fact]:
         world = draft.world
         if isinstance(scene, NextProposal):
             draft.log[-1].recap = scene.recap
@@ -217,13 +209,13 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        def built(draft: SceneProposal[C]) -> AnyScenario:
+        def built(draft: SceneProposal[Person]) -> AnyScenario:
             return self.build_scenario(meta, pack_id, draft, source, draft.situation)
 
         guidance = self.guidance(pack_id, opening=True)
         model = SceneProposal[self.member]
         prompt = self.render_worldsmith(
-            source, meta.scope, self.opening_sections, OPENING, guidance, model
+            source, meta.scope, OPENING_SECTIONS, OPENING, guidance, model
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
@@ -239,7 +231,7 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
     async def depart(
         self, draft: Game[W], request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
-        left = draft.world.run.title
+        left = draft.world.scene.title
         exchanges = draft.exchanges()
         # The master's `pursuit` is free text; the narrator reads the player's own words instead.
         asked = exchanges[-1].words if exchanges else ""
@@ -251,6 +243,3 @@ class SceneEngine[C: Person, W: SceneWorld[Any], K: Pack](Engine[C, C, W, K]):
     ) -> Written:
         scene = await self.write_next(draft, COMPLICATING.format(brief=request.detail), worldsmith)
         return Written(tuple(self.install(draft, scene)), TURNING)
-
-    def panels(self, _state: Game[W]) -> tuple[Panel, ...]:
-        return ()

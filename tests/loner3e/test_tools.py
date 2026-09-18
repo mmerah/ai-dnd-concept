@@ -140,7 +140,7 @@ def test_drive_refuses_naming_someone_unmet_who_is_not_in_this_scene() -> None:
     """The sheet row outlives the scene that wrote it, so the screen is the whole cast."""
     _, state = initialized()
     draft = with_entity(state, HIDDEN).draft()
-    draft.world.run.here.remove(HIDDEN.id)
+    draft.world.scene.here.remove(HIDDEN.id)
     kael = loner_sheet(draft, PLAYER_ID)
 
     assert "not met" in refused(

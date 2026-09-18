@@ -6,7 +6,7 @@ from aidm.core.entities import EngineId
 from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.scenes.world import SceneRun
+from aidm.engines.scenes.world import Scene
 from support.table import Call, tool_call
 
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
@@ -33,11 +33,11 @@ def _one_exchange(state: AnyGame, words: str, said: str) -> AnyGame:
 
 
 def _loner3e_behind(state: AnyGame) -> AnyGame:
-    """One played turn in the scene before this one: RECENT PLAY has to group by run, not title."""
+    """One turn in the scene before this one: RECENT PLAY groups by scene, not title."""
     draft = state.draft()
-    draft.world.runs.insert(
+    draft.world.scenes.insert(
         0,
-        SceneRun(
+        Scene(
             place="vault-stair",
             title="The Vault Stair",
             focus="Is there a way past the vault door from the stair?",

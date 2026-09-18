@@ -1,7 +1,6 @@
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -19,11 +18,13 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.model import AnyGame, Check, Generation
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
 from aidm.engines.packs import SRD_PACK
-from aidm.engines.scenes.engine import DEPARTURE, SceneEngine
+from aidm.engines.scenes.engine import DEPARTURE
 from aidm.engines.scenes.world import SceneProposal, SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene
+from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import Crewmate, CrewSheet, TwentyfourxxWorld
 
 DECOY_CAST_ENTRY = {"id": PLAYER_ID, "name": "Someone", "brief": "filed wrongly", "known": True}
@@ -34,13 +35,11 @@ LONER3E_BASE: Mapping[str, object] = {
     "situation": LONER3E_SITUATION,
     "arc": "Farther along, the stair still leads down to what Tomas would not speak of.",
 }
-# `SceneEngine`'s parameters are erased on purpose: a tuple of engines needs one shared type.
-type AnySceneEngine = SceneEngine[Any, Any, Any]
 
 
 @dataclass(frozen=True, slots=True)
 class SceneCase:
-    engine: AnySceneEngine
+    engine: Loner3eEngine | TwentyfourxxEngine
     game: Callable[[], AnyGame]
     base: Mapping[str, object]  # the draft fields every scene of this case starts from
     bar: Callable[[Mapping[str, object]], None]
@@ -413,12 +412,12 @@ def test_apply_scene_refuses_a_present_name_that_resolves_to_nobody(case: SceneC
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind(case: SceneCase) -> None:
     state = case.game()
-    left_title = state.world.run.title
-    runs_before = len(state.world.runs)
+    left_title = state.world.scene.title
+    scenes_before = len(state.world.scenes)
     case.apply(state, {"present": (str(case.met),)})
     assert state.world.last_seen(case.unmet) == f"last seen in: {left_title}"
     assert case.unmet in state.world.cast
-    assert len(state.world.runs) == runs_before + 1
+    assert len(state.world.scenes) == scenes_before + 1
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
@@ -445,7 +444,7 @@ def test_a_player_with_no_sheet_is_refused() -> None:
     world = twentyfourxx_world().world
     unsheeted = world.player.model_copy(update={"sheet": None})
     with pytest.raises(ValueError, match="the player carries no sheet"):
-        type(world)(cast=world.cast, player=unsheeted, runs=world.runs)
+        type(world)(cast=world.cast, player=unsheeted, scenes=world.scenes)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
@@ -453,22 +452,24 @@ def test_a_cast_that_holds_the_player_is_refused(case: SceneCase) -> None:
     world = case.game().world
     decoy = world.cast[case.met].model_copy(update={"id": PLAYER_ID})
     with pytest.raises(ValueError, match="the player is in the cast"):
-        type(world)(cast={**world.cast, PLAYER_ID: decoy}, player=world.player, runs=world.runs)
+        type(world)(cast={**world.cast, PLAYER_ID: decoy}, player=world.player, scenes=world.scenes)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_player_is_never_listed_in_the_scene(case: SceneCase) -> None:
     world = case.game().world
-    bad_run = world.run.model_copy(update={"here": [*world.run.here, PLAYER_ID]})
+    bad_scene = world.scene.model_copy(update={"here": [*world.scene.here, PLAYER_ID]})
     with pytest.raises(ValueError, match="never listed in it"):
-        type(world)(cast=world.cast, player=world.player, runs=[bad_run])
+        type(world)(cast=world.cast, player=world.player, scenes=[bad_scene])
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_check_filing_rejects_mis_filed_cast(case: SceneCase) -> None:
     world = case.game().world
     with pytest.raises(ValueError, match="is filed under"):
-        type(world)(cast={"wrong-key": world.cast[case.met]}, player=world.player, runs=world.runs)
+        type(world)(
+            cast={"wrong-key": world.cast[case.met]}, player=world.player, scenes=world.scenes
+        )
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

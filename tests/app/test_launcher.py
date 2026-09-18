@@ -333,7 +333,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     catalog = _catalog(settings, runtime.engines)
     state = runtime.session(catalog.target(name, "kael")).state
     assert (name, len(state.exchanges())) == ("the-sunken-bell", 0)
-    assert state.world.run.title == "The Bell Under the Water"
+    assert state.world.scene.title == "The Bell Under the Water"
     assert state.world.player.name == "Kael"
     assert state.source.startswith("PREMISE:")
     world = json.loads((settings.scenarios_dir / name / "world.json").read_text(encoding=ENCODING))

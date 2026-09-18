@@ -5,7 +5,7 @@ from aidm.core.model import ScenarioMeta
 from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.packs import SRD_PACK
-from aidm.engines.scenes.world import SceneRun
+from aidm.engines.scenes.world import Scene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import (
     Crewmate,
@@ -41,7 +41,7 @@ def small_world() -> TwentyfourxxGame:
     world = TwentyfourxxWorld(
         cast={KESTREL: kestrel, SABLE: sable},
         player=_player(),
-        runs=[_scene(here=[KESTREL, SABLE])],
+        scenes=[_scene(here=[KESTREL, SABLE])],
     )
     return TwentyfourxxGame(
         scenario_id="loading-bay",
@@ -71,8 +71,8 @@ def hired(
     return draft.commit()
 
 
-def _scene(*, here: Sequence[Slug] = ()) -> SceneRun:
-    return SceneRun(
+def _scene(*, here: Sequence[Slug] = ()) -> Scene:
+    return Scene(
         place="loading-bay",
         title="The Loading Bay",
         focus="Can they reach the cargo before the lights come back?",

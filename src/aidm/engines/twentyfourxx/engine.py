@@ -17,9 +17,16 @@ from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Panel, PanelRow, Rows
-from aidm.engines.base import PLAYER_ID
-from aidm.engines.scenes.engine import SceneEngine
+from aidm.core.views import Panel, PanelRow, PlayerView, Rows
+from aidm.engines.base import (
+    PLAYER_ID,
+    character_panel,
+    here_panel,
+    party_panel,
+    party_section,
+    trail_panel,
+)
+from aidm.engines.scenes.engine import MOVE_ON, SceneEngine
 from aidm.engines.seam import Written
 from aidm.engines.tools import (
     HIRE,
@@ -101,7 +108,7 @@ class Helping(NamedTuple):
     terms: Helper
 
 
-class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPack]):
+class TwentyfourxxEngine(SceneEngine[TwentyfourxxWorld, TwentyfourxxPack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     authoring = AUTHORING
@@ -110,7 +117,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         "technology, no text or lettering."
     )
     directory = Path(__file__).parent
-    game = TwentyfourxxGame
     scenario = TwentyfourxxScenario
     character = TwentyfourxxCharacter
     pack = TwentyfourxxPack
@@ -293,21 +299,34 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
         )
         return self.sheet_character(name, player)
 
+    def player_of(self, character: AnyCharacter) -> Crewmate:
+        return self.player_as(character, Crewmate)
+
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Gear", sheet.gear_text()))
 
-    def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
+    def master_sections(self, state: TwentyfourxxGame) -> Sections:
         world = state.world
-        job = world.job
+        scene = world.scene
         return (
+            ("SCENE", f"{scene.title}\n{scene.situation}"),
+            *section_if("WHAT THIS SCENE IS ABOUT", scene.focus),
+            ("YOU PLAY FOR", world.player.line()),
             ("GEAR", _item_lines(world.player.require_sheet().items)),
-            *section_if("THE JOB", job),
+            *section_if("THE JOB", world.job),
             ("THE SHIP", _item_lines(world.ship)),
+            ("HERE WITH THE PLAYER", world.here_lines()),
+            *party_section(world.members()),
+            ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
+            *section_if("THE ARC (the player has not found this)", world.arc),
+            *self.packs.rules_section(state.pack_id),
         )
 
-    def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
+    def player_view(self, state: TwentyfourxxGame) -> PlayerView:
         world = state.world
+        player = world.player
+        me = player.subject()
         job = world.job
         job_panel = (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
         ship_panel = Panel(
@@ -317,7 +336,23 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                 for function in world.ship.values()
             ),
         )
-        return (*job_panel, ship_panel)
+        return PlayerView(
+            player=me,
+            scene_title=world.scene.title,
+            situation=world.scene.situation,
+            panels=(
+                character_panel(world.sheet_rows()),
+                *job_panel,
+                ship_panel,
+                *world.scene_panel(),
+                *party_panel(world.members()),
+                here_panel(other.subject() for other in world.others()),
+                trail_panel(scene.title for scene in world.scenes),
+            ),
+            decision=state.pending,
+            action=MOVE_ON if world.scene.offered else None,
+            over=self.over(state),
+        )
 
     def resolve_skill(self, sheet: CrewSheet, wanted: str) -> str:
         if (match := self._match_skill(sheet.skills, wanted)) is not None:

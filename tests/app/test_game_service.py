@@ -31,8 +31,8 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.seam import Written
+from aidm.engines.tunnelgoons.engine import MORE_MAP
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
@@ -211,8 +211,8 @@ def _scene(**changes: object) -> str:
 
 async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    place = table.state.world.run.place
-    here_before = list(table.state.world.run.here)
+    place = table.state.world.scene.place
+    here_before = list(table.state.world.scene.here)
     table.spawner.answers["worldsmith"] = [_scene()]
 
     state = await play_turn(
@@ -226,7 +226,7 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     assert len(exchanges) == 2
     assert exchanges[0].words == "I keep watch on the study door."
     assert exchanges[1].mark == "story"
-    assert state.world.run.place == place
+    assert state.world.scene.place == place
     assert all(entity_id in state.world.cast for entity_id in here_before)
     assert [role for role, _ in table.spawner.prompts] == ["master", "worldsmith", "narrator"]
     assert state.generation is None
@@ -274,7 +274,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
     tmp_path: Path,
 ) -> None:
     table = open_game(tmp_path)
-    title = table.state.world.run.title
+    title = table.state.world.scene.title
 
     state = await play_turn(
         table,
@@ -288,7 +288,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
         "Nothing new came down on this place after all. You are still where you were."
     )
     assert state.generation is None
-    assert state.world.run.title == title
+    assert state.world.scene.title == title
 
 
 async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> None:
@@ -355,12 +355,12 @@ async def test_a_complication_after_an_offer_clears_it_only_once_installed(
     _ = await play_turn(table, "I have what I came for.", the_way_on())
 
     state = await play_turn(table, "I keep watch.", complication)
-    assert state.world.run.offered
+    assert state.world.scene.offered
 
     table.spawner.answers["worldsmith"] = [_scene()]
     state = await play_turn(table, "I keep watching.", complication, arrival="Torchlight.")
-    assert not state.world.run.offered
-    assert state.world.run.title == "The Abbot's Study, Disturbed"
+    assert not state.world.scene.offered
+    assert state.world.scene.title == "The Abbot's Study, Disturbed"
 
 
 async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
@@ -376,7 +376,7 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
 
     assert table.service.engine.over(state) is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
-    assert len(state.world.runs) == 1
+    assert len(state.world.scenes) == 1
     assert state.generation is None
     assert table.saved().generation is None
 

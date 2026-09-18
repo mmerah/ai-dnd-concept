@@ -55,11 +55,11 @@ def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
         _ = updated(world, player=world.player.model_copy(update={"known": False}))
 
     with pytest.raises(ValidationError, match="scene names"):
-        _ = _with_run(world, here=["ghost"])
+        _ = _with_scene(world, here=["ghost"])
 
 
-def _with_run(world: Loner3eWorld, **changes: object) -> Loner3eWorld:
-    return updated(world, runs=[world.run.model_dump(round_trip=True) | changes])
+def _with_scene(world: Loner3eWorld, **changes: object) -> Loner3eWorld:
+    return updated(world, scenes=[world.scene.model_dump(round_trip=True) | changes])
 
 
 def test_the_party_rules_refuse_the_dead_and_the_doubled() -> None:
@@ -97,7 +97,7 @@ def test_entity_and_scene_ids_use_one_grammar() -> None:
     with pytest.raises(ValidationError, match="pattern"):
         _ = updated(state.world.require(MARA), id="bell_tower")
     with pytest.raises(ValidationError, match="pattern"):
-        _ = updated(state.world.run, here=["study_1"])
+        _ = updated(state.world.scene, here=["study_1"])
 
 
 def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:

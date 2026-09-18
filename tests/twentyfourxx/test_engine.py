@@ -23,7 +23,7 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     assert state.pack_id == SRD_PACK
     world = state.world
     assert list(world.player.require_sheet().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
-    assert world.run.place == "docking-ring"
+    assert world.scene.place == "docking-ring"
 
 
 @pytest.mark.parametrize(

@@ -31,7 +31,7 @@ def with_entity(state: Loner3eGame, entity: Loner3eCast) -> Loner3eGame:
     """Added to the cast and to the scene; `known` alone decides present or hidden."""
     draft = state.draft()
     draft.world.cast[entity.id] = entity
-    draft.world.run.here.append(entity.id)
+    draft.world.scene.here.append(entity.id)
     return draft.commit()
 
 

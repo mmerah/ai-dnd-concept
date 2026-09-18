@@ -10,6 +10,7 @@ from aidm.core.creation import (
 )
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact, roll
+from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, master_tool
@@ -50,13 +51,12 @@ from aidm.engines.loner3e.worldsmith import (
 from aidm.engines.scenes.engine import SceneEngine
 
 
-class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
+class Loner3eEngine(SceneEngine[Loner3eWorld, Loner3ePack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     authoring = AUTHORING
     art_style = "Painterly illustration, muted colours, no text or lettering."
     directory = Path(__file__).parent
-    game = Loner3eGame
     scenario = Loner3eScenario
     character = Loner3eCharacter
     pack = Loner3ePack
@@ -136,6 +136,9 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eWorld, Loner3ePack]):
             motive=picked(picks, "motive"),
         )
         return self.sheet_character(name, sheet)
+
+    def player_of(self, character: AnyCharacter) -> Loner3eCast:
+        return self.player_as(character, Loner3eCast)
 
     def master_sections(self, state: Loner3eGame) -> Sections:
         packs = self.packs.played(state.pack_id)
