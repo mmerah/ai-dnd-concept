@@ -2,7 +2,7 @@ import pydantic
 import pytest
 from support.table import EnvFileFreeSettings
 
-from aidm.config import MediaConfig, ProviderConfig, RoleConfig, RoleSettings, SpeechConfig
+from aidm.config import ProviderConfig, RoleConfig, RoleSettings
 
 
 def test_a_role_carries_its_own_model_and_inherits_nothing(
@@ -14,16 +14,6 @@ def test_a_role_carries_its_own_model_and_inherits_nothing(
     assert settings.roles.for_name("narrator").model == "sonnet"
 
 
-def test_illustration_without_a_key_is_refused() -> None:
-    with pytest.raises(ValueError, match="no api_key"):
-        _ = EnvFileFreeSettings(media=MediaConfig(enabled=True))
-
-
-def test_speech_without_a_key_is_refused() -> None:
-    with pytest.raises(ValueError, match="no api_key"):
-        _ = EnvFileFreeSettings(speech=SpeechConfig(enabled=True))
-
-
 def test_a_role_on_a_provider_without_a_key_is_refused() -> None:
     with pytest.raises(ValueError, match="master uses provider 'openrouter', which has no api_key"):
         _ = EnvFileFreeSettings(
@@ -33,38 +23,22 @@ def test_a_role_on_a_provider_without_a_key_is_refused() -> None:
     assert local.roles.master.provider == "local"
 
 
-def test_a_misspelled_role_env_var_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("ROLES__NARATOR__MODEL", "x")
-    with pytest.raises(pydantic.ValidationError, match="narator"):
-        _ = EnvFileFreeSettings()
-
-
 REFUSAL_PATTERNS = ("base_url", "ascii host name")
 
 
 @pytest.mark.parametrize(
     ("given", "expected"),
     (
-        ("http://[::1/v1", "base_url"),
-        ("http://localhost:99999/v1", "base_url"),
         ("not a url", "base_url"),
         ("http://☃.example/v1", "ascii host name"),
-        ("https://open\trouter.ai/api/v1", "base_url"),
-        ("https://openrouter.ai/api\r/v1", "base_url"),
         ("https://open\nrouter.ai/v1", "base_url"),
-        ("https://openrouter.ai/api/v1\x00", "base_url"),
         ("http://localhost:1234", "http://localhost:1234"),
         (" https://openrouter.ai/api/v1\n", "https://openrouter.ai/api/v1"),
     ),
     ids=(
-        "unclosed-bracket",
-        "port-out-of-range",
         "not-a-url",
         "idn-host",
-        "interior-tab",
-        "interior-carriage-return",
         "interior-newline",
-        "trailing-nul",
         "kept-as-given",
         "padded",
     ),

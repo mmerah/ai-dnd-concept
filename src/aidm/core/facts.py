@@ -55,7 +55,6 @@ class Rolled(Frozen):
 
 
 def cards(facts: Sequence[Fact]) -> tuple[Fact, ...]:
-    """The narrator's gate is the player's: an unrevealed entity earns no card of its own."""
     return tuple(fact for fact in facts if fact.told and fact.card)
 
 

@@ -38,8 +38,6 @@ class GeneratedImage:
 
 @dataclass(frozen=True, slots=True)
 class Illustrator:
-    """Scene art and entity icons, both cached on disk and never regenerated once written."""
-
     config: MediaConfig
     provider: ProviderConfig
     saves: Path
@@ -57,7 +55,7 @@ class Illustrator:
         style: str,
         icon_dirs: tuple[Path, ...],
     ) -> Self:
-        """Share authored icons across games while keeping generated canon and scenes per save."""
+        """Authored icons are shared between games. Drawn art stays with the save."""
         return cls(
             config=settings.media,
             provider=settings.providers.for_name(settings.media.provider),
@@ -106,7 +104,7 @@ class Illustrator:
         )
 
     async def _drawn_icon(self, subject: Subject) -> Path | None:
-        """A loser of the claim race goes without rather than waiting."""
+        """The loser of the claim race gets no icon and does not wait."""
         found = self.icon(subject.id)
         if found is not None:
             return found
@@ -115,7 +113,7 @@ class Illustrator:
             if not drawing:
                 return None
             generated = await self._generate(_icon_request(subject, self.style), ICON_RATIO)
-            # Authored directories stay authored: a drawn icon is the save's own.
+            # Authored directories stay authored: a drawn icon belongs to the save.
             path = self.saves / ICON_DIR / f"{subject.id}{generated.suffix}"
             publish(path, lambda staged: staged.write_bytes(generated.data))
             return path
@@ -145,8 +143,6 @@ class Illustrator:
 
 @dataclass(frozen=True, slots=True)
 class Reader:
-    """Spoken exchanges, cached on disk and never regenerated once written."""
-
     config: SpeechConfig
     provider: ProviderConfig
     saves: Path
@@ -169,7 +165,7 @@ class Reader:
         return path if path.is_file() else None
 
     async def read(self, exchange: Exchange) -> None:
-        """A failed generation costs a log line and nothing else: speech is outside the game."""
+        """A failed generation costs a log line only: speech is outside the game."""
         requests, key, path = self._planned(exchange)
         if not requests or path.is_file():
             return
@@ -206,8 +202,6 @@ class Reader:
 
 @dataclass(frozen=True, slots=True)
 class Presenter:
-    """The one gate on generated media: nothing is drawn or read unless it says so."""
-
     illustrator: Illustrator
     reader: Reader
 
@@ -229,13 +223,11 @@ class Presenter:
 
     @property
     def enabled(self) -> bool:
-        """Either feature on: the page then polls for media."""
         return self.illustrator.config.enabled or self.reader.config.enabled
 
     def present(
         self, view: NarratorView, player: Subject, newest: Exchange | None
     ) -> tuple[Coroutine[Any, Any, None], ...]:
-        # `newest=None` means art only: the page build, or a game with nothing read yet.
         art = ()
         if self.illustrator.config.enabled:
             narration = "" if newest is None else newest.narration()
@@ -281,8 +273,8 @@ def illustration_request(
     scene: NarratorView, narration: str, style: str, referenced: Sequence[str] = ()
 ) -> str:
     lines = [
-        "Draw one wide, borderless view of this place from the eye level of someone there. "
-        "Show a single scene, not a portrait or comic panel.",
+        "Draw one wide view of this place, with no border. Use the eye level of a person who "
+        "is there. Draw one scene. Do not draw a portrait. Do not draw a comic panel.",
         f"The place: {scene.title} — {scene.situation}",
         *(f"Present: {subject.name} — {subject.brief}" for subject in scene.subjects),
     ]
@@ -290,15 +282,15 @@ def illustration_request(
         lines.append(f"What just happened: {narration}")
     if referenced:
         lines.append(
-            f"Use the attached images as likeness references in this order: "
-            f"{', '.join(referenced)}. Keep each appearance consistent."
+            f"The attached images show how these subjects look, in this order: "
+            f"{', '.join(referenced)}. Keep the look of each subject the same."
         )
     lines.append(style)
     return "\n".join(lines)
 
 
 def voice_of(speaker_id: Slug | None, narrator: str, pool: Sequence[str]) -> str:
-    """The narrator's voice for narration; a speaker keeps one voice from the pool across turns."""
+    """A speaker keeps one voice from the pool across turns."""
     if speaker_id is None:
         return narrator
     return pool[int(sha1(speaker_id.encode(), usedforsecurity=False).hexdigest(), 16) % len(pool)]
@@ -311,7 +303,7 @@ def requests_of(
 
 
 def clip_key(model: str, lines: Sequence[tuple[str, str]]) -> str:
-    """The clip names a file, so the model and every (voice, text) hash to twelve hex chars."""
+    """The clip names a file, so the model and each (voice, text) hash to twelve hex chars."""
     joined = "\n".join(f"{voice}|{text}" for voice, text in lines)
     return sha1(f"{model}\n{joined}".encode(), usedforsecurity=False).hexdigest()[:12]
 
@@ -322,9 +314,9 @@ def speech_body(model: str, voice: str, text: str) -> dict[str, str]:
 
 def _icon_request(subject: Subject, style: str) -> str:
     return (
-        f"Draw a borderless portrait token of {subject.name} — {subject.brief}. "
-        f"Centre the subject alone, filling the square on a plain background. "
-        f"Include only props they carry. {style}"
+        f"Draw a portrait token of {subject.name} — {subject.brief}, with no border. "
+        f"Put the subject alone in the centre and fill the square. Use a plain background. "
+        f"Show only the items that the subject carries. {style}"
     )
 
 

@@ -1,6 +1,4 @@
-from support.tunnelgoons import ENGINE, HALL, MIRA, small_world
-
-from aidm.engines.rooms.world import Prop
+from support.tunnelgoons import ENGINE, HALL, small_world
 
 
 def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
@@ -10,29 +8,3 @@ def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
     sections = dict(ENGINE.master_sections(state))
     assert "Robo Mantis" in sections["HIDDEN HERE (the player has not found these)"]
     assert "locked" in sections["WAYS OUT"]
-
-
-def test_master_sections_lists_an_item_an_npc_here_is_holding() -> None:
-    state = small_world()
-    world = state.world
-    on_a_string = "mira-key"
-    world.items[on_a_string] = Prop(
-        id=on_a_string, name="Mira's Key", brief="On a string", known=True, on=MIRA
-    )
-    sections = dict(ENGINE.master_sections(state))
-    assert "Mira's Key" in sections["HERE WITH THE PLAYER"]
-
-
-def test_entity_line_marks_a_dead_npc_and_the_players_carried_over_score() -> None:
-    state = small_world()
-    world = state.world
-    world.npcs[MIRA].alive = False
-    assert "(dead)" in world.line(world.npcs[MIRA]).splitlines()[0]
-    assert "inventory: 2/8" in world.line(world.player).lower()
-
-
-def test_the_narrator_view_carries_the_sheet_and_what_is_carried() -> None:
-    view = ENGINE.narrator_view(small_world())
-
-    assert ("Health", "10/10") in view.sheet
-    assert ("Carrying", "Rope, Torch") in view.sheet

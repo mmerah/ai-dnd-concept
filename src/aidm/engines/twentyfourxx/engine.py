@@ -127,10 +127,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     @tool
     def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
-        """Call this when the player hires someone here to work. Someone already travelling with the
-        player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing
-        more lands this turn. A sheet is for someone hired to work, never for one who only comes
-        along."""
+        """Call this when the player hires a character here to work. The player can also hire a
+        character who already travels with the player. The worldsmith writes the sheet of that
+        character at the end of the turn. Nothing more happens this turn. Give a sheet only to a
+        character hired to work. Do not give a sheet to a character who only travels along."""
         return file_hire(draft, args.target_id, args.terms)
 
     async def write_hire(
@@ -157,7 +157,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     def creation_steps(self, pack_id: Slug, picks: Picks) -> tuple[CreationStep, ...]:
         specialties, origins = self._offered(pack_id)
-        # The rules fix the seventeen skills; a pack adds specialties and origins, not skills.
+        # The rules fix the seventeen skills: a pack adds specialties and origins only.
         skills = self.packs.srd().skills
         steps = [CreationStep(id="specialty", name="Specialty", options=specialties)]
         specialty = option_of(specialties, picked(picks, "specialty"))
@@ -227,7 +227,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
                 (kit for kit in specialty.kit_choice if slug(kit.name, ()) == wanted), None
             )
             if weapon is None:
-                raise Refusal(f"{wanted!r} is not one of the weapons on offer")
+                raise Refusal(f"{wanted!r} is not a weapon on offer")
 
         traits = tuple(picked(picks, f"trait-{number}") for number in range(1, origin.invents + 1))
         body = None
@@ -333,7 +333,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
     def change_hindrances(
         self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
     ) -> list[Fact]:
-        """The actor picks up hindrances, sheds them, or both at once."""
+        """The actor gains hindrances, loses hindrances, or does both."""
         world = draft.world
         world.check_unnamed(*args.gained)
         return world.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
@@ -349,20 +349,20 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     @tool
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
-        """The actor loses an item for good."""
+        """The actor loses an item permanently."""
         actor = draft.world.require_actor(args.actor_id)
         return actor.require_sheet().drop_item(args.item_id, actor)
 
     @tool
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
-        """The actor mends a broken item."""
+        """The actor repairs a broken item."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
         return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
 
     @tool
     def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
-        """The actor pays credits for something that is not an item or a repair."""
+        """The actor pays credits for a thing that is not an item and not a repair."""
         world = draft.world
         world.check_unnamed(args.why)
         return world.require_actor(args.actor_id).spend(args.amount, args.why)
@@ -379,14 +379,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     @tool
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        """A carried item or a ship function breaks so a hit becomes a hindrance."""
+        """A carried item or a ship function breaks. The hit becomes a hindrance."""
         world = draft.world
         world.check_unnamed(args.hindrance)
         return world.defend(args.actor_id, args.item_id, args.hindrance)
 
     @tool
     def kill(self, draft: TwentyfourxxGame, args: Kill, rng: Random) -> list[Fact]:
-        """Someone here dies. When it is the lead, the crew pick who leads now."""
+        """A character here dies. If that character is the lead, the crew choose a new lead."""
         facts = super().kill(draft, args, rng)
         self._succession(draft)
         return facts
@@ -425,8 +425,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     @tool
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
-        """Call this when the outcome of an action matters. The engine picks the dice, rolls them,
-        and reads the result."""
+        """Call this when the result of an action is important. The engine selects the dice,
+        rolls the dice, and reads the result."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
         helper = args.helped_by
@@ -524,8 +524,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     @tool
     def ask_world(self, _draft: TwentyfourxxGame, args: AskWorld, rng: Random) -> list[Fact]:
-        """Call this to ask about the world's bad luck when nobody acts. The engine rolls one d6
-        and reads it."""
+        """Call this to ask about bad luck in the world when no character acts. The engine
+        rolls one d6 and reads the die."""
         rolled = roll((6,), args.question, rng)
         result = _banded(rolled.face, "trouble now", "signs of it", "nothing")
         # The dice trace; the answer itself is never told.
@@ -533,9 +533,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxWorld, TwentyfourxxPa
 
     @tool
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
-        """Call this to look for work with `find`, to record agreed work with `take`, and to close
-        the job with `finish`. With `find` the engine rolls the SRD's d6. With `finish` it raises
-        one skill for each operator and pays each of them d6 credits."""
+        """Call this with `find` to look for work, with `take` to record agreed work, and with
+        `finish` to close the job. With `find` the engine rolls the d6 of the SRD. With
+        `finish` the engine raises one skill for each operator, then pays each operator d6
+        credits."""
         match args.verb:
             case "find":
                 return self._find(draft, args.where, rng)

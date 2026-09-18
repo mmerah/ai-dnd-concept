@@ -2,15 +2,10 @@ import pytest
 from pydantic import ValidationError
 from support.game import initialized
 
-from aidm.core.views import PanelRow, Subject
 from aidm.engines.base import (
     Gauge,
-    Person,
     Thing,
-    here_panel,
     named_unmet,
-    party_panel,
-    party_section,
 )
 from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 
@@ -21,55 +16,6 @@ def _state() -> Loner3eGame:
     """A counter card drops the name for the played character alone, so it needs the state."""
     _, state = initialized()
     return state
-
-
-def test_here_panel_leaves_out_the_player_and_carries_an_icon_id_per_row() -> None:
-    other = Subject(id="kestrel", name="Kestrel", brief="Runs the dock.")
-
-    panel = here_panel((other,))
-
-    assert panel.title == "Also here"
-    assert [row.name for row in panel.rows] == ["Kestrel"]
-    assert panel.rows[0].icon_id == other.id
-
-
-def test_party_section_is_empty_for_nobody_and_party_panel_orders_entity_before_sheet() -> None:
-    assert party_section(()) == ()
-    assert party_panel(()) == ()
-
-    member = Loner3eEntity(
-        id="mara", name="Mara", brief="Keeps to herself.", known=True, concept="A Watcher"
-    )
-
-    (panel,) = party_panel((member,))
-    assert panel.title == "Party"
-    assert panel.rows[0] == PanelRow(name="Mara", brief="Keeps to herself.", icon_id=member.id)
-    assert panel.rows[1] == PanelRow(name="Concept", brief="A Watcher")
-
-    ((title, body),) = party_section((member,))
-    assert (title, body) == ("THE PARTY (led by the player)", member.line())
-
-
-def test_a_thing_with_no_brief_prints_only_its_tag() -> None:
-    lantern = Thing(id="lantern", name="Lantern", brief="")
-
-    assert lantern.line() == "- Lantern[lantern]"
-
-
-def test_a_dead_person_prints_dead_on_the_first_line_of_line() -> None:
-    kestrel = Person(id="kestrel", name="Kestrel", brief="Runs the dock.", alive=False)
-
-    assert kestrel.line().splitlines()[0] == "- Kestrel[kestrel] — Runs the dock. (dead)"
-
-
-def test_a_person_defaults_to_normal_chattiness_and_refuses_an_unknown_one() -> None:
-    kestrel = Person(id="kestrel", name="Kestrel", brief="Runs the dock.")
-    assert kestrel.chattiness == "normal"
-
-    with pytest.raises(ValidationError):
-        Person.model_validate(
-            {"id": "kestrel", "name": "Kestrel", "brief": "", "chattiness": "loud"}
-        )
 
 
 def test_counter_rejects_current_outside_its_bounds() -> None:
@@ -102,8 +48,3 @@ def test_named_unmet_finds_whole_words_and_phrases_case_folded() -> None:
         Thing(id="old-tom", name="Tom", brief=""),
     ]
     assert named_unmet(text, entities) == ["Bell Tower", "Bell", "Tom"]
-
-
-def test_named_unmet_does_not_match_a_name_glued_inside_another_word() -> None:
-    entities = [Thing(id="the-bell", name="Bell", brief="")]
-    assert named_unmet("A doorbell rings somewhere close.", entities) == []

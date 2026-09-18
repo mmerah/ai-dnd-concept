@@ -30,7 +30,7 @@ class MasterTool:
 
 
 def tool[F: Callable[..., Sequence[Fact]]](method: F) -> F:
-    """Mark an engine method as a tool the master calls; its docstring is what the master reads."""
+    """The method docstring is the text the master reads."""
     if not (method.__doc__ or "").strip():
         raise ValueError(f"{method.__qualname__} carries no description")
     args = _args_of(method)
@@ -83,7 +83,6 @@ def _published(engine: object, name: str, function: FunctionType) -> MasterTool:
 
 
 def _args_of(function: Callable[..., object]) -> type[BaseModel]:
-    """A tool method reads `(self, draft, args, rng)`; the master fills the third parameter."""
     parameters = list(signature(function).parameters.values())
     args = parameters[2] if len(parameters) > 2 else None
     if args is not None and args.name.removeprefix("_") == "args":
@@ -112,7 +111,6 @@ def _inline_refs(node: JsonValue, defs: Mapping[str, JsonValue]) -> None:
 
 
 def _normalize(node: JsonValue) -> None:
-    """Drop what the model reads for free from parsing, and fold `T | None` to one node."""
     if isinstance(node, list):
         for item in node:
             _normalize(item)

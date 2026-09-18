@@ -6,16 +6,16 @@ from aidm.core.entities import Frozen, Slug
 from aidm.engines.tools import ACTOR, Attempt
 
 DEFEND_WITH = (
-    "Exact id of the {who}'s item or a ship function that breaks to spare them. Null when "
-    "nothing shields them."
+    "Exact id of an item of the {who}, or of a ship function. That item or that function "
+    "breaks and protects the {who}. Null when nothing protects the {who}."
 )
 DEADLY = (
-    "Whether `risk` is death. A disaster then kills the {who} instead of leaving `risk` on "
-    "them as a hindrance; a setback then maims them."
+    "True when `risk` is death. A disaster then kills the {who}. The {who} does not get "
+    "`risk` as a hindrance. A setback then maims the {who}."
 )
 HINDRANCE = (
-    "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the "
-    "gear breaks harmlessly."
+    "What the hit leaves behind after the gear takes it, as a hindrance. Empty when the "
+    "gear breaks with no harm."
 )
 
 
@@ -27,20 +27,20 @@ class ChangeHindrances(Frozen):
     @model_validator(mode="after")
     def _some_change(self) -> Self:
         if not self.gained and not self.lost:
-            raise ValueError("change_hindrances needs a gained or a lost hindrance")
+            raise ValueError("give a gained hindrance or a lost hindrance")
         return self
 
 
 class GainItem(Frozen):
     name: str = Field(min_length=1, description="The item's name.")
-    bulky: bool = Field(default=False, description="True when the item takes real space to carry.")
+    bulky: bool = Field(default=False, description="True when the item takes much space to carry.")
     breaks: int = Field(
-        default=1, ge=1, description="How many times the item can break before it is ruined."
+        default=1, ge=1, description="How many times the item breaks before it is destroyed."
     )
     cost: int = Field(
         default=0,
         ge=0,
-        description="Credits paid. 0 for a thing found or given.",
+        description="Credits paid. Use 0 for a thing found or given.",
     )
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
@@ -70,7 +70,7 @@ class Defend(Frozen):
     hindrance: str = Field(
         default="",
         description="What the harm becomes, as a hindrance. Empty for an item that breaks "
-        "harmlessly.",
+        "with no harm.",
     )
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
@@ -82,15 +82,15 @@ class DropItem(Frozen):
 
 class AskWorld(Frozen):
     question: str = Field(
-        min_length=1, description="A closed question about the world where nobody is acting."
+        min_length=1, description="A closed question about the world when no character acts."
     )
 
 
 class Staked(Frozen):
     risk: str = Field(
         default="",
-        description="What the actor suffers in full on a disaster, named before the roll. "
-        "Empty when they are in no danger.",
+        description="What the actor takes in full on a disaster. Name it before the roll. "
+        "Empty when the actor is in no danger.",
     )
     deadly: bool = Field(default=False, description=DEADLY.format(who="actor"))
     defend_with_id: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="actor"))
@@ -109,11 +109,13 @@ class Staked(Frozen):
 
 class Helper(Staked):
     actor_id: Slug = Field(description="Exact id of the hired member who helps.")
-    hindered: str = Field(default="", description="Why the helper is hindered. Empty when none is.")
+    hindered: str = Field(
+        default="", description="Why the helper is hindered. Empty when nothing hinders them."
+    )
     risk: str = Field(
         default="",
-        description="What the helper suffers in full on a disaster, named before the roll. "
-        "Empty when helping puts them in no danger.",
+        description="What the helper takes in full on a disaster. Name it before the roll. "
+        "Empty when the help puts the helper in no danger.",
     )
     deadly: bool = Field(default=False, description=DEADLY.format(who="helper"))
     defend_with_id: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
@@ -121,21 +123,25 @@ class Helper(Staked):
 
 class Roll(Staked, Attempt):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
-    skill: str = Field(default="", description="Which skill to roll. Empty rolls the plain d6.")
-    helped: str = Field(default="", description="Why circumstances help. Empty when none do.")
+    skill: str = Field(default="", description="The skill to roll. Empty rolls the plain d6.")
+    helped: str = Field(
+        default="", description="Why the conditions help. Empty when nothing helps."
+    )
     helped_by: Helper | None = Field(
         default=None,
-        description="The hired member who rolls their own die. Null when none helps.",
+        description="The hired member who rolls their own die. Null when nobody helps.",
     )
-    hindered: str = Field(default="", description="Why the actor is hindered. Empty when none is.")
+    hindered: str = Field(
+        default="", description="Why the actor is hindered. Empty when nothing hinders them."
+    )
 
 
 class Raise(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
     skill: str = Field(
         min_length=1,
-        description="The skill the job called on for them. A skill not on their sheet is added "
-        "at d8.",
+        description="The skill that the job used for this operator. A skill that is not on "
+        "their sheet is added at d8.",
     )
 
 
@@ -149,8 +155,8 @@ class Job(Frozen):
     )
     terms: str = Field(
         default="",
-        description="Who wants what done, what that looks like, and what it pays. Required with "
-        "`take`.",
+        description="Who wants the work, what the work is, and what the work pays. Required "
+        "with `take`.",
     )
     raises: tuple[Raise, ...] = Field(
         default=(),
@@ -169,8 +175,8 @@ class Job(Frozen):
 
 def check_risk(risk: str, *, deadly: bool, defend_with_id: Slug | None, hindrance: str) -> None:
     if deadly and not risk:
-        raise ValueError("deadly needs the risk it names")
+        raise ValueError("deadly needs the risk that it names")
     if defend_with_id is not None and not risk:
-        raise ValueError("defend_with_id needs the risk it shields against")
+        raise ValueError("defend_with_id needs the risk that it protects against")
     if hindrance and defend_with_id is None:
-        raise ValueError("hindrance needs the defend_with_id that earns it")
+        raise ValueError("hindrance needs the defend_with_id that causes it")

@@ -35,8 +35,8 @@ LOGGER = logging.getLogger(__name__)
 
 # The faces of a d10 on which a member speaks after a turn.
 INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
-IN_FLIGHT_HERE = "A turn is already in flight in this game."
-IN_FLIGHT_ELSEWHERE = "Another game is taking a turn. Wait for it to finish, then try again."
+IN_FLIGHT_HERE = "A turn is already running in this game."
+IN_FLIGHT_ELSEWHERE = "Another game is taking a turn. Wait for that turn to end, then try again."
 
 
 @dataclass(slots=True)
@@ -44,12 +44,12 @@ class Tasks:
     running: set[Task[None]] = field(default_factory=set)
 
     def retain(self, task: Task[None]) -> None:
-        """Retained because asyncio may collect an unreferenced task early."""
+        """Kept because asyncio can collect a task that nothing refers to."""
         self.running.add(task)
         task.add_done_callback(self._done)
 
     async def settled(self) -> None:
-        """The test hook: every background task this service started has landed."""
+        """The test hook: it waits for each background task."""
         with suppress(CancelledError):
             await gather(*self.running)
 
@@ -86,7 +86,6 @@ class GameService:
     # The player's words for a write that opens no turn; the page shows them as their bubble.
     intent: str = ""
     turn: Turn | None = None
-    # The party member speaking after the last turn; a new turn or a reload silences them.
     _speaking: Task[None] | None = field(default=None, repr=False)
     tasks: Tasks = field(default_factory=Tasks, repr=False)
 
@@ -111,7 +110,7 @@ class GameService:
             self.working_role = None
 
     async def open(self) -> None:
-        """A failed narrator saves nothing: the premise is what the player reads."""
+        """A failed narrator saves nothing: the player then reads the premise."""
         # A second tab's timer must not run the page reset over an opening already in flight.
         if not self.unopened:
             return
@@ -178,7 +177,7 @@ class GameService:
             self.tasks.retain(self._speaking)
 
     def hush(self) -> None:
-        """Cancelling kills the narrator spawn: an answer nobody will read costs nothing more."""
+        """The cancel kills the narrator spawn: nobody will read that answer."""
         if self._speaking is not None:
             self._speaking.cancel()
             self._speaking = None
@@ -246,7 +245,7 @@ class GameService:
     async def _narrated(
         self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, landed: bool = True
     ) -> tuple[SpokenLine, ...]:
-        """Nothing landed means nothing to save, so the player hears why and keeps their words."""
+        """No landed fact means nothing to save, so the player hears why and keeps the words."""
         try:
             return await run_narrator(self.spawner, self.engine, draft, facts, prompt)
         except Refusal as failed:
@@ -256,7 +255,7 @@ class GameService:
             return ()
 
     def present(self, *, spoken: bool = True) -> None:
-        """`spoken=False` is the page build: a cached clip never autoplays on a load."""
+        """`spoken=False` is the page build: a cached clip must not play on a load."""
         if not self.presenter.enabled:
             return
         view = self.engine.narrator_view(self.state)
@@ -315,14 +314,14 @@ class Gate:
         return None if self.admitted is None else self.admitted.turn
 
     def require_turn(self) -> Turn:
-        """A tool call between turns is refused, not a crash: nobody is playing one."""
+        """A tool call between turns is a refusal, not a crash: nobody plays a turn."""
         if (turn := self.turn) is None:
             raise Refusal(NO_TURN)
         return turn
 
     @asynccontextmanager
     async def admit(self, session: GameService) -> AsyncGenerator[None]:
-        """One writer at a time: two turns on one save is the only failure that costs a game."""
+        """One writer at a time: two turns on one save is the failure that costs a game."""
         if self.admitted is not None:
             raise Busy(elsewhere=self.admitted is not session)
         self.admitted = session
@@ -402,7 +401,7 @@ class Runtime:
     async def new_pack(
         self, engine_id: EngineId, name: str, premise: str, document: Path | None, license: str
     ) -> Slug:
-        """Written and installed only once both asks land, so a failed pack leaves no file."""
+        """Written and installed only after both answers land, so a failed pack leaves no file."""
         engine = self.engines[engine_id]
         source = await to_thread(given_text, premise, document)
         pack_id = slug(name, (*engine.packs.installed, *self.packs.ids(engine.id)))
@@ -424,7 +423,6 @@ class Runtime:
         return pack_id
 
     def rewrite_pack(self, engine_id: EngineId, pack_id: Slug, values: Mapping[str, str]) -> None:
-        """The page's edits, parsed and rebuilt, on disk and in the running engine at once."""
         engine = self.engine(engine_id)
         pack = engine.packs.require(pack_id)
         if pack_id not in engine.packs.written:
@@ -435,7 +433,7 @@ class Runtime:
         LOGGER.info("pack rewritten: engine=%s slug=%s", engine.id, pack_id)
 
     def session(self, target: LaunchTarget) -> GameService:
-        """Memoised: a page render must not rebuild the game and drop the turn in flight."""
+        """Memoised: a page render must not rebuild the game and drop the running turn."""
         if target.slug not in self._sessions:
             self._sessions[target.slug] = self._open(target)
         return self._sessions[target.slug]

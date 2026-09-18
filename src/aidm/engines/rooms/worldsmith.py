@@ -7,7 +7,7 @@ MAP_ASK = "Write the opening map."
 OPENING_SECTIONS: Sections = (
     ("MAP SO FAR", "(no map yet)"),
     ("SCENES SO FAR", "(no scenes yet — write the opening)"),
-    ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
+    ("THE PLAYER", "(no player yet — you write the map before anyone stands in it)"),
 )
 
 

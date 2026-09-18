@@ -1,7 +1,7 @@
 [
   {
     "name": "reveal",
-    "description": "A hidden entity here becomes known to the player.",
+    "description": "Make a hidden entity here known to the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -18,7 +18,7 @@
   },
   {
     "name": "kill",
-    "description": "Someone here dies.",
+    "description": "Kill someone here.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -35,7 +35,7 @@
   },
   {
     "name": "join_party",
-    "description": "A character here starts travelling with the player.",
+    "description": "Make a person here travel with the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -52,7 +52,7 @@
   },
   {
     "name": "leave_party",
-    "description": "A party member stops travelling with the player.",
+    "description": "Make a party member stop travelling with the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -69,7 +69,7 @@
   },
   {
     "name": "move_item",
-    "description": "An item moves to a new holder.",
+    "description": "Move an item to a new holder.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -91,7 +91,7 @@
   },
   {
     "name": "unlock_way",
-    "description": "A locked way out of this place opens.",
+    "description": "Open a locked way out of this place.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -108,7 +108,7 @@
   },
   {
     "name": "move",
-    "description": "Call this to carry the player through an unlocked way out of this place.",
+    "description": "Move the player through an unlocked way out of this place.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -118,7 +118,7 @@
         },
         "with_ids": {
           "default": [],
-          "description": "Exact ids of living npcs here who follow once. Party members come anyway.",
+          "description": "Exact ids of living npcs here who follow one time. Party members come without this field.",
           "items": {
             "type": "string"
           },
@@ -133,7 +133,7 @@
   },
   {
     "name": "meanwhile",
-    "description": "Time has passed where the player is not. Move a dweller, move a loose item, and shut a way they know — any combination, in one call, while ELSEWHERE is shown.",
+    "description": "Time passes where the player is not. Move a dweller, move a loose item, and shut a way the player knows. Use any combination in one call. Call this only while ELSEWHERE is shown.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -191,7 +191,7 @@
   },
   {
     "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "description": "Call this when the player hires a character here to work. The player can also hire a character who already travels with the player. The worldsmith writes the sheet of that character at the end of the turn. Nothing more happens this turn. Give a sheet only to a character hired to work. Do not give a sheet to a character who only travels along.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -213,7 +213,7 @@
   },
   {
     "name": "rest",
-    "description": "The player and the party spend a night here and heal to full Health.",
+    "description": "The player and the party rest here for one night. Their Health goes to full.",
     "parameters": {
       "additionalProperties": false,
       "properties": {},
@@ -222,7 +222,7 @@
   },
   {
     "name": "roll",
-    "description": "Call this for an uncertain action that carries a real cost. The engine rolls 2d6, adds the ability and the items, and reads the total.",
+    "description": "Call this for an uncertain action that has a real cost. The engine rolls 2d6, adds the ability and the items, and reads the total.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -231,7 +231,7 @@
           "type": "string"
         },
         "ability": {
-          "description": "Which ability the action calls on.",
+          "description": "The ability that the action uses.",
           "enum": [
             "brute",
             "skulker",
@@ -241,7 +241,7 @@
         },
         "item_ids": {
           "default": [],
-          "description": "Exact ids of items the actor carries that plainly help.",
+          "description": "Exact ids of items the actor carries and that clearly help.",
           "items": {
             "type": "string"
           },
@@ -262,7 +262,7 @@
             "null"
           ],
           "default": null,
-          "description": "Exact id of an npc here the actor acts on, in a fight or in talk. Its Health is the Difficulty Score."
+          "description": "Exact id of an npc here that the actor acts on, in a fight or in talk. The Health of that npc is the Difficulty Score."
         },
         "dangerous": {
           "default": false,
@@ -287,7 +287,7 @@
   },
   {
     "name": "level_up",
-    "description": "Call this once, when the whole adventure ends. The engine opens the pick to the player, then to each living hired member in turn.",
+    "description": "Call this one time, when the whole adventure ends. The engine gives the choice to the player first, then to each living hired member in turn.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -302,7 +302,7 @@
             "null"
           ],
           "default": null,
-          "description": "Which ability to raise by 1. Null asks the player."
+          "description": "The ability to raise by 1. Null asks the player."
         },
         "boost": {
           "enum": [
@@ -314,7 +314,7 @@
             "null"
           ],
           "default": null,
-          "description": "Health or Inventory to raise by 1. Null asks the player."
+          "description": "Health or Inventory: which one to raise by 1. Null asks the player."
         },
         "actor_id": {
           "type": [

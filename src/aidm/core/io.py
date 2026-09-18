@@ -142,8 +142,6 @@ class Library:
 
 @dataclass(frozen=True, slots=True)
 class PackStore:
-    """`packs/`; one folder per engine id, holding the packs written in this app."""
-
     directory: Path
 
     def ids(self, engine: EngineId) -> tuple[str, ...]:

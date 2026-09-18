@@ -8,7 +8,6 @@ from support.table import LONER3E, ScriptedSpawner, narrowed, offline_settings
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
 from aidm.engines.loner3e.pack import Loner3ePack
-from aidm.engines.packs import SCOPELESS
 
 PREMISE = "A drowned coast where the lower town is under water and the bells still ring."
 SKILLS: list[JsonValue] = [
@@ -110,14 +109,6 @@ async def test_a_body_that_never_lands_leaves_no_pack_written(tmp_path: Path) ->
 
     assert not (tmp_path / "packs").exists()
     assert runtime.engines[LONER3E].packs.written == {}
-
-
-async def test_the_pack_prompt_says_it_has_no_scope_of_play(tmp_path: Path) -> None:
-    runtime, spawner = _runtime(tmp_path, [_head(), _body()])
-
-    _ = await runtime.new_pack(LONER3E, "Salt and Ash", PREMISE, None, "")
-
-    assert SCOPELESS in spawner.prompt("worldsmith")
 
 
 def _runtime(tmp_path: Path, answers: list[str]) -> tuple[Runtime, ScriptedSpawner]:

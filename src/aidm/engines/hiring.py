@@ -15,8 +15,8 @@ UNWRITTEN_CAST = (
     "never a stat block. "
 )
 HIRE_PENDING = (
-    "the worldsmith writes {name}'s sheet once this turn ends: {terms}. Nothing more lands this "
-    "turn; stop and exit"
+    "the worldsmith writes {name}'s sheet once this turn ends: {terms}. Nothing more happens "
+    "this turn; stop and exit"
 )
 NO_HIRE_TARGET = "a hire request names no target"
 ALREADY_SHEETED = "{name} already carries a sheet"

@@ -15,7 +15,7 @@ CAPS_HEADING = re.compile(r"[A-Z][A-Z '-]+:")
 
 
 def given_text(premise: str, document: Path | None) -> str:
-    """Both, when the player gave both: a premise beside a document says what to take from it."""
+    """A premise next to a document tells the model what to take from the document."""
     if document is None:
         return f"PREMISE:\n{premise}"
     whole = f"SOURCE DOCUMENT:\n{whole_text(document)}"
@@ -37,7 +37,7 @@ def whole_text(path: Path) -> str:
         raise Refusal(f"{path.name} holds no readable text")
     size = len(text.encode("utf-8"))
     if size > SOURCE_MAX_BYTES:
-        raise Refusal(f"{path.name} is {size} bytes, too large to hand to a model whole")
+        raise Refusal(f"{path.name} is {size} bytes. This is too large to give to a model.")
     return text
 
 

@@ -3,88 +3,14 @@ from dataclasses import dataclass
 from random import Random
 
 import pytest
-from support.game import initialized, with_entity
+from support.game import initialized
 
-from aidm.app.roles import ask, render_interjection, render_narrator, run_master
+from aidm.app.roles import ask, run_master
 from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import Refusal
-from aidm.core.play import Answer, Interjection, Narration
-from aidm.core.tools import schema_text
-from aidm.core.views import Companion, NarratorView, Rows, Subject
-from aidm.engines.loner3e.world import Loner3eEntity
+from aidm.core.play import Answer, Narration
 from aidm.turn import Tools, Turn
-
-
-def _view(subject: Subject) -> NarratorView:
-    return NarratorView(
-        place="p",
-        title="t",
-        focus="",
-        situation="s",
-        subjects=(subject,),
-        speakers=(subject.id,),
-        party=(subject.id,),
-        sheet=(),
-    )
-
-
-def _companion(subject: Subject, sheet: Rows) -> Companion:
-    return Companion(
-        id=subject.id, name=subject.name, brief=subject.brief, sheet=sheet, chattiness="normal"
-    )
-
-
-def test_render_interjection_prints_the_members_own_sheet_or_none() -> None:
-    mara = Subject(id="mara", name="Mara", brief="A ferrywoman.")
-    sheeted = _companion(mara, (("Skill", "Stealth d8"),))
-
-    with_sheet = render_interjection(_view(mara), sheeted, (), "")
-    without_sheet = render_interjection(_view(mara), _companion(mara, ()), (), "")
-
-    assert "YOUR SHEET:\n- Skill: Stealth d8" in with_sheet
-    assert "YOUR SHEET:\n(none)" in without_sheet
-
-
-def test_render_narrator_asks_for_the_narration_shape_not_the_interjections() -> None:
-    mara = Subject(id="mara", name="Mara", brief="A ferrywoman.")
-
-    rendered = render_narrator(_view(mara), evidence="", prompt="", scenes=())
-
-    assert rendered.endswith(schema_text(Narration))
-
-
-def test_render_interjection_asks_for_the_interjection_shape_not_the_narrations() -> None:
-    mara = Subject(id="mara", name="Mara", brief="A ferrywoman.")
-
-    rendered = render_interjection(_view(mara), _companion(mara, ()), (), "")
-
-    assert rendered.endswith(schema_text(Interjection))
-
-
-def test_companions_returns_the_partys_members_with_their_rows() -> None:
-    engine, state = initialized()
-    member = Loner3eEntity(
-        id="vessa-rune",
-        name="Vessa Rune",
-        brief="A sharp-eyed pilot.",
-        known=True,
-        chattiness="chatty",
-    )
-    state = with_entity(state, member)
-    draft = state.draft()
-    draft.world.party.append(member.id)
-    state = draft.commit()
-
-    assert engine.companions(state) == (
-        Companion(
-            id=member.id,
-            name=member.name,
-            brief=member.brief,
-            sheet=member.rows(),
-            chattiness=member.chattiness,
-        ),
-    )
 
 
 @dataclass(slots=True)

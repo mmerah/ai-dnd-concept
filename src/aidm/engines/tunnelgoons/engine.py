@@ -71,10 +71,10 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
 
     @tool
     def hire(self, draft: TunnelGoonsGame, args: Hire, _rng: Random) -> list[Fact]:
-        """Call this when the player hires someone here to work. Someone already travelling with the
-        player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing
-        more lands this turn. A sheet is for someone hired to work, never for one who only comes
-        along."""
+        """Call this when the player hires a character here to work. The player can also hire a
+        character who already travels with the player. The worldsmith writes the sheet of that
+        character at the end of the turn. Nothing more happens this turn. Give a sheet only to a
+        character hired to work. Do not give a sheet to a character who only travels along."""
         return file_hire(draft, args.target_id, args.terms)
 
     async def write_hire(
@@ -93,7 +93,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
 
     @tool
     def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-        """The player and the party spend a night here and heal to full Health."""
+        """The player and the party rest here for one night. Their Health goes to full."""
         return draft.world.rest()
 
     def creation_steps(self, pack_id: Slug, _picks: Picks) -> tuple[CreationStep, ...]:
@@ -151,7 +151,7 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
 
     @tool
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
-        """Call this for an uncertain action that carries a real cost. The engine rolls 2d6, adds
+        """Call this for an uncertain action that has a real cost. The engine rolls 2d6, adds
         the ability and the items, and reads the total."""
         world = draft.world
         world.check_unnamed(args.what)
@@ -196,8 +196,8 @@ class TunnelGoonsEngine(RoomEngine[Goon, TunnelGoonsWorld, TunnelGoonsPack]):
 
     @tool
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
-        """Call this once, when the whole adventure ends. The engine opens the pick to the player,
-        then to each living hired member in turn."""
+        """Call this one time, when the whole adventure ends. The engine gives the choice to the
+        player first, then to each living hired member in turn."""
         world = draft.world
         actor = world.require_actor(args.actor_id)
         if actor.require_sheet().level > 1:

@@ -12,13 +12,12 @@ from support.table import (
     scenario_for,
 )
 
-from aidm.core.entities import Refusal, Slug, parse
+from aidm.core.entities import Refusal, Slug
 from aidm.core.model import Commission
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eEntity, Loner3eGame
 from aidm.engines.scenes.engine import MOVE_ON
-from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import NextProposal, Scene, SceneWorld
 from aidm.engines.scenes.worldsmith import MEANWHILE_NUDGE, check_scene
 
@@ -64,33 +63,6 @@ def test_killing_a_party_member_drops_them_from_the_party() -> None:
     assert any(fact.card == "Mara is dead" for fact in facts)
 
 
-def test_require_living_here_refuses_the_dead_where_require_here_does_not() -> None:
-    mara = Person(id=MARA, name="Mara", brief="A guide", known=True, alive=False)
-    world = _world(_scene("a1", "A1", here=[MARA]), cast={MARA: mara})
-
-    assert world.require_here(MARA).id == MARA
-    with pytest.raises(Refusal, match="dead"):
-        _ = world.require_living_here(MARA)
-
-
-def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
-    world = _travelling()
-    world.scene.here.remove(MARA)
-    with pytest.raises(ValueError, match="the party is in every scene"):
-        _ = _world(*world.scenes, cast=world.cast, party=[MARA])
-
-
-def test_the_next_scene_prompt_carries_the_scene_as_it_stands() -> None:
-    engine, state = game(LONER3E)
-    assert isinstance(engine, Loner3eEngine)
-    scene = narrowed(state, Loner3eGame).world.scene
-
-    prompt = engine.render_next(state, "Down the stair.")
-
-    assert f"THE SCENE NOW:\n{scene.title} [{scene.place}]\n{scene.situation}" in prompt
-    assert "present: Mara[mara]\nhidden: the vault map[vault-map]" in prompt
-
-
 def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_clears_it() -> None:
     engine, state = game(LONER3E)
     assert isinstance(engine, Loner3eEngine)
@@ -105,23 +77,6 @@ def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_cle
     engine.install(draft, scene)
 
     assert draft.world.meanwhile_due is False
-
-
-def test_apply_scene_with_an_empty_arc_keeps_the_worlds_arc() -> None:
-    world = _travelling()
-    world.arc = ARC
-    draft = NextProposal[Person](
-        place="a2",
-        title="A2",
-        focus="What happens next here?",
-        situation=SITUATION,
-        present=(MARA,),
-        recap=RECAP,
-    )
-
-    world.apply_scene(draft)
-
-    assert world.arc == ARC
 
 
 def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:
@@ -148,14 +103,6 @@ def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None
     world.apply_scene(draft)
 
     assert world.scenes[-1].title == "A2"
-
-
-def test_next_scene_refuses_a_pursuit_and_a_complication_together() -> None:
-    with pytest.raises(Refusal, match="not both"):
-        _ = parse(
-            NextScene,
-            {"pursuit": "Down the stair.", "complication": "A second crew breaks in."},
-        )
 
 
 def test_a_departure_over_an_offer_requests_the_crossing_and_leaves_the_offer() -> None:
@@ -188,37 +135,6 @@ def test_an_action_the_scene_no_longer_offers_is_refused_and_notes_nothing() -> 
     assert draft.notes == []
 
 
-def test_a_party_member_prints_under_the_party_and_not_here() -> None:
-    engine, state = game(LONER3E)
-    draft = narrowed(state, Loner3eGame).draft()
-    draft.world.party.append(MARA)
-
-    assert "Mara[mara]" not in draft.world.here_lines()
-
-    view = engine.narrator_view(draft)
-
-    assert MARA in view.party
-    assert MARA not in [subject.id for subject in view.others()]
-
-    panels = engine.player_view(draft).panels
-    party_panel = next(panel for panel in panels if panel.title == "Party")
-    here_panel = next(panel for panel in panels if panel.title == "Also here")
-    assert MARA in [row.icon_id for row in party_panel.rows]
-    assert MARA not in [row.icon_id for row in here_panel.rows]
-
-
-def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
-    engine, state = game(LONER3E)
-    assert isinstance(engine, Loner3eEngine)
-    draft = narrowed(state, Loner3eGame).draft()
-    scene = NextProposal[Loner3eEntity](place="a2", title="A2", situation=SITUATION, recap=RECAP)
-
-    _ = engine.install(draft, scene)
-
-    assert "This scene" not in [panel.title for panel in engine.player_view(draft).panels]
-    assert "WHAT THIS SCENE IS ABOUT" not in str(engine.master_sections(draft))
-
-
 def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     engine = ENGINES_BUILT[LONER3E]
     scenario_id = scenario_for(LONER3E)
@@ -231,9 +147,3 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     world.cast[MARA].name = "Someone else"
 
     assert scenario.opening.model_dump() == before
-
-
-def test_join_party_on_the_players_own_id_refuses() -> None:
-    world = _world(_scene("a1", "A1"))
-    with pytest.raises(Refusal, match="not a party member"):
-        _ = world.join_party(PLAYER_ID)

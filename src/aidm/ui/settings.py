@@ -24,7 +24,7 @@ class SettingsForm:
     def build(self) -> None:
         groups = _shown(self.settings)
         tabbed = [group for group in groups if isinstance(group[2], BaseModel)]
-        # In the header, where a panel taller than the last one cannot move it.
+        # In the header: a taller tab panel must not move the Save button.
         with page_header("Settings"):
             ui.space()
             ui.button("Save", icon="save", on_click=self.save).props("color=primary")
@@ -32,8 +32,8 @@ class SettingsForm:
             page_intro(
                 "Configuration",
                 "Settings",
-                "Each box is one key in .env. Saving writes it; the keys apply the next time "
-                "the server starts.",
+                "Each box is one key in the .env file. Save writes the keys. "
+                "The keys apply at the next server start.",
             )
             for name, field, value in groups:
                 if not isinstance(value, BaseModel):

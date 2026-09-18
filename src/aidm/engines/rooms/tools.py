@@ -4,7 +4,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
 
-ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
+ELSEWHERE = "ELSEWHERE (time has passed; you can move what the player cannot see)"
 NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
 MOVES_OFFSCREEN = "something moves where the player cannot see"
 MOVED_CARD = "Elsewhere, something moves."
@@ -19,7 +19,8 @@ class Move(Frozen):
     to_id: Slug = Field(description="Exact id of the place to move to.")
     with_ids: tuple[Slug, ...] = Field(
         default=(),
-        description="Exact ids of living npcs here who follow once. Party members come anyway.",
+        description="Exact ids of living npcs here who follow one time. Party members come "
+        "without this field.",
     )
 
 

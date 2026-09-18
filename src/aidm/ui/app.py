@@ -113,7 +113,6 @@ def home_page(runtime: Runtime) -> None:
 
 
 def mount(runtime: Runtime) -> None:
-    """Puts the MCP endpoint, the dice sound, the lifespan hooks and every page on the app."""
     plain_pages: tuple[tuple[str, Callable[[Runtime], None]], ...] = (
         ("/", home_page),
         ("/create", character_page),

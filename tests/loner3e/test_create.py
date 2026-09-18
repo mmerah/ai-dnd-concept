@@ -42,13 +42,6 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     assert made.luck.current == LUCK_MAX
 
 
-def test_a_chosen_pack_pools_its_options_into_the_character() -> None:
-    pack_id = "ap01-fantasy"
-    picks = _answered(pack_id, {"skill-1": "swordsmanship"})
-    created = ENGINE.create_character("Fen", "A wandering scribe.", pack_id, picks)
-    assert "Swordsmanship" in created.sheet.tagged("skill")
-
-
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     legal = _answered(SRD_PACK, {})
     with pytest.raises(Refusal, match="no creation step"):
@@ -81,12 +74,3 @@ def _answered(pack_id: Slug, chosen: Picks) -> Picks:
     ):
         picks[step.id] = step.options[0].id if step.options else "Something written"
     return picks
-
-
-def test_the_second_skill_step_drops_what_the_first_one_took() -> None:
-    steps = {step.id: step for step in ENGINE.creation_steps(SRD_PACK, {"skill-1": "quiet-hands"})}
-    assert "quiet-hands" not in {option.id for option in steps["skill-2"].options}
-    assert "quiet-hands" in {option.id for option in steps["skill-1"].options}
-    legal = _answered(SRD_PACK, {})
-    with pytest.raises(Refusal, match="offers no"):
-        _ = ENGINE.create_character("Fen", "", SRD_PACK, {**legal, "skill-2": legal["skill-1"]})

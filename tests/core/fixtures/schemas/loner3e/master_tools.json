@@ -1,7 +1,7 @@
 [
   {
     "name": "reveal",
-    "description": "A hidden entity here becomes known to the player.",
+    "description": "Make a hidden entity here known to the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -18,7 +18,7 @@
   },
   {
     "name": "kill",
-    "description": "Someone here dies.",
+    "description": "Kill someone here.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -35,7 +35,7 @@
   },
   {
     "name": "join_party",
-    "description": "A character here starts travelling with the player.",
+    "description": "Make a person here travel with the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -52,7 +52,7 @@
   },
   {
     "name": "leave_party",
-    "description": "A party member stops travelling with the player.",
+    "description": "Make a party member stop travelling with the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -69,7 +69,7 @@
   },
   {
     "name": "enter",
-    "description": "A cast member comes into the scene.",
+    "description": "Bring a cast member into the scene.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -86,7 +86,7 @@
   },
   {
     "name": "leave",
-    "description": "A cast member goes out of the scene.",
+    "description": "Send a cast member out of the scene.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -103,7 +103,7 @@
   },
   {
     "name": "next_scene",
-    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead once the player has left this place. Set `complication` instead to bring a new situation down on this place.",
+    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead when the player has left this place. Set `complication` instead to bring a new situation into this place.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -123,12 +123,12 @@
   },
   {
     "name": "change_tags",
-    "description": "A character here gains tags, loses tags, or both.",
+    "description": "A character here gains tags, loses tags, or does both.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the player or someone here.",
+          "description": "Exact id of the player, or of a character here.",
           "type": "string"
         },
         "kind": {
@@ -143,7 +143,7 @@
         },
         "gained": {
           "default": [],
-          "description": "Title-case tags gained, such as `Rusty Key`.",
+          "description": "Tags gained, in title case, such as `Rusty Key`.",
           "items": {
             "type": "string"
           },
@@ -151,7 +151,7 @@
         },
         "lost": {
           "default": [],
-          "description": "Exact tags lost, lifted or used up.",
+          "description": "Exact tags lost, removed, or used up.",
           "items": {
             "type": "string"
           },
@@ -167,7 +167,7 @@
   },
   {
     "name": "drive",
-    "description": "A living character's goal, motive or nemesis changes.",
+    "description": "Change the goal, the motive or the nemesis of a living character.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -177,17 +177,17 @@
         },
         "goal": {
           "default": "",
-          "description": "What they now pursue, in one line. Empty keeps the current goal.",
+          "description": "What the character now wants, in one line. Empty keeps the current goal.",
           "type": "string"
         },
         "motive": {
           "default": "",
-          "description": "Why, in one line. Empty keeps the current motive.",
+          "description": "Why the character wants it, in one line. Empty keeps the current motive.",
           "type": "string"
         },
         "nemesis": {
           "default": "",
-          "description": "Who or what stands in their way. Empty keeps the current nemesis.",
+          "description": "Who or what is against the character. Empty keeps the current nemesis.",
           "type": "string"
         }
       },
@@ -199,7 +199,7 @@
   },
   {
     "name": "restore_luck",
-    "description": "A character's luck refills and any defeat is behind them.",
+    "description": "Fill the luck of a character. Any defeat of that character ends.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -216,7 +216,7 @@
   },
   {
     "name": "roll",
-    "description": "Call this for one closed dramatic question. The engine rolls Chance against Risk, reads the answer, and moves luck in a conflict.",
+    "description": "Call this for one closed question about the story. The engine rolls Chance against Risk and reads the answer. In a conflict, the engine also moves luck.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -229,12 +229,12 @@
           "type": "string"
         },
         "question": {
-          "description": "Closed question where yes means the actor gets what they want. Only you read it.",
+          "description": "A closed question. Yes means the actor gets what they want. Only you read this question.",
           "type": "string"
         },
         "position": {
           "default": "neutral",
-          "description": "Which side the relevant tags and situation favour.",
+          "description": "Which side the tags and the situation help.",
           "enum": [
             "advantage",
             "neutral",
@@ -244,7 +244,7 @@
         },
         "edge": {
           "default": "",
-          "description": "Tag or circumstance that sets the position, read by the player. Empty for neutral.",
+          "description": "The tag or the condition that sets the position. The player reads this text. Empty for neutral.",
           "type": "string"
         },
         "target_id": {
@@ -253,7 +253,7 @@
             "null"
           ],
           "default": null,
-          "description": "Exact id of the character here whose endurance is worn down, for a contest run as luck exchanges. Null for one decisive question or a single key action, even against someone who resists."
+          "description": "Exact id of the character here who loses luck. Use this field for a contest of luck exchanges. Null for one decisive question, or for one key action, even against a character who resists."
         }
       },
       "required": [
@@ -266,7 +266,7 @@
   },
   {
     "name": "spend_luck",
-    "description": "A character here spends luck on a cost the selected pack's SPECIAL RULES name, such as a spell.",
+    "description": "A character here spends luck. The SPECIAL RULES of the selected pack gives the cost, for example a spell.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -275,12 +275,12 @@
           "type": "string"
         },
         "amount": {
-          "description": "The luck spent: the cost the SPECIAL RULES print.",
+          "description": "The luck to spend. SPECIAL RULES prints the cost.",
           "minimum": 1,
           "type": "integer"
         },
         "why": {
-          "description": "What it buys, in one line, read by the player.",
+          "description": "What the luck buys, in one line. The player reads this text.",
           "type": "string"
         }
       },

@@ -19,7 +19,7 @@ MOUNT_PATH = "/mcp"
 
 @dataclass(slots=True)
 class MountedLifespan:
-    """A mounted app's lifespan never runs; anyio needs one task to enter and exit the manager."""
+    """A mounted app lifespan never runs; anyio needs one task to enter and exit the manager."""
 
     manager: StreamableHTTPSessionManager
     _ready: Event = field(default_factory=Event)
@@ -43,7 +43,7 @@ class MountedLifespan:
                 self._ready.set()
                 await self._stopping.wait()
         finally:
-            # Set on failure too, or a manager that never came up would hang the startup.
+            # Set on failure too, or a manager that never started would hang the startup.
             self._ready.set()
 
 
@@ -83,7 +83,7 @@ def _build_server(gate: Gate) -> Server[dict[str, object]]:
     async def on_call_tool(
         _ctx: ServerRequestContext[dict[str, object]], params: types.CallToolRequestParams
     ) -> types.CallToolResult:
-        """The lock replaces a sequential toolset: a CLI may call several tools at once."""
+        """The lock keeps the tools sequential: a CLI may call several tools at once."""
         async with lock:
             try:
                 answered = gate.require_turn().call(params.name, params.arguments or {})

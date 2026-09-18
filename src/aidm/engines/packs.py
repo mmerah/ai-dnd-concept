@@ -24,23 +24,25 @@ PACK_SO_FAR = "THE PACK SO FAR"
 SOURCELESS = "(none — write from what is below)"
 SCOPELESS = "(none — this is a pack, not a scenario: a genre kit, not one adventure)"
 SOURCE_BOUND = (
-    "Everything comes from SOURCE MATERIAL, its premise and, when it holds one, its document; "
-    "nothing outside it."
+    "Take everything from SOURCE MATERIAL: its premise and, when it has one, its document. "
+    "Use nothing from outside it."
 )
 HEAD_ASK = (
-    "Write the head of a pack for this setting. A pack is a genre kit the worldsmith reads when "
-    "it writes scenarios in this setting. `setting` is a few paragraphs on what this world is "
-    "and what a story in it is about. The creation tables are the names a player picks from, "
-    "each with a one-line `brief` only where the name does not explain itself. The name lists "
-    "fit the setting, six to twelve each, and a list is left empty when the setting has no such "
-    "names. `rules` is the genre's one special rule as prose, if it has one, else empty. "
+    "Write the head of a pack for this setting. A pack is a genre kit. The worldsmith reads the "
+    "pack when it writes scenarios in this setting. Write `setting` as a few paragraphs. Say "
+    "what this world is and what a story in it is about. The creation tables hold the names a "
+    "player picks from. Give a one-line `brief` only where the name does not explain itself. "
+    "The name lists must fit the setting. Write six to twelve names in each list. Leave a list "
+    "empty when the setting has no such names. Write `rules` as prose: the one special rule of "
+    "the genre. Leave `rules` empty when the genre has no special rule. "
     f"{SOURCE_BOUND}"
 )
 BODY_ASK = (
-    "Write the rest of the pack. THE PACK SO FAR is the head, and everything here belongs to "
-    "that setting. The cast blocks are written to be met, so write each one whole enough to be "
-    "filed into a scene's cast as it stands. Locations say what is found there and who may be "
-    "met there. Seeds are one-line adventure premises a player could start a scenario from. "
+    "Write the rest of the pack. THE PACK SO FAR is the head. Everything you write belongs to "
+    "that setting. The player meets the cast blocks in play. Write each cast block complete, so "
+    "that a scene can file it into its cast as it stands. A location says what is found there "
+    "and who the player can meet there. A seed is a one-line adventure premise. A player can "
+    "start a scenario from a seed. "
     f"{SOURCE_BOUND}"
 )
 
@@ -69,7 +71,7 @@ class Names(Frozen):
 
 
 class Named(Frozen):
-    """One row of a creation table as the worldsmith writes it, before code makes its id."""
+    """One row of a creation table. Code makes the id from the name."""
 
     name: str = Field(min_length=1, max_length=60)
     brief: str = Field(default="", max_length=200)
@@ -94,26 +96,22 @@ class Location(Frozen):
 
 
 class Pack(Frozen):
-    """The setting kit every engine's pack carries; an engine adds its tables and its cast."""
-
     name: str = Field(min_length=1)
     source: str
     license: str
     setting: str = ""
-    names: Names = Field(default_factory=Names)  # built on use: its checks live below
-    rules: str = ""  # special rules as prose, read by the master alone
+    names: Names = Field(default_factory=Names)
+    rules: str = ""  # read by the master alone
     locations: tuple[Location, ...] = ()
     seeds: tuple[str, ...] = ()
 
     def counts(self) -> tuple[tuple[str, int], ...]:
-        """What the home page counts; an engine puts its tables before the kit's."""
         return (("locations", len(self.locations)), ("seeds", len(self.seeds)))
 
     def summary(self) -> str:
         return " · ".join(f"{count} {what}" for what, count in self.counts() if count)
 
     def sections(self, *, opening: bool) -> Sections:
-        """Setting, names, locations always; seeds at the opening only; an engine adds its own."""
         name_lines = "\n".join(
             f"{kind}: {SEPARATOR.join(values)}" for kind, values in self.names.listed() if values
         )
@@ -130,7 +128,6 @@ class Pack(Frozen):
         )
 
     def boxes(self) -> dict[str, str]:
-        """Every field but its provenance as JSON text: one textarea on the pack page each."""
         dumped: dict[str, JsonValue] = self.model_dump(mode="json")
         return {
             field_id: json.dumps(value, indent=2, ensure_ascii=False)
@@ -140,35 +137,34 @@ class Pack(Frozen):
 
 
 class PackHead(Frozen):
-    """The first ask: what the setting is, what a player picks from, what people are called."""
+    """The first ask: what the setting is, what a player picks from, and what people are called."""
 
     setting: str = Field(
         min_length=1,
         description="A few paragraphs on what this world is and what a story in it is about.",
     )
     names: Names = Field(
-        description="Names that fit the setting, six to twelve per list, a list left empty "
-        "where the setting has no such names.",
+        description="Names that fit the setting. Write six to twelve names in each list. "
+        "Leave a list empty where the setting has no such names.",
     )
     rules: str = Field(
         default="",
-        description="The genre's one special rule, as prose the game master reads; empty where "
-        "the genre has none.",
+        description="The one special rule of the genre, as prose the game master reads. "
+        "Leave it empty where the genre has no special rule.",
     )
 
     def pack_fields(self) -> dict[str, object]:
-        """The pack fields this head fills; an engine overrides to make ids for its tables."""
         return self.model_dump()
 
 
 class PackBody(Frozen):
-    """The second ask: who is met, where, and what a story could start from."""
+    """The second ask: who the player meets, where, and what a story can start from."""
 
     locations: tuple[Location, ...] = Field(
         min_length=3,
         max_length=6,
-        description="Places in this setting, each saying what is found there and who may be met "
-        "there.",
+        description="Places in this setting. Each place says what is found there and who the "
+        "player can meet there.",
     )
     seeds: tuple[str, ...] = Field(
         min_length=6,
@@ -206,12 +202,10 @@ class PackSet[K: Pack]:
         return found
 
     def played(self, pack_id: Slug) -> tuple[K, ...]:
-        """The packs a creation table is read from: the SRD, then the chosen pack; the SRD once."""
         srd = self.srd()
         return (srd,) if pack_id == SRD_PACK else (srd, self.require(pack_id))
 
     def options(self) -> tuple[DecisionOption, ...]:
-        """The SRD first, then the rest of `installed` in order; id and `pack.name`."""
         rest = tuple(
             DecisionOption(id=pack_id, name=pack.name)
             for pack_id, pack in self.installed.items()
@@ -220,11 +214,9 @@ class PackSet[K: Pack]:
         return (DecisionOption(id=SRD_PACK, name=self.srd().name), *rest)
 
     def installing(self, pack_id: Slug, pack: K) -> "PackSet[K]":
-        """A new set: the same shipped packs, `written` with this one added or replaced."""
         return PackSet(self.engine, self.shipped, {**self.written, pack_id: pack})
 
     def guidance(self, pack_id: Slug, *, opening: bool) -> str:
-        """One `PACK:` block for `require(pack_id)`, or "" when it has no sections."""
         pack = self.require(pack_id)
         parts = pack.sections(opening=opening)
         return f"PACK: {pack.name}\n\n{sections(parts)}" if parts else ""
@@ -240,13 +232,11 @@ class PackAuthor[K: Pack]:
     head_model: type[PackHead]
     body_model: type[PackBody]
     authoring: str
-    role: str  # the family's worldsmith.md, for render_worldsmith
+    role: str
 
     async def author(
         self, *, name: str, source: str, origin: str, license: str, worldsmith: WorldsmithAnswer
     ) -> K:
-        """Head, then body; each checked by building the pack; nothing is written here."""
-
         def built(from_head: PackHead, from_body: PackBody | None) -> K:
             return parse(
                 self.pack_model,
@@ -287,7 +277,6 @@ class PackAuthor[K: Pack]:
         return built(head, body)
 
     def edited(self, pack: K, values: Mapping[str, str]) -> K:
-        """The boxes decoded over the pack's own dump; a field no box holds keeps its value."""
         dumped: dict[str, JsonValue] = pack.model_dump(mode="json")
         for field_id, box in values.items():
             if field_id in PROVENANCE:
@@ -324,12 +313,11 @@ def render_worldsmith(
 
 
 def block_line(name: str, brief: str, *fields: tuple[str, str]) -> str:
-    """`name — brief; key: value; …`, empty values dropped: how a cast block reads in a prompt."""
     return "; ".join((f"{name} — {brief}", *(f"{key}: {value}" for key, value in fields if value)))
 
 
 def with_ids(rows: Iterable[Named], taken: list[Slug]) -> tuple[DecisionOption, ...]:
-    """Ids from names; `taken` grows so the ids stay unique across a pack's tables."""
+    """`taken` grows, so the ids stay unique across a pack's tables."""
     made: list[DecisionOption] = []
     for entry in rows:
         made.append(DecisionOption(id=slug(entry.name, taken), name=entry.name, brief=entry.brief))

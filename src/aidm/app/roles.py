@@ -31,25 +31,27 @@ RETRIES = 1
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 MASTER_ROLE = PROMPTS_DIR / "master.md"
 PAUSED = (
-    'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
-    "have not yet answered."
+    'play pauses here on the player\'s decision: "{prompt}" End at the pause. Settle nothing that '
+    "the player has not answered."
 )
 REQUESTED = (
-    "play stops here while the world is written on; end on this moment and settle nothing "
-    "beyond what happened."
+    "play stops here while the world grows. End at this moment. Settle nothing more than what "
+    "happened."
 )
 OPENING_NARRATION = (
-    "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
-    "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
-    "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
-    "SCENE IS ABOUT where it is given, said as the thing pulling at them; and two or three "
-    "things they could plainly do first, offered by the place and the people, in prose, never "
-    "as a list. Six to eight sentences. They have not acted, so settle nothing."
+    "The story starts here. The player has read nothing yet. Tell the player four things, in the "
+    "story and in this order. First, who the player is (YOUR PARTY gives the name first) and "
+    "where the player stands. Second, what is in front of the player, the situation as the player "
+    "sees it now. Third, what the player is here to do. Take it from WHAT THIS SCENE IS ABOUT "
+    "when that section is given. Say it as the thing that pulls at the player. Fourth, two or "
+    "three things that the player can do first, offered by the place and the people. Write all of "
+    "it in prose, never as a list. Write six to eight sentences. The player has not acted, so "
+    "settle nothing."
 )
 
 
 async def run_master(spawner: Spawner, turn: Turn) -> None:
-    """A crashed game master still played the turn, if it applied anything legal first."""
+    """A failed game master still played the turn when facts landed first."""
     prompt = render_master(
         turn.engine.instructions,
         turn.engine.master_sections(turn.draft),
@@ -116,8 +118,8 @@ async def ask[T: BaseModel](
             refused = str(invalid)
         else:
             return answer
-        correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
-        # The retry carries on the refused attempt, which has read the prompt already.
+        correction = f"Your last answer was refused: {refused}\nAnswer again. Correct the error."
+        # The retry continues the refused attempt, which has read the prompt already.
         asked = correction if conversation is not None else f"{prompt}\n\n{correction}"
     LOGGER.warning("the %s answered nothing usable: %s", role, refused)
     raise Refusal(f"the {role} answered nothing usable")
@@ -127,8 +129,7 @@ def worldsmith_answer(spawner: Spawner) -> WorldsmithAnswer:
     return partial(ask, spawner, "worldsmith")
 
 
-# The worldsmith's renderer is not here: it stays in engines/ because it needs the engine's own
-# sections.
+# The worldsmith's renderer stays in engines/: it needs the engine's own sections.
 def render_master(
     instructions: str,
     engine_sections: Sections,
@@ -191,7 +192,6 @@ def _picture(
     *,
     reader: Subject | None = None,
 ) -> Sections:
-    """`reader` is who reads it: nobody (the player themself) or a member reading about them."""
     lead, beside = ("you are", "with you") if reader is None else ("the player is", "with them")
     subjects = {subject.id: subject for subject in view.subjects}
     first, *rest = (subjects[member_id] for member_id in view.party)

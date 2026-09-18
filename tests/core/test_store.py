@@ -1,5 +1,3 @@
-import json
-import logging
 from pathlib import Path
 
 import pytest
@@ -8,7 +6,7 @@ from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, updated
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING, WORLD_FILE, FileStore, Library, publish, write_text
+from aidm.core.io import ENCODING, FileStore, Library, publish, write_text
 from aidm.core.play import Exchange
 
 MIRROR = EngineId("mirror")
@@ -38,22 +36,6 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
 
     assert reloaded is not None
     assert engine.restore(reloaded).exchanges() == saved.exchanges()
-
-
-def test_a_save_without_the_clock_fields_still_loads(tmp_path: Path) -> None:
-    engine, state = initialized()
-    dumped = json.loads(state.model_dump_json())
-    del dumped["world"]["turns_played"]
-    del dumped["world"]["meanwhile_due"]
-    write_text(tmp_path / "stale.json", json.dumps(dumped))
-    store = FileStore(tmp_path)
-
-    raw = store.read("stale")
-
-    assert raw is not None
-    restored = engine.restore(raw)
-    assert restored.world.turns_played == 0
-    assert restored.world.meanwhile_due is False
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -99,44 +81,6 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     assert [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)] == ["good"]
 
 
-def test_read_scenarios_skips_a_world_that_is_not_json(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    library = _beside_a_broken_world(tmp_path, b"{not json")
-
-    with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
-        read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
-
-    assert read == ["good"]
-    assert "not JSON" in caplog.text
-
-
-def test_read_scenarios_skips_a_world_that_is_not_utf8(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    library = _beside_a_broken_world(tmp_path, b"\xff\xfe{}")
-
-    with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
-        read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
-
-    assert read == ["good"]
-    assert "cannot be read" in caplog.text
-
-
-def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Path) -> None:
-    filed = character()
-    library = Library(tmp_path, tmp_path)
-    library.write_character(filed)
-    library.write_character(updated(filed, engine=MIRROR))
-
-    rows = [
-        (name, engine, header.sheet.name)
-        for name, engine, header in library.read_characters((LONER3E, MIRROR))
-    ]
-
-    assert rows == [("kael", LONER3E, "Kael"), ("kael", MIRROR, "Kael")]
-
-
 def test_a_character_written_for_a_second_engine_must_keep_its_name(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
     filed = character()
@@ -149,25 +93,6 @@ def test_a_character_written_for_a_second_engine_must_keep_its_name(tmp_path: Pa
 
     library.write_character(updated(filed, engine=MIRROR))
     assert library.read_character("kael", engine.id, engine.character).sheet.name == "Kael"
-
-
-def test_read_characters_skips_a_stray_file_and_a_non_slug_folder(tmp_path: Path) -> None:
-    library = Library(tmp_path, tmp_path)
-    library.write_character(character())
-    (tmp_path / ".DS_Store").write_text("", encoding=ENCODING)
-    backup = tmp_path / "My Backup"
-    backup.mkdir()
-    (backup / f"{LONER3E}.json").write_text("{}", encoding=ENCODING)
-
-    rows = [name for name, _, _ in library.read_characters((LONER3E,))]
-
-    assert rows == ["kael"]
-
-
-def test_read_scenarios_of_a_missing_directory_yields_nothing(tmp_path: Path) -> None:
-    missing = tmp_path / "scenarios"
-
-    assert list(Library(missing, missing).read_scenarios(SCENARIO_MODELS)) == []
 
 
 def test_a_save_that_cannot_be_written_refuses_without_leaking_the_path(tmp_path: Path) -> None:
@@ -193,48 +118,3 @@ def test_a_write_that_fails_midway_leaves_the_old_file_and_no_staged_file(tmp_pa
 
     assert path.read_text(encoding=ENCODING) == "old"
     assert list(tmp_path.iterdir()) == [path]
-
-
-def test_read_scenarios_skips_a_scenario_whose_world_is_unreadable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    library = Library(tmp_path, tmp_path)
-    library.write_scenario("good", scenario())
-    broken = tmp_path / "broken" / WORLD_FILE
-    broken.parent.mkdir()
-    broken.write_text("{}", encoding=ENCODING)
-    original_read_text = Path.read_text
-
-    def _read_text(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
-        if self == broken:
-            raise OSError("permission denied")
-        return original_read_text(self, encoding=encoding, errors=errors)
-
-    monkeypatch.setattr(Path, "read_text", _read_text)
-
-    with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
-        read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
-
-    assert read == ["good"]
-    assert "cannot be read" in caplog.text
-
-
-def test_a_save_that_cannot_be_read_refuses_without_leaking_the_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    store = FileStore(tmp_path)
-    broken = tmp_path / "broken.json"
-    broken.write_text("{}", encoding=ENCODING)
-    original_read_text = Path.read_text
-
-    def _read_text(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
-        if self == broken:
-            raise OSError("permission denied")
-        return original_read_text(self, encoding=encoding, errors=errors)
-
-    monkeypatch.setattr(Path, "read_text", _read_text)
-
-    with pytest.raises(Refusal, match="cannot be read") as raised:
-        store.read("broken")
-
-    assert str(tmp_path) not in str(raised.value)

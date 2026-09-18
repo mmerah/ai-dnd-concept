@@ -34,7 +34,7 @@ class SceneProposal[C: Person](Frozen):
     focus: str = Field(
         default="",
         description="What this scene is about, in one line the player reads. Name nothing "
-        "hidden. Empty when the situation says it all.",
+        "hidden. Leave it empty when the situation says it all.",
     )
     situation: str = Field(
         min_length=1,
@@ -46,21 +46,21 @@ class SceneProposal[C: Person](Frozen):
     hidden: tuple[str, ...] = Field(default=(), description="Ids of what is hidden here.")
     cast: dict[Slug, C] = Field(
         default_factory=dict,
-        description="New people and things, each filed under its own id. A brief and a sheet "
-        "are read once the player meets that entry, so neither names what is still hidden.",
+        description="New people and things, each filed under its own id. The player reads a "
+        "brief and a sheet after they meet that entry. Name nothing still hidden in either one.",
     )
     arc: str = Field(
         default="",
-        description="The setup beyond this scene: pressures, motives, secrets, what can come. "
-        "The player never reads it, so what ties one hidden thing to another belongs here.",
+        description="The setup beyond this scene: pressures, motives, secrets, and what can "
+        "come. The player never reads it. Put here what ties one hidden thing to another.",
     )
 
 
 class NextProposal[C: Person](SceneProposal[C]):
     recap: str = Field(
         min_length=1,
-        description="One paragraph on the scene the player leaves: what they did, cost, "
-        "learned and missed.",
+        description="One paragraph on the scene the player leaves: what the player did, "
+        "paid, learned and missed.",
     )
 
 
@@ -103,7 +103,7 @@ class SceneWorld[C: Person](World[C]):
         return [entity_id for entity_id in self.scene.here if not self.cast[entity_id].known]
 
     def last_seen(self, entity_id: Slug) -> str:
-        """Scans every scene so an entity the story dropped is still placed."""
+        """Scans every scene, so an entity the story dropped is still placed."""
         for scene in reversed(self.scenes):
             if entity_id in scene.here:
                 return f"last seen in: {scene.title}"
@@ -184,7 +184,6 @@ class SceneWorld[C: Person](World[C]):
         return "\n".join(lines)
 
     def reveal_hidden(self, entity_id: Slug) -> list[Fact]:
-        """The discovery itself, distinct from what `enter` tells about someone walking in."""
         entity = self.require(entity_id)
         if entity_id not in self.scene.here or entity.known:
             raise Refusal(f"{entity_id!r} is not hidden here")
@@ -254,7 +253,7 @@ class SceneWorld[C: Person](World[C]):
 def settled[C: Person](
     draft: SceneProposal[C], player: Person, cast: dict[Slug, C], party: Sequence[Slug]
 ) -> tuple[dict[Slug, C], Scene]:
-    """Marks the present met and files the scene, for a world that may not exist yet."""
+    """The world may not exist yet, so this takes the cast and the party as arguments."""
     everyone: Mapping[Slug, Thing] = {player.id: player, **cast}
     present = resolved_ids(draft.present, everyone, "present")
     hidden = resolved_ids(draft.hidden, everyone, "hidden")

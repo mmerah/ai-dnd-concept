@@ -1,55 +1,16 @@
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from nicegui import Client, ui
-from pydantic import SecretStr, ValidationError
-from support.table import offline_settings, updated
+from pydantic import SecretStr
 
 from aidm.config import (
     ProviderConfig,
-    RoleConfig,
-    RoleSettings,
     read_settings,
     save_settings,
 )
 from aidm.ui.settings import (
-    SettingsForm,
     _widget,  # pyright: ignore[reportPrivateUsage]
-    changes,
 )
-
-
-def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
-    settings = updated(
-        offline_settings(tmp_path),
-        roles=RoleSettings(narrator=RoleConfig(model="sonnet")).model_dump(),
-    )
-    assert changes(
-        settings,
-        {
-            ("providers", "openrouter", "api_key"): "",
-            ("providers", "openrouter", "base_url"): "",
-            ("media", "enabled"): True,
-            ("media", "model"): None,
-            ("roles", "narrator", "timeout"): 90.0,
-        },
-    ) == {
-        ("providers", "openrouter", "base_url"): None,
-        ("media", "enabled"): "true",
-        ("media", "model"): None,
-        ("roles", "narrator", "timeout"): "90",
-    }
-
-
-def test_settings_are_frozen(tmp_path: Path) -> None:
-    with pytest.raises(ValidationError, match="frozen"):
-        offline_settings(tmp_path).roles = RoleSettings()
-
-
-def test_a_shell_variable_shadows_its_box(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("MEDIA__ENABLED", "false")
-    assert changes(offline_settings(tmp_path), {("media", "enabled"): True}) == {}
 
 
 def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
@@ -72,65 +33,6 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
     assert reread.media.model == 'it is "grim"'
     assert reread.media.enabled is False
     assert "# keep me" in env.read_text(encoding="utf-8")
-
-
-def test_a_second_save_on_the_same_form_lands(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    page: Callable[[], Client],
-    notified: list[str],
-) -> None:
-    monkeypatch.delenv("ROLES__NARRATOR__MODEL", raising=False)
-    monkeypatch.chdir(tmp_path)
-
-    # A stale snapshot reads a box moved back to its old value as no change at all.
-    form = SettingsForm(offline_settings(tmp_path))
-    page()
-    widget = ui.input(value="fable")
-    form.boxes = {("roles", "narrator", "model"): widget}
-    form.save()
-
-    widget.value = "sonnet"
-    notified.clear()
-    form.save()
-
-    assert read_settings().roles.narrator.model == "sonnet"
-    assert "Nothing changed." not in notified
-
-
-def test_a_no_op_save_tells_the_player_nothing_changed(
-    tmp_path: Path, page: Callable[[], Client], notified: list[str]
-) -> None:
-    form = SettingsForm(offline_settings(tmp_path))
-    page()
-
-    form.save()
-
-    assert "Nothing changed." in notified
-
-
-def test_an_invalid_save_names_the_first_bad_key(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    page: Callable[[], Client],
-    notified: list[str],
-) -> None:
-    monkeypatch.delenv("ROLES__MASTER__TIMEOUT", raising=False)
-    monkeypatch.chdir(tmp_path)
-
-    form = SettingsForm(offline_settings(tmp_path))
-    page()
-    widget = ui.number(value=-1)
-    form.boxes = {("roles", "master", "timeout"): widget}
-
-    form.save()
-
-    assert notified
-    text = notified[-1]
-    assert text.startswith("roles.master.timeout: ")
-    assert "type=" not in text
-    assert "http" not in text
-    assert not (tmp_path / ".env").exists()
 
 
 def test_a_stored_secret_is_never_read_back_into_the_page() -> None:

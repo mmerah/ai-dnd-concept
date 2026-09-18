@@ -91,12 +91,12 @@ class NarratorView(Frozen):
 
     def check_narration(self, narration: Narration) -> None:
         if not narration.lines:
-            raise Refusal("write the narration lines: an empty answer shows the player nothing.")
+            raise Refusal("Write the narration lines. An empty answer shows the player nothing.")
         spoken = {line.speaker_id for line in narration.lines if line.speaker_id is not None}
         if strangers := sorted(spoken - set(self.speakers)):
             raise Refusal(
-                f"nobody here has id {', '.join(strangers)}. Only the player or someone here "
-                "with them speaks; leave `speaker_id` null for narration."
+                f"nobody here has id {', '.join(strangers)}. Only the player, or a person here "
+                "with the player, speaks. Use null for `speaker_id` in narration."
             )
 
     def check_interjection(self, member_id: Slug, answer: Interjection) -> None:
@@ -104,14 +104,12 @@ class NarratorView(Frozen):
             raise Refusal(f"only {member_id} speaks here: every `speaker_id` is {member_id!r}")
         if answer.proposal and not answer.lines:
             raise Refusal(
-                "a proposal comes with at least one line of dialogue; keep quiet with no lines "
-                "and no proposal"
+                "a proposal comes with at least one line of dialogue. To stay quiet, give no "
+                "lines and no proposal"
             )
 
 
 class PlayerView(Frozen):
-    """What the pages read: scene art and subjects live on the narrator view, not here."""
-
     premise: str
     player: Subject
     scene_title: str

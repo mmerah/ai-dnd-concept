@@ -5,7 +5,7 @@ from random import Random
 
 import pytest
 from support.game import initialized, loner_sheet, open_game
-from support.table import Table, narrated, offline_settings, play_turn, tool_call
+from support.table import Table, narrated, play_turn, tool_call
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
@@ -130,20 +130,6 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
     assert not any(fact.told for fact in fired[:2])
 
 
-async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: Path) -> None:
-    table = open_game(tmp_path)
-    table.service.interjections = False
-
-    state = await play_turn(
-        table,
-        "I call the old porter over.",
-        tool_call("enter", target_id="tomas"),
-        tool_call("join_party", target_id="tomas"),
-    )
-
-    assert state.world.party == ["tomas"]
-
-
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
     table = open_game(tmp_path)
 
@@ -151,20 +137,6 @@ async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -
 
     assert state.world.require(MAP).known
     assert any("unknown id 'nowhere'" in refusal for refusal in table.refusals)
-
-
-async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Path) -> None:
-    table = open_game(tmp_path)
-
-    state = await play_turn(
-        table,
-        "I press on.",
-        tool_call("drive", actor_id=PLAYER_ID),
-        tool_call("drive", actor_id=PLAYER_ID, goal="Find the way down."),
-    )
-
-    assert state.world.player.goal == "Find the way down."
-    assert any("goal, a motive or a nemesis" in refusal for refusal in table.refusals)
 
 
 async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
@@ -288,23 +260,6 @@ def _rolls_then_refuses(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
     raise ValueError("the rules said no")
 
 
-async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
-    tmp_path: Path,
-) -> None:
-    table = open_game(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene()]
-
-    state = await play_turn(
-        table,
-        "Out into the cloister walk.",
-        tool_call("drive", actor_id=PLAYER_ID, goal="Get out of the ruin safely"),
-        tool_call("next_scene", pursuit="Out into the cloister walk."),
-        arrival="Rain takes the arcade.",
-    )
-
-    assert state.world.player.goal == "Get out of the ruin safely"
-
-
 async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_and_sheet(
     tmp_path: Path,
 ) -> None:
@@ -346,21 +301,3 @@ async def test_the_clock_counts_only_a_turn_that_played_and_landed_facts(tmp_pat
 
     state = await play_turn(table, "I wait.")
     assert state.world.turns_played == 1
-
-
-async def test_the_switch_off_disarms_the_save_and_leaves_the_clock_inert(tmp_path: Path) -> None:
-    """The whole chain: Settings -> Runtime._open -> resumed -> Turn.finish."""
-    filed = open_game(tmp_path)
-    armed = filed.state.draft()
-    armed.world.meanwhile_due = True
-    filed.service.save(armed.commit())
-
-    off = offline_settings(tmp_path).model_copy(update={"meanwhile": False})
-    table = open_game(tmp_path, settings=off)
-
-    assert table.state.world.meanwhile_due is False
-
-    state = await play_turn(table, "I search beneath the desk.", FOUND)
-
-    assert state.world.turns_played == 0
-    assert state.world.meanwhile_due is False

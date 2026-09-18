@@ -50,7 +50,6 @@ class Thing(Mutable):
 
     @property
     def mention(self) -> str:
-        """Carries the exact id so a role can reuse it."""
         return f"the player {self.tag}" if self.id == PLAYER_ID else self.tag
 
     @property
@@ -92,7 +91,6 @@ class Thing(Mutable):
         return [self.fact(f"{self.mention} {moved} ({why})", card=self.card_line(moved))]
 
     def reveal(self, *, card: str = "") -> list[Fact]:
-        """Leave cards to the containing action or the standalone `reveal` tool."""
         if self.known:
             return []
         self.known = True
@@ -119,7 +117,7 @@ class Person(Thing):
         return False
 
     def required(self) -> str:
-        """What a fresh cast member must be for the worldsmith to write it; empty when nothing."""
+        """What a new cast member must be for the worldsmith to write it; empty when nothing."""
         return "" if self.alive else "alive"
 
     def changed_tags(
@@ -170,7 +168,6 @@ class World[M: Person](Mutable):
     def unmet(self) -> Iterable[Thing]: ...
 
     def require_actor(self, actor_id: Slug | None) -> M:
-        """The player, or a hired member here in the party."""
         if actor_id is None or actor_id == self.player.id:
             return self.player
         member = self.require_member_here(actor_id)
@@ -189,7 +186,6 @@ class World[M: Person](Mutable):
             raise Refusal(f"this names what the player has not met: {leaked}. Say it another way.")
 
     def tick(self, *, counted: bool) -> None:
-        """One turn against the clock; at the tempo it starts over and arms the flag."""
         if not counted:
             return
         self.turns_played += 1
@@ -230,7 +226,7 @@ def character_panel(rows: Rows) -> Panel:
 
 
 def here_panel(others: Iterable[Subject]) -> Panel:
-    """Who else: the player already has the sheet above, so a row for them would say it twice."""
+    """The player already has the sheet above, so a row for them would say it twice."""
     return Panel(title="Also here", rows=tuple(other.row() for other in others))
 
 

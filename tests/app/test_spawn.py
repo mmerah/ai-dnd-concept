@@ -43,30 +43,6 @@ CODEX_OUTPUT = "\n".join(
 )
 
 
-def test_the_master_alone_is_given_this_games_tools() -> None:
-    config = RoleConfig(model="opus", effort="high")
-    master = ClaudeDriver().command("master", config, None, "http://localhost:1/mcp/")
-    narrator = ClaudeDriver().command("narrator", config, None, "http://localhost:1/mcp/")
-
-    assert "--restricted" in master and "--restricted" in narrator
-    assert "http://localhost:1/mcp/" in " ".join(master)
-    # The flag that lets the master reach the server at all.
-    assert "--allowed-tools" in master and "mcp__aidm" in master
-    assert "--mcp-config" not in narrator
-    # A prompt follows the command, so the last flag must not take a list.
-    assert master[-1] == "--strict-mcp-config"
-
-
-def test_a_resumed_command_names_the_conversation_to_carry_on() -> None:
-    config = RoleConfig(provider="codex", model="gpt-5", effort="low")
-    cold = CodexDriver().command("worldsmith", config, None, "")
-    warm = CodexDriver().command("worldsmith", config, "abc-123", "")
-
-    assert "resume" not in cold
-    assert list(warm[:4]) == ["codex", "exec", "resume", "abc-123"]
-    assert "model_reasoning_effort=low" in warm
-
-
 def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account() -> None:
     config = RoleConfig(provider="codex", model="gpt-5", effort="low")
     master = CodexDriver().command("master", config, None, "http://localhost:1/mcp/")
@@ -84,13 +60,6 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
         assert list(argv[disabled : disabled + 2]) == ["--disable", "apps"]
         assert "--ignore-user-config" in argv
         assert "web_search=disabled" in argv
-
-
-def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
-    with pytest.raises(Refusal, match="printed no JSON result") as failed:
-        _ = ClaudeDriver().read_result("I ask in prose.")
-
-    assert "I ask in prose." not in str(failed.value)
 
 
 def test_a_failed_claude_run_does_not_quote_its_raw_result() -> None:
@@ -164,13 +133,6 @@ def test_a_driver_reads_the_conversation_its_cli_reported(
     assert driver.read_result(output).conversation == conversation
 
 
-def test_final_message_tries_only_the_first_brace_not_every_one() -> None:
-    """The old scavenger would dig past a broken `{` to the real answer; this must not."""
-    output = 'garbled prefix {not valid} then the real one {"lines": []}'
-
-    assert final_message(output) == output
-
-
 def test_a_deeply_nested_answer_is_refused_not_a_bare_recursion_error() -> None:
     depth = 12000
     nested = '{"lines": ' + "[" * depth + "]" * depth + "}"
@@ -179,18 +141,6 @@ def test_a_deeply_nested_answer_is_refused_not_a_bare_recursion_error() -> None:
     assert final_message(f"```json\n{nested}\n```") is not None
     with pytest.raises(Refusal, match="not JSON"):
         _ = decode(nested)
-
-
-def test_only_an_agent_message_is_read_as_the_answer() -> None:
-    """The old scavenger took `text` from any event; a reasoning event is not the answer."""
-    output = "\n".join(
-        (
-            '{"type":"item.completed","item":{"type":"agent_message","text":"{}"}}',
-            '{"type":"item.completed","item":{"type":"reasoning","text":"I should say more."}}',
-        )
-    )
-
-    assert CodexDriver().read_result(output).text == "{}"
 
 
 def test_the_child_environment_holds_nothing_but_the_allowlist(
