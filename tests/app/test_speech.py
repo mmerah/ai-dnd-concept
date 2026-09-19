@@ -69,7 +69,6 @@ async def test_read_writes_one_wav_per_line_in_order_and_caches_each(
             assert wav.getsampwidth() == 2
             assert wav.getframerate() == reader.config.sample_rate
             assert wav.readframes(wav.getnframes()) == chunk
-    # The first line was on disk before the second was asked for: it plays while the rest generate.
     assert landed_before_second == [(clips[0], None)]
     assert len(bodies) == 2
     assert requests[0][0] == NARRATOR

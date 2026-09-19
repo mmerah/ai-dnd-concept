@@ -34,8 +34,6 @@ class DiceSound(ui.element, component="dice_sound.js"):
 
 
 class Speaker(ui.element, component="speech.js"):
-    """Reads an exchange aloud in the browser; `reading` events carry the url of the line read."""
-
     def follow(self, urls: Sequence[str | None], *, restart: bool) -> None:
         self.run_method("follow", list(urls), restart)
 

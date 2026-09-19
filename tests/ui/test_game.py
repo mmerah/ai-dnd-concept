@@ -126,7 +126,6 @@ async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(
 
 
 def _spoken(reader: Reader, text: str) -> Path:
-    """A clip on disk for one narration line, named as the reader names it."""
     clip = reader.saves / f"{clip_key(reader.config.model, reader.voice, text)}.wav"
     clip.parent.mkdir(parents=True, exist_ok=True)
     _ = clip.write_bytes(b"RIFF")
@@ -193,7 +192,6 @@ async def test_poll_media_follows_a_new_exchange_but_not_the_clip_the_page_loade
     screen = _screen(table)
     screen.speaker = Speaker()
     monkeypatch.setattr(screen.speaker, "follow", follow)
-    # As `build` leaves them: the clip the page loaded with is shown, not read.
     screen.followed = service.state.exchanges()[-1]
     screen.shown_clips = (loaded,)
 

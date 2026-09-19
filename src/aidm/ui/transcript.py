@@ -93,7 +93,6 @@ def chat(
     accept: Callable[[str], Awaitable[None]],
     read: Callable[[Exchange, int], None],
 ) -> dict[str, ui.button]:
-    """Returns each line's read button by its clip url, so a reading change flips the icon."""
     buttons: dict[str, ui.button] = {}
     if not history:
         ui.label(view.premise).classes("text-sm italic opacity-70")
@@ -132,7 +131,6 @@ def chat(
 
 
 def read_button(*, reading: bool, on_click: Callable[[], None]) -> ui.button:
-    """The icon alone follows the reading: a stop square while its line is read."""
     return (
         ui.button(icon=READ_ICONS[reading], on_click=on_click, color=None)
         .props('flat round dense size=sm aria-label="Read from here"')
