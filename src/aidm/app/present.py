@@ -158,46 +158,51 @@ class Reader:
             voice=voice,
         )
 
-    def clip(self, exchange: Exchange) -> Path | None:
+    def clips(self, exchange: Exchange) -> tuple[Path | None, ...]:
+        """One entry per line: the clip once it is on disk, None until then."""
         if not self.config.enabled:
-            return None
-        _, _, path = self._planned(exchange)
-        return path if path.is_file() else None
+            return (None,) * len(exchange.lines)
+        return tuple(
+            path if (path := self._path(voice, text)).is_file() else None
+            for voice, text in requests_of(exchange, self.voice, self.config.voices)
+        )
 
     async def read(self, exchange: Exchange) -> None:
-        """A failed generation costs a log line only: speech is outside the game."""
-        requests, key, path = self._planned(exchange)
-        if not requests or path.is_file():
-            return
-        try:
-            with self.claims.hold(key) as reading:
-                if not reading:
-                    return
-                chunks = [
-                    await post_bearer(
-                        self.provider,
-                        "/audio/speech",
-                        speech_body(self.config.model, voice, text),
-                        self.config.timeout,
-                    )
-                    for voice, text in requests
-                ]
+        """One clip per line, in order, so the first line plays while the rest still generate.
 
-                def write(staged: Path) -> None:
-                    with wave.open(str(staged), "wb") as clip_file:
-                        clip_file.setnchannels(1)
-                        clip_file.setsampwidth(SAMPLE_WIDTH)
-                        clip_file.setframerate(self.config.sample_rate)
-                        clip_file.writeframes(b"".join(chunks))
+        A failed line costs a log line and ends the reading: speech is outside the game.
+        """
+        for voice, text in requests_of(exchange, self.voice, self.config.voices):
+            path = self._path(voice, text)
+            if path.is_file():
+                continue
+            try:
+                with self.claims.hold(path.stem) as reading:
+                    if reading:
+                        await self._generate(path, voice, text)
+            except (HTTPError, OSError, Refusal, wave.Error) as failed:
+                LOGGER.warning("speech generation failed: %s", failed)
+                return
 
-                publish(path, write)
-        except (HTTPError, OSError, Refusal, wave.Error) as failed:
-            LOGGER.warning("speech generation failed: %s", failed)
+    async def _generate(self, path: Path, voice: str, text: str) -> None:
+        pcm = await post_bearer(
+            self.provider,
+            "/audio/speech",
+            speech_body(self.config.model, voice, text),
+            self.config.timeout,
+        )
 
-    def _planned(self, exchange: Exchange) -> tuple[tuple[tuple[str, str], ...], str, Path]:
-        requests = requests_of(exchange, self.voice, self.config.voices)
-        key = clip_key(self.config.model, requests)
-        return requests, key, self.saves / f"{key}.wav"
+        def write(staged: Path) -> None:
+            with wave.open(str(staged), "wb") as clip_file:
+                clip_file.setnchannels(1)
+                clip_file.setsampwidth(SAMPLE_WIDTH)
+                clip_file.setframerate(self.config.sample_rate)
+                clip_file.writeframes(pcm)
+
+        publish(path, write)
+
+    def _path(self, voice: str, text: str) -> Path:
+        return self.saves / f"{clip_key(self.config.model, voice, text)}.wav"
 
 
 @dataclass(frozen=True, slots=True)
@@ -302,10 +307,9 @@ def requests_of(
     return tuple((voice_of(line.speaker_id, narrator, pool), line.text) for line in exchange.lines)
 
 
-def clip_key(model: str, lines: Sequence[tuple[str, str]]) -> str:
-    """The clip names a file, so the model and each (voice, text) hash to twelve hex chars."""
-    joined = "\n".join(f"{voice}|{text}" for voice, text in lines)
-    return sha1(f"{model}\n{joined}".encode(), usedforsecurity=False).hexdigest()[:12]
+def clip_key(model: str, voice: str, text: str) -> str:
+    """The clip names a file, so the model, the voice and the text hash to twelve hex chars."""
+    return sha1("\n".join((model, voice, text)).encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def speech_body(model: str, voice: str, text: str) -> dict[str, str]:

@@ -33,6 +33,19 @@ class DiceSound(ui.element, component="dice_sound.js"):
         self.run_method("play")
 
 
+class Speaker(ui.element, component="speech.js"):
+    """Reads an exchange aloud in the browser; `reading` events carry the url of the line read."""
+
+    def follow(self, urls: Sequence[str | None], *, restart: bool) -> None:
+        self.run_method("follow", list(urls), restart)
+
+    def play_from(self, urls: Sequence[str | None], index: int) -> None:
+        self.run_method("playFrom", list(urls), index)
+
+    def stop(self) -> None:
+        self.run_method("stop")
+
+
 def game_path(target: LaunchTarget) -> str:
     return GAME_ROUTE.format(scenario=target.scenario_id, character=target.character_id)
 
@@ -45,6 +58,10 @@ def media_url(path: Path) -> str:
         app.add_static_files(route, directory)
         _media_routes[directory] = route
     return route + path.name
+
+
+def media_urls(paths: Sequence[Path | None]) -> tuple[str | None, ...]:
+    return tuple(None if path is None else media_url(path) for path in paths)
 
 
 def alert(message: str) -> None:

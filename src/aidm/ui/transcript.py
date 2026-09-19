@@ -1,7 +1,6 @@
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
-from pathlib import Path
 from typing import Self
 
 from nicegui import ui
@@ -12,7 +11,7 @@ from aidm.core.entities import Slug
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
-from aidm.ui.widgets import avatar, heading
+from aidm.ui.widgets import avatar, heading, media_url
 
 STEP_COPY: dict[Role, tuple[str, str]] = {
     "master": (
@@ -33,6 +32,7 @@ MARK_LABELS: dict[Marked, str] = {
     "interjection": "(the party speaks)",
 }
 DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
+READ_ICONS = {False: "play_arrow", True: "stop"}
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -89,9 +89,12 @@ def chat(
     view: PlayerView,
     history: Sequence[Exchange],
     *,
-    autoplay_clip: Path | None,
+    reading: str,
     accept: Callable[[str], Awaitable[None]],
-) -> None:
+    read: Callable[[Exchange, int], None],
+) -> dict[str, ui.button]:
+    """Returns each line's read button by its clip url, so a reading change flips the icon."""
+    buttons: dict[str, ui.button] = {}
     if not history:
         ui.label(view.premise).classes("text-sm italic opacity-70")
     # The live decision widget sits directly below the last exchange, so it needs no pause line.
@@ -106,8 +109,16 @@ def chat(
             bubble(session, player.id, player.name, exchange.words, sent=True)
         for fact in cards(exchange.facts):
             card(fact)
-        for line in exchange.lines:
-            bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
+        clips = session.clips(exchange)
+        for index, line in enumerate(exchange.lines):
+            message = bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
+            if (clip := clips[index]) is None:
+                continue
+            url = media_url(clip)
+            with message.add_slot("stamp"):
+                buttons[url] = read_button(
+                    reading=url == reading, on_click=partial(read, exchange, index)
+                )
         if exchange.decision and exchange is not last:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
     if (proposed := standing_proposal(history, view, session.working_role)) is not None:
@@ -117,9 +128,17 @@ def chat(
                 "text-sm"
             )
             ui.button("Accept", on_click=partial(accept, proposed.proposal)).props("outline dense")
-    # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
-    if clip := session.newest_clip():
-        ui.audio(clip, autoplay=clip == autoplay_clip)
+    return buttons
+
+
+def read_button(*, reading: bool, on_click: Callable[[], None]) -> ui.button:
+    """The icon alone follows the reading: a stop square while its line is read."""
+    return (
+        ui.button(icon=READ_ICONS[reading], on_click=on_click, color=None)
+        .props('flat round dense size=sm aria-label="Read from here"')
+        .classes("game-read")
+        .tooltip("Read from here")
+    )
 
 
 def live_turn(session: GameService, view: PlayerView, elapsed: float) -> ui.label | None:
@@ -179,7 +198,7 @@ def dice_group(die: DiceEvent, *, live: bool) -> None:
 
 def bubble(
     session: GameService, speaker_id: Slug | None, name: str, text: str, *, sent: bool
-) -> None:
+) -> ui.chat_message:
     narration = speaker_id is None
     icon = None if narration else session.icon(speaker_id)
     chat_name = "DM" if narration else name
@@ -188,6 +207,7 @@ def bubble(
     )
     with message.add_slot("avatar"):
         avatar(icon, None if narration else chat_name)
+    return message
 
 
 def inline_status(step: Role, elapsed: float) -> ui.label:

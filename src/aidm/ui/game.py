@@ -14,11 +14,13 @@ from aidm.core.views import PlayerView
 from aidm.ui import transcript
 from aidm.ui.widgets import (
     DiceSound,
+    Speaker,
     alert,
     decision_widget,
     entity_row,
     labeled_value,
     media_url,
+    media_urls,
     page_header,
     section,
     typed,
@@ -42,15 +44,21 @@ class GamePage:
     def __init__(self, session: GameService) -> None:
         self.session = session
         self.shown_art: Path | None = None
-        self.shown_clip: Path | None = None
-        self.autoplay_clip: Path | None = None
+        # The exchange the speaker reads as its clips land, and the clips it was last given.
+        self.followed: Exchange | None = None
+        self.shown_clips: tuple[Path | None, ...] = ()
+        # The url of the line being read, or empty; `read_buttons` holds each line's by url.
+        self.reading: str = ""
+        self.read_buttons: dict[str, ui.button] = {}
         self.scene_open: bool = False
         self.scroll: ui.scroll_area
         self.drawer: ui.right_drawer
         self.tabs: ui.tabs
         self.rail: dict[str, ui.button] = {}
         self.dice: DiceSound
+        self.speaker: Speaker
         self.sound: ui.button
+        self.stop_button: ui.button
         self.new_activity: ui.button
         self.scene_card: ui.element
         self.restart_dialog: ui.dialog
@@ -81,6 +89,12 @@ class GamePage:
             session.state.scenario.title, session.engine.title, look=session.engine.look
         ):
             ui.space()
+            self.stop_button = (
+                ui.button(icon="stop_circle", on_click=self.stop_reading)
+                .props('flat round aria-label="Stop reading"')
+                .tooltip("Stop reading")
+            )
+            self.stop_button.set_visibility(False)
             self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props("flat round")
             ui.button(icon="menu_book", on_click=lambda: self.drawer.toggle()).props("flat round")
             with ui.button(icon="more_vert").props("flat round"), ui.menu():
@@ -133,8 +147,10 @@ class GamePage:
 
         self.dice = DiceSound()
         self.dice.on("sound", self.sound_state)
-        # A cached clip never autoplays on a page load, only one landing after.
-        self.shown_clip = session.newest_clip()
+        self.speaker = Speaker()
+        self.speaker.on("reading", self.reading_state)
+        # A cached clip never plays on a page load, only a line landing after.
+        self.followed, self.shown_clips = self._newest_clips()
         self.shown_art = session.scene_art()
         self.seen = transcript.Observed.of(session, self.view, self.history)
         self._set_composer()
@@ -212,15 +228,14 @@ class GamePage:
 
     @ui.refreshable_method
     def chat(self) -> None:
-        transcript.chat(
+        self.read_buttons = transcript.chat(
             self.session,
             self.view,
             self.history,
-            autoplay_clip=self.autoplay_clip,
+            reading=self.reading,
             accept=self.accept,
+            read=self.read_from,
         )
-        # Consumed by this render: a later refresh of the same turn must not restart the clip.
-        self.autoplay_clip = None
 
     @ui.refreshable_method
     def live_turn(self) -> None:
@@ -354,12 +369,35 @@ class GamePage:
         if art != self.shown_art:
             self.shown_art = art
             self.scene_header.refresh()
-        clip = session.newest_clip()
-        if clip != self.shown_clip:
-            self.shown_clip = clip
-            if clip is not None:
-                self.autoplay_clip = clip
+        newest, clips = self._newest_clips()
+        if newest != self.followed or clips != self.shown_clips:
+            self.speaker.follow(media_urls(clips), restart=newest != self.followed)
+            self.followed, self.shown_clips = newest, clips
             self.chat.refresh()
+
+    def _newest_clips(self) -> tuple[Exchange | None, tuple[Path | None, ...]]:
+        history = self.session.state.exchanges()
+        if not history:
+            return None, ()
+        return history[-1], self.session.clips(history[-1])
+
+    def read_from(self, exchange: Exchange, index: int) -> None:
+        urls = media_urls(self.session.clips(exchange))
+        if urls[index] == self.reading:
+            self.speaker.stop()
+        else:
+            self.speaker.play_from(urls, index)
+
+    def stop_reading(self) -> None:
+        self.speaker.stop()
+
+    def reading_state(self, event: GenericEventArguments) -> None:
+        self.reading = str(event.args)
+        self.stop_button.set_visibility(bool(self.reading))
+        for url, button in self.read_buttons.items():
+            if not button.is_deleted:
+                reading = url == self.reading
+                button.set_icon(transcript.READ_ICONS[reading])
 
     async def play(self, answer: Answer) -> bool:
         self.own_move = True
@@ -396,6 +434,8 @@ class GamePage:
         except Refusal as error:
             alert(str(error))
             return
+        # The new opening is read even when it repeats the old one word for word.
+        self.followed, self.shown_clips = None, ()
         self.poll_turn()
         await self._run(self.session.open)
 

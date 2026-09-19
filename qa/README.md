@@ -12,17 +12,21 @@ qa/run_all.sh                 # every scenario, a fresh server each
 qa/run_all.sh loner mobile    # some of them
 qa/serve.sh                   # only the server, at http://localhost:8123 (/qa/log lists spawns)
 qa/serve.sh --art             # the same, with placeholder 16:9 scene art drawn offline
+qa/serve.sh --speech          # the same, with each line read as a short offline tone
 ```
 
 `--art` turns media on and swaps the provider call for a gradient keyed off the prompt, so the
-scene header can be looked at with a picture in it without a key or a network.
+scene header can be looked at with a picture in it without a key or a network. `--speech` turns
+speech on and swaps the provider call for a tone that lands a second after it is asked for, so
+the page is seen reading a line while the next one generates.
 
 Playwright comes from the project venv (the `qa` dependency group), but the browsers do not:
 Chromium is pinned in `drive.py` (`CHROMIUM`); change it for another machine.
 
 Scenarios: `home`, `loner`, `goons`, `24xx`, `settings`, `create`, `mobile`,
 `burst` (double sends, huge text, reload storms, two tabs), `requests` (a world-growth request
-ends the turn, on every engine) and `endure` (eight turns and reloads on each of the three games).
+ends the turn, on every engine), `endure` (eight turns and reloads on each of the three games)
+and `speech` (lines read as they land, the stop button, reading from a chosen line).
 
 ## The scripted roles
 
