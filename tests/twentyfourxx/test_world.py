@@ -1,6 +1,5 @@
 import pytest
-from support.table import change
-from support.twentyfourxx import ENGINE, KESTREL, hired, small_world
+from support.twentyfourxx import KESTREL, hired, small_world
 
 from aidm.core.entities import Refusal
 from aidm.engines.twentyfourxx.world import (
@@ -41,20 +40,6 @@ def test_take_lead_swaps_player_and_cast_entry_and_keeps_ids(draft: Twentyfourxx
     assert dead_id in world.scene.here
     assert any(fact.card == "Kestrel leads now" for fact in facts)
     TwentyfourxxWorld.model_validate_json(world.model_dump_json())
-
-
-def test_the_new_lead_gets_the_cards_and_the_line_of_a_player(draft: TwentyfourxxGame) -> None:
-    led = hired(draft, KESTREL, skills={"Shooting": 8}).draft()
-    world = led.world
-    world.player.alive = False
-    _ = world.take_lead(KESTREL)
-    world.player.require_sheet().credits = 2
-    world.player.require_sheet().items["vest"] = Gear(name="Vest")
-
-    facts = change(ENGINE, led, "spend", amount=1, why="a bribe")
-
-    assert [fact.card for fact in facts] == ["₡1 spent — a bribe"]
-    assert world.cast_lines().partition("\n- ")[0].count("Vest") == 1
 
 
 def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:

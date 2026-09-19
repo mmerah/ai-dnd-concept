@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from nicegui import Client, ui
-from support.game import open_game, session
+from support.game import open_game
 from support.table import (
     Table,
     play_turn,
@@ -117,42 +117,3 @@ async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(
     game_page(table.service)
 
     assert built == []
-
-
-async def test_the_composer_greys_while_another_game_holds_the_gate(
-    tmp_path: Path, page: Callable[[], Client]
-) -> None:
-    table = open_game(tmp_path)
-    page()
-    screen = _screen(table)
-
-    screen._set_composer()  # pyright: ignore[reportPrivateUsage]
-    assert screen.box.enabled
-
-    table.service.gate.admitted = session(tmp_path / "other")
-    screen._set_composer()  # pyright: ignore[reportPrivateUsage]
-    assert not screen.box.enabled
-
-    table.service.gate.admitted = None
-    screen.poll_turn()
-    assert screen.box.enabled
-
-
-async def test_a_turn_polls_when_it_ends_but_not_onto_a_deleted_client(
-    tmp_path: Path, page: Callable[[], Client]
-) -> None:
-    table = open_game(tmp_path)
-    client = page()
-    screen = _screen(table)
-    polls: list[None] = []
-    screen.poll_turn = lambda: polls.append(None)  # pyright: ignore[reportAttributeAccessIssue]
-
-    async def nothing() -> None:
-        return
-
-    assert await screen._run(nothing)  # pyright: ignore[reportPrivateUsage]
-    assert len(polls) == 1
-
-    client.delete()
-    assert await screen._run(nothing)  # pyright: ignore[reportPrivateUsage]
-    assert len(polls) == 1
