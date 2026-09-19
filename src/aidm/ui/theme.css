@@ -246,6 +246,10 @@ body, body.body--dark {
 }
 .game-message.q-message-sent .q-message-name { color: var(--game-accent) }
 .game-narration .q-message-text { border-left: 3px solid var(--game-border) }
+/* Quasar's stamp is a dim text line; the read button sits there, on the bubble's edge. */
+.game-message .q-message-stamp { opacity: 1; margin-top: .15rem; line-height: 1 }
+.game-read { color: var(--game-muted) }
+.game-read:hover { color: var(--game-accent) }
 .game-avatar { border: 1px solid var(--game-border); background: var(--game-surface) }
 .game-avatar-dm { color: var(--game-accent); border-color: var(--game-accent) }
 

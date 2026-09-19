@@ -18,10 +18,11 @@ from nicegui import app, ui
 sys.path.insert(0, str(Path(__file__).parent))
 from agents import ScriptedAgents
 from art import PlaceholderIllustrator
+from speech import PlaceholderReader
 
 from aidm.app import present as present_module
 from aidm.app.runtime import Runtime
-from aidm.config import SERVER_HOST, MediaConfig, Settings
+from aidm.config import SERVER_HOST, MediaConfig, Settings, SpeechConfig
 from aidm.ui import theme
 from aidm.ui.app import mount
 
@@ -35,6 +36,7 @@ def main() -> None:
     parser.add_argument("--delay", type=float, default=0.3)
     parser.add_argument("--fresh", action="store_true", help="wipe the work directory first")
     parser.add_argument("--art", action="store_true", help="draw placeholder scene art offline")
+    parser.add_argument("--speech", action="store_true", help="read lines as offline tones")
     parsed = parser.parse_args()
     work: Path = parsed.work.resolve()
     if parsed.fresh and work.exists():
@@ -48,6 +50,8 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     if parsed.art:
         _draw_offline()
+    if parsed.speech:
+        _read_offline()
     settings = Settings(
         saves_dir=work / "saves",
         scenarios_dir=work / "scenarios",
@@ -56,6 +60,7 @@ def main() -> None:
         server_port=parsed.port,
         # Only under `--art`: the default provider is what the settings scenario checks against.
         media=MediaConfig(enabled=True, provider="local") if parsed.art else MediaConfig(),
+        speech=SpeechConfig(enabled=True, provider="local") if parsed.speech else SpeechConfig(),
     )
     agents = ScriptedAgents(delay=parsed.delay)
     # The built agents are passed so a reload, which rebuilds the runtime, keeps them.
@@ -94,6 +99,11 @@ def main() -> None:
 def _draw_offline() -> None:
     """The real illustrator, with the provider call swapped for a gradient."""
     present_module.Illustrator = PlaceholderIllustrator  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def _read_offline() -> None:
+    """The real reader, with the provider call swapped for a tone."""
+    present_module.Reader = PlaceholderReader  # pyright: ignore[reportAttributeAccessIssue]
 
 
 if __name__ in {"__main__", "__mp_main__"}:

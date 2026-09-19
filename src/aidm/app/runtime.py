@@ -268,9 +268,8 @@ class GameService:
     def icon(self, entity_id: Slug) -> Path | None:
         return self.presenter.illustrator.icon(entity_id)
 
-    def newest_clip(self) -> Path | None:
-        newest = self._newest()
-        return None if newest is None else self.presenter.reader.clip(newest)
+    def clips(self, exchange: Exchange) -> tuple[Path | None, ...]:
+        return self.presenter.reader.clips(exchange)
 
     async def close(self) -> None:
         self.hush()
