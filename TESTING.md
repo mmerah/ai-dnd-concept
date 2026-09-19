@@ -1,0 +1,4 @@
+- world.json -> focus. Feel like it make the models just mistake that for something else. Shouldn't a scene just be a situation? Why does it need a "focus"?
+- Long-term: Feel like on the long term models lose sight of what is happening, of a longer term objective. One thing may be that the narrator only see facts but no long term objective?
+- GM rolls constantly, no matter the action. Very intense, too much
+- Progressing can be very difficult, sometimes impossible
