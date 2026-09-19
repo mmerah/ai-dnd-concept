@@ -1,7 +1,4 @@
-"""Placeholder speech for the QA server: a short tone per line, written offline after a pause.
-
-Real generation needs a key and a network. The page only needs clips that land one by one.
-"""
+"""Placeholder speech for the QA server: a short tone per line, a second after it is asked for."""
 
 import math
 import struct
@@ -20,8 +17,6 @@ LOUDNESS = 0.2
 
 
 class PlaceholderReader(Reader):
-    """Each line takes a second to land, so the page is seen reading while later lines generate."""
-
     @override
     async def _generate(self, path: Path, voice: str, text: str) -> None:
         del voice, text

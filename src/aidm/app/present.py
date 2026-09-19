@@ -159,7 +159,6 @@ class Reader:
         )
 
     def clips(self, exchange: Exchange) -> tuple[Path | None, ...]:
-        """One entry per line: the clip once it is on disk, None until then."""
         if not self.config.enabled:
             return (None,) * len(exchange.lines)
         return tuple(
@@ -168,10 +167,7 @@ class Reader:
         )
 
     async def read(self, exchange: Exchange) -> None:
-        """One clip per line, in order, so the first line plays while the rest still generate.
-
-        A failed line costs a log line and ends the reading: speech is outside the game.
-        """
+        """A failed line costs a log line and ends the reading: speech is outside the game."""
         for voice, text in requests_of(exchange, self.voice, self.config.voices):
             path = self._path(voice, text)
             if path.is_file():

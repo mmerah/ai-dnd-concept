@@ -11,8 +11,6 @@ export default {
     this.audio.addEventListener("error", () => this.stop());
   },
   methods: {
-    // `urls` holds the followed exchange's clips in line order; null is a line not landed yet.
-    // `restart` is a new exchange: it reads from its first line once the current line ends.
     follow(urls, restart) {
       this.urls = urls;
       if (restart) {

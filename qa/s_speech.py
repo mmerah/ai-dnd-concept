@@ -1,7 +1,4 @@
-"""Speech: lines read one by one as they land, a stop button, a read-from-here button per line.
-
-Needs `qa/serve.sh --speech`; `run_all.sh` starts the server that way for this scenario.
-"""
+"""Speech, against `qa/serve.sh --speech`: lines read as they land, stop, read from a line."""
 
 import sys
 import time
@@ -18,7 +15,6 @@ READ = 'button[aria-label="Read from here"]'
 
 
 def playing(page: Page) -> str:
-    """The clip's file name while a line is read; empty otherwise."""
     return page.evaluate(
         "() => { const a = document.querySelector('audio');"
         " return a && !a.paused ? a.src.split('/').pop() : ''; }"
@@ -30,7 +26,6 @@ def icons(page: Page) -> list[str]:
 
 
 def watch(page: Page, seconds: float) -> list[str]:
-    """Each clip read in turn, in order, without repeats."""
     heard: list[str] = []
     deadline = time.time() + seconds
     while time.time() < deadline:

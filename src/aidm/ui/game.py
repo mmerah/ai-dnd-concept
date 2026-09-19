@@ -44,10 +44,8 @@ class GamePage:
     def __init__(self, session: GameService) -> None:
         self.session = session
         self.shown_art: Path | None = None
-        # The exchange the speaker reads as its clips land, and the clips it was last given.
         self.followed: Exchange | None = None
         self.shown_clips: tuple[Path | None, ...] = ()
-        # The url of the line being read, or empty; `read_buttons` holds each line's by url.
         self.reading: str = ""
         self.read_buttons: dict[str, ui.button] = {}
         self.scene_open: bool = False

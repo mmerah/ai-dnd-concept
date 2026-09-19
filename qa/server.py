@@ -102,7 +102,6 @@ def _draw_offline() -> None:
 
 
 def _read_offline() -> None:
-    """The real reader, with the provider call swapped for a tone."""
     present_module.Reader = PlaceholderReader  # pyright: ignore[reportAttributeAccessIssue]
 
 
