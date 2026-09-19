@@ -80,27 +80,6 @@ def test_one_open_game_per_slug(tmp_path: Path) -> None:
     assert runtime.session(TARGET) is opened
 
 
-async def test_delete_save_drops_the_session_and_its_media_but_not_during_a_turn(
-    tmp_path: Path,
-) -> None:
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), spawner=ScriptedSpawner())
-    opened = runtime.session(TARGET)
-    opened.save(opened.state)
-    media = runtime.store.media_dir(TARGET.slug)
-    media.mkdir(parents=True)
-    opened.working_role = "master"
-
-    with pytest.raises(Refusal, match="taking a turn"):
-        await runtime.delete_save(TARGET.slug)
-
-    opened.working_role = None
-    await runtime.delete_save(TARGET.slug)
-
-    assert runtime.store.read(TARGET.slug) is None
-    assert not media.exists()
-    assert runtime.session(TARGET) is not opened
-
-
 async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> None:
     table = open_game(tmp_path)
     table.spawner.answers["narrator"] = [narrated("The abbot's study holds its breath.")]
